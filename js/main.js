@@ -1,6 +1,6 @@
 // ドリブルレスキュー！ メニュー・成長・ごほうび
 import { SKILLS, SKILL_IDS, RANKS, TIERS, tierOf, rankSkills, poolFor, WORLDS, MISSIONS, STAGES, sl, FRIENDS, BOSS_FRIENDS, ALL_FRIENDS, BALLS, SUITS, CAPSULE_COST, AVATARS,
-  S, save, addPlayer, renamePlayer, player, totalStars, mastery, canTest, dayState, missionProgress, stamp, esc } from './data.js';
+  S, save, avHTML, addPlayer, renamePlayer, player, totalStars, mastery, canTest, dayState, missionProgress, stamp, esc } from './data.js';
 import { runStage } from './run.js';
 
 const app = document.getElementById('app'); const nav = document.getElementById('nav'); const gameEl = document.getElementById('game');
@@ -19,7 +19,7 @@ function show(html, t, bare) {
 }
 function topbar() {
   const p = player(); const r = RANKS[p.rank];
-  return `<div class="topbar"><button class="who" data-act="who">${p.avatar}<span>${esc(p.name)}</span></button>
+  return `<div class="topbar"><button class="who" data-act="who">${avHTML(p.avatar)}<span>${esc(p.name)}</span></button>
     <span class="rank" style="--c:${r.c}">R${p.rank} ${r.n}${p.verified[p.rank - 1] ? ' ✅' : ''}</span>
     <span class="cur">⭐ ${totalStars(p)}</span><span class="cur coin">🪙 ${p.coins}</span></div>`;
 }
@@ -245,7 +245,7 @@ function settings() {
     <h3>🔊 おとの テスト</h3><p class="hint">音が 出ないときに、どの方式なら 聞こえるかを たしかめます。1つずつ おして、聞こえたものを 教えてください。</p>
     <div class="btns"><button class="big ghost" id="ta">① 合成音</button><button class="big ghost" id="tb">② 音声ファイル</button><button class="big ghost" id="tc">③ こえ → 合成音</button></div><p class="hint" id="tout"></p>
     <h3>プレイヤーと ランク</h3><p class="hint">いまの じつりょくに 合わせて、スタートの ランクを えらんでください。ランクが 上がるほど むずかしい ワザが 出ます。</p>
-    ${S.players.map((p) => `<div class="prow"><b>${p.avatar}</b><input class="pname-edit" maxlength="10" value="${esc(p.name)}" data-pid="${p.id}" style="width:6em"><div class="seg">${[1, 2, 3, 4, 5].map((r) => `<button class="${p.rank === r ? 'on' : ''}" data-rank="${r}" data-pid="${p.id}">R${r}</button>`).join('')}</div><button class="mini danger" data-del="${p.id}">けす</button></div>`).join('')}
+    ${S.players.map((p) => `<div class="prow"><b>${avHTML(p.avatar)}</b><input class="pname-edit" maxlength="10" value="${esc(p.name)}" data-pid="${p.id}" style="width:6em"><div class="seg">${[1, 2, 3, 4, 5].map((r) => `<button class="${p.rank === r ? 'on' : ''}" data-rank="${r}" data-pid="${p.id}">R${r}</button>`).join('')}</div><button class="mini danger" data-del="${p.id}">けす</button></div>`).join('')}
     <p class="hint">${[1, 2, 3, 4, 5].map((r) => `R${r} ${RANKS[r].n}：${rankSkills(r).map((k) => SKILLS[k].n).join('・')}`).join('<br>')}</p>
     <p class="hint">きろくは この たんまつの ブラウザの 中だけに ほぞんされます。</p></div>`, 'home');
   app.querySelectorAll('[data-set]').forEach((i) => i.addEventListener('change', () => { st[i.dataset.set] = i.checked; save(); }));
@@ -271,14 +271,14 @@ function who() {
   show(`<div class="hero"><div class="logo"><span>ドリブル</span><b>レスキュー！</b></div></div>
     <h2 class="whoq">だれが あそぶ？</h2>
     <div class="wholist">${ps.map((x) => { const nx = STAGES.find((y) => !(x.stars[y.id] > 0)); return `<button class="whocard" data-act="pick" data-id="${x.id}" style="--c:${RANKS[x.rank].c}">
-      <span class="wav">${x.avatar}</span><span class="wbody"><b>${esc(x.name)}</b><span class="rank" style="--c:${RANKS[x.rank].c}">R${x.rank} ${RANKS[x.rank].n}</span>
+      <span class="wav">${avHTML(x.avatar)}</span><span class="wbody"><b>${esc(x.name)}</b><span class="rank" style="--c:${RANKS[x.rank].c}">R${x.rank} ${RANKS[x.rank].n}</span>
       <small>⭐ ${totalStars(x)}　ステージ ${cleared(x)}/${STAGES.length}　🪙 ${x.coins}</small><small>${nx ? `つぎは ${sl(nx)}` : 'ぜんぶ クリア！'}・${ago(x.lastPlay)}</small></span></button>`; }).join('')}
       <button class="whocard add" data-act="players"><span class="wav">＋</span><span class="wbody"><b>あたらしい プレイヤー</b><small>なまえと ランクを えらぶ</small></span></button></div>`, 'home', true);
 }
 // ---------- きろく ----------
 function record() {
   const p = player(); const tiers = [0, 0, 0, 0, 0]; SKILL_IDS.forEach((k) => { tiers[tierOf(mastery(p, k))]++; });
-  show(`<div class="card"><h2>📒 ${p.avatar} ${esc(p.name)} の きろく</h2>
+  show(`<div class="card"><h2>📒 ${avHTML(p.avatar)} ${esc(p.name)} の きろく</h2>
       <div class="stats"><div><b>R${p.rank}</b><small>${RANKS[p.rank].n}${p.verified[p.rank - 1] ? ' ✅' : ''}</small></div><div><b>${cleared(p)}/${STAGES.length}</b><small>クリアした ステージ</small></div><div><b>⭐${totalStars(p)}</b><small>/${STAGES.length * 3}</small></div><div><b>${p.stamps || 0}日</b><small>あそんだ日</small></div><div><b>${p.plays || 0}回</b><small>プレイ</small></div><div><b>${p.friends.length}</b><small>なかま</small></div></div></div>
     <div class="card"><h2>🗺️ ステージ</h2>${WORLDS.map((w, wi) => `<div class="recrow"><b style="color:${w.pal.a}">${wi + 1} ${w.name}</b><span>${STAGES.filter((x) => x.wi === wi && !x.sp).map((x) => `<i class="${p.stars[x.id] ? 'on' : ''}" title="${sl(x)}">${p.stars[x.id] ? '★'.repeat(p.stars[x.id]) : '・'}</i>`).join('')}</span></div>`).join('')}</div>
     <div class="card"><h2>🥋 れんしゅうランク</h2><div class="res-lines">${TIERS.map((t, i) => `<span style="color:${t.c}">${t.i} ${t.n} ${tiers[i]}</span>`).join('')}</div>
@@ -291,7 +291,7 @@ function players(first) {
   let av = AVATARS[S.players.length % AVATARS.length]; let rank = 1;
   show(`${first === true ? '<div class="hero"><div class="logo"><span>ドリブル</span><b>レスキュー！</b></div></div>' : ''}<div class="card"><h2>${first === true ? 'はじめに プレイヤーを つくろう' : 'あたらしい プレイヤー'}</h2>
     <h3>なまえ</h3><input id="pname" maxlength="8" placeholder="なまえ" autocomplete="off">
-    <div class="avatars">${AVATARS.map((a) => `<button class="av ${a === av ? 'on' : ''}" data-av="${a}">${a}</button>`).join('')}</div>
+    <div class="avatars">${AVATARS.map((a) => `<button class="av ${a === av ? 'on' : ''}" data-av="${a}">${avHTML(a)}</button>`).join('')}</div>
     <p class="hint">スタートの ランク（あとで せっていから かえられます）</p><div class="seg" id="rk">${[1, 2, 3, 4, 5].map((r) => `<button class="${r === 1 ? 'on' : ''}" data-r="${r}">R${r} ${RANKS[r].n}</button>`).join('')}</div>
     <button class="big" id="psave">つくる</button>${first === true ? '' : '<button class="mini" data-act="who">← もどる</button>'}</div>`, 'home', true);
   app.querySelectorAll('.av').forEach((b) => b.addEventListener('click', () => { av = b.dataset.av; app.querySelectorAll('.av').forEach((x) => x.classList.toggle('on', x === b)); }));

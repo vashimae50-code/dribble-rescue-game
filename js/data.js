@@ -190,7 +190,9 @@ export const SUITS = [
   { id: 'or', n: 'オレンジ', cost: 150, c: '#ffb13d' }, { id: 'wh', n: 'ホワイト', cost: 200, c: '#ffffff' }, { id: 'rd', n: 'レッド', cost: 200, c: '#ff4d4d' },
 ];
 export const CAPSULE_COST = 60;
-export const AVATARS = ['🦸', '🥷', '🧑‍🚀', '🐺', '🦈', '🐬', '🦋', '⚡', '🔥', '🌟', '🏀', '👟'];
+// '@hero1'〜 は イラストの かお（img/avatar/）。それいがいは 絵文字
+export const avHTML = (a) => { if (a === '🦸') a = '@hero1'; return a && a[0] === '@' ? `<img class="avimg" src="img/avatar/${a.slice(1)}.jpg" alt="">` : a; };
+export const AVATARS = ['@hero1', '@hero3', '@hero2', '@hero4', '@hero5', '@hero6', '🥷', '🧑‍🚀', '🐺', '🦈', '🐬', '🦋', '⚡', '🔥', '🌟', '🏀', '👟'];
 
 // ---------- 保存 ----------
 const KEY = 'dribble-rescue-v2';
