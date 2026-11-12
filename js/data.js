@@ -165,15 +165,30 @@ export const MISSIONS = {
       [['cross', 4], ['c1cross', 4], ['cross', 8], ['c2cross2', 8], ['cross', 8], ['dcross', 4], ['cross', 4]]] },
   boss:    { n: 'ボスせん', i: '👾', d: 'ボスを たおして なかまを すくえ', w: {}, boss: 1, vt: '試合形式 ちょうせん' },
 };
+// BGM（曲の テンポと 最初の 拍の いち は 曲を 解析して はかった あたい）
+// rate＝再生の はやさ（音の 高さは かえない）、half＝2拍で ゲームの 1拍（ゆっくりの ステージ用）
+export const SONGS = {
+  retro:       { file: 'music/retro.mp3',       name: 'Retro Dance Fever',          bpm: 103.158, t0: 0.052 },
+  neon:        { file: 'music/neon.mp3',        name: 'Neon Nights',                bpm: 117.578, t0: 0.2888 },
+  workhard:    { file: 'music/workhard.mp3',    name: 'Work Hard Dance Harder',     bpm: 123.051, t0: 0.2142 },
+  song4:       { file: 'music/song4.mp3',       name: 'クラシックシンセウェーブアンセム', bpm: 123.243, t0: 0.2733 },
+  workhard2:   { file: 'music/workhard2.mp3',   name: 'Work Hard Dance Harder 2',   bpm: 129.242, t0: 0.2962 },
+  nightlights: { file: 'music/nightlights.mp3', name: 'Night Lights',               bpm: 135.944, t0: 0.1997 },
+  focusbeam:   { file: 'music/focusbeam.mp3',   name: 'Focus Beam',                 bpm: 136.023, t0: 0.0854 },
+};
+// ワールドごとの 曲と はやさ：ワールドが すすむほど、同じ ワールドでも ステージが すすむほど はやく
+const WORLD_SONG = [['retro', 1.0, 0.01], ['neon', 0.92, 0.01], ['workhard', 0.94, 0.01], ['song4', 1.0, 0.008], ['workhard2', 1.0, 0.008]];
+const songFor = (id, rate, half = 1) => ({ song: id, rate, half, bpm: Math.round(SONGS[id].bpm * rate / half * 10) / 10 });
 const ORDER = ['dodge', 'steps', 'weak', 'guard', 'stealth', 'boss'];
 export const STAGES = WORLDS.flatMap((w, wi) => ORDER.map((m, mi) => ({
   id: `${w.id}-${mi + 1}`, world: w, wi, mi, mission: m, name: `${w.name} ${mi + 1}`, bpm: w.bpm + mi, sections: 3,
+  ...songFor(WORLD_SONG[wi][0], WORLD_SONG[wi][1] + WORLD_SONG[wi][2] * mi),
 })));
-STAGES.push({ id: 'sp-two', world: WORLDS[2], wi: 2, mi: 6, mission: 'two', name: '2ボール チャレンジ', bpm: 96, sections: 3, sp: 'SP' });
-STAGES.push({ id: 'sp-legs', world: WORLDS[1], wi: 1, mi: 7, mission: 'lLegs', name: 'レッグスルー しゅうとく', bpm: 88, sections: 3, sp: 'L1' });
-STAGES.push({ id: 'sp-behind', world: WORLDS[3], wi: 3, mi: 8, mission: 'lBehind', name: 'バックチェンジ しゅうとく', bpm: 88, sections: 3, sp: 'L2' });
-STAGES.push({ id: 'sp-handle', world: WORLDS[0], wi: 0, mi: 9, mission: 'handle', name: 'ハンドリング どうじょう', bpm: 92, sections: 3, sp: 'H1' });
-STAGES.push({ id: 'sp-cross', world: WORLDS[4], wi: 4, mi: 10, mission: 'lCross', name: 'フロントチェンジ しゅうとく', bpm: 88, sections: 3, sp: 'L3' });
+STAGES.push({ id: 'sp-two', world: WORLDS[2], wi: 2, mi: 6, mission: 'two', name: '2ボール チャレンジ', bpm: 96, sections: 3, sp: 'SP', ...songFor('focusbeam', 1.25, 2) });
+STAGES.push({ id: 'sp-legs', world: WORLDS[1], wi: 1, mi: 7, mission: 'lLegs', name: 'レッグスルー しゅうとく', bpm: 88, sections: 3, sp: 'L1', ...songFor('nightlights', 1.15, 2) });
+STAGES.push({ id: 'sp-behind', world: WORLDS[3], wi: 3, mi: 8, mission: 'lBehind', name: 'バックチェンジ しゅうとく', bpm: 88, sections: 3, sp: 'L2', ...songFor('nightlights', 1.15, 2) });
+STAGES.push({ id: 'sp-handle', world: WORLDS[0], wi: 0, mi: 9, mission: 'handle', name: 'ハンドリング どうじょう', bpm: 92, sections: 3, sp: 'H1', ...songFor('focusbeam', 1.15, 2) });
+STAGES.push({ id: 'sp-cross', world: WORLDS[4], wi: 4, mi: 10, mission: 'lCross', name: 'フロントチェンジ しゅうとく', bpm: 88, sections: 3, sp: 'L3', ...songFor('nightlights', 1.15, 2) });
 export const sl = (s) => s.sp || `${s.wi + 1}-${s.mi + 1}`;
 
 // ---------- なかま・みため ----------

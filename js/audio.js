@@ -52,9 +52,31 @@ export class Audio {
     return true;
   }
   // 16分音符ごとに呼ぶ
+  // ---------- BGM（曲ファイル）：ゲームの 拍は 曲の 再生位置から きめる ----------
+  loadBgm(song, rate = 1, half = 1) {
+    if (!this.ctx || !this.musicOn || !song) return null;
+    const el = new window.Audio(); el.preload = 'auto'; el.src = song.file; el.playbackRate = rate; el.defaultPlaybackRate = rate;
+    el.preservesPitch = true; el.mozPreservesPitch = true; el.webkitPreservesPitch = true;
+    try { const src = this.ctx.createMediaElementSource(el); const g = this.ctx.createGain(); g.gain.value = 0.85; src.connect(g).connect(this.out); this.bgmGain = g; } catch (e) { /* そのまま 鳴らす */ }
+    this.bgm = { el, spb: 60 / song.bpm, t0: song.t0, half, rate, K: 0, started: false };
+    try { el.load(); } catch (e) { /* noop */ }
+    return this.bgm;
+  }
+  bgmReady() { const b = this.bgm; return !b || b.el.readyState >= 3 || b.failed; }
+  playBgm(mbeatNow) { const b = this.bgm; if (!b) return; b.K = Math.round(mbeatNow); try { b.el.currentTime = b.t0; } catch (e) { /* noop */ } b.el.playbackRate = b.rate; const p = b.el.play(); if (p && p.catch) p.catch(() => { b.failed = true; }); b.started = true; }
+  // いまの 曲の 拍（ゲームの 拍）。おわりに ちかづいたら 拍の きれめで 8拍目に もどして くりかえす
+  bgmBeat() {
+    const b = this.bgm; if (!b || !b.started || b.failed || b.el.paused) return null; const el = b.el; const unit = b.spb * b.half;
+    const sb = (el.currentTime - b.t0) / unit; const end = el.duration ? Math.floor((el.duration - b.t0) / unit) - 2 : 1e9;
+    if (sb >= end) { const back = 8; try { el.currentTime = b.t0 + back * unit; } catch (e) { /* noop */ } b.K += end - back; return b.K + back; }
+    return b.K + sb;
+  }
+  pauseBgm(v) { const b = this.bgm; if (!b || !b.started) return; try { if (v) b.el.pause(); else { const p = b.el.play(); if (p && p.catch) p.catch(() => {}); } } catch (e) { /* noop */ } }
+  bgmVol(v) { if (this.bgmGain && this.ctx) this.bgmGain.gain.setTargetAtTime(v, this.ctx.currentTime, 0.3); }
   tick(q, mode) {
     if (this.wake) this.wake();
     if (!this.musicOn || !this.ctx) return;
+    if (this.bgm && this.bgm.started && !this.bgm.failed) return; // 曲が ながれている あいだは 合成の 音楽は ならさない
     this.bus = this.music; try { this.tickBody(q, mode); } finally { this.bus = null; }
   }
   tickBody(q, mode) { if (this.style === 'game') this.tickGame(q, mode); else this.tickWorkout(q, mode); }
@@ -143,7 +165,7 @@ export class Audio {
     else if (name === 'coin') { this.osc('square', 1320, 0.06, 0.1); this.osc('square', 1760, 0.12, 0.1, { delay: 0.06 }); }
     else if (name === 'caught') { this.osc('sawtooth', 220, 0.5, 0.2, { slide: 0.4 }); this.noise(0.4, 0.2, 300); }
   }
-  close() { try { this.ctx && this.ctx.close(); } catch (e) { /* noop */ } }
+  close() { try { if (this.bgm) { this.bgm.el.pause(); this.bgm.el.removeAttribute('src'); this.bgm.el.load(); this.bgm = null; } } catch (e) { /* noop */ } try { this.ctx && this.ctx.close(); } catch (e) { /* noop */ } }
 }
 
 // リフ：ペンタトニックの音の番号（32ステップ＝2小節）。[呼びかけ, こたえ]

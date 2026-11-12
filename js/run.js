@@ -1,5 +1,5 @@
 // ドリブルレスキュー！ ゲームの進行（ステージ・トレーニングルーム・しょうきゅうテスト）
-import { SKILLS, MISSIONS, poolFor, rankSkills, tierOf, comboState } from './data.js';
+import { SKILLS, MISSIONS, poolFor, rankSkills, tierOf, comboState, SONGS } from './data.js';
 import { Audio, speak, MELODIES } from './audio.js';
 import { createScene, LW } from './scene.js';
 
@@ -22,6 +22,8 @@ export function runStage(opts) {
   const scene = createScene(gl, { pal, theme: dojo ? 'gym' : world.theme, stageId: stage ? stage.id : 'dojo', bloom: settings.bloom, video, ...opts.look });
   const cam = !!pose;
   let bps = (dojo ? 76 : stage.bpm) / 60;
+  const useSong = !dojo && !video && stage && stage.song && SONGS[stage.song]; // 曲ファイルの BGM（ゲームの 拍は 曲に あわせる）
+  if (useSong) { audio.loadBgm(SONGS[stage.song], stage.rate || 1, stage.half || 1); bps = (SONGS[stage.song].bpm * (stage.rate || 1) / (stage.half || 1)) / 60; }
   let W = 0, H = 0, DPR = 1;
   function resize() { const r = hud.getBoundingClientRect(); DPR = Math.min(window.devicePixelRatio || 1, 2); hud.width = Math.round(r.width * DPR); hud.height = Math.round(r.height * DPR); W = hud.width; H = hud.height; scene.resize(); }
   resize(); window.addEventListener('resize', resize);
@@ -217,11 +219,11 @@ export function runStage(opts) {
     }
     if (t === 0) { const k = hardest(); if (k) addText(`コツ：${tipFor(k)}`, '#ffe9a8', 0.75, 0.26, 2.6); }
     else if (!mission.plan && !video) addText(['', '', 'このまま すすめ！', 'ちかみち！ とばすぞ！'][t + 1], pal.a, 1.1);
-    audio.sfx('go'); offset = Math.ceil(mbeat) - beat; phase = 'run';
+    audio.sfx('go'); offset = Math.ceil(mbeat) - beat; phase = 'run'; audio.bgmVol(0.85);
   }
   function enterSafe() {
     if (video) { advance(1); return; }   // どうが モード：せんたく がめんを 出さず そのまま つづける
-    phase = 'safe'; sayBoth('セーフゾーン！', 'Safe zone! Take a break.');
+    phase = 'safe'; audio.bgmVol(0.35); sayBoth('セーフゾーン！', 'Safe zone! Take a break.');
     const hit = cuesAll ? cuesOk / cuesAll : 1; const defT = cam ? (hit > 0.8 ? 2 : hit > 0.5 ? 1 : 0) : 1; const secs = cam ? 6 : 10;
     overlay.innerHTML = `<div class="safe"><div class="safe-title">🛡️ セーフゾーン <small>ボールを持って ひとやすみ</small></div>
       <div class="safe-q">${cam ? `ここまで <b>${Math.round(hit * 100)}%</b> せいこう！ つぎのルートは？` : 'いまの どうだった？ つぎのルートを えらぼう'}</div>
@@ -357,8 +359,8 @@ export function runStage(opts) {
     last = now; if (paused) return;
     slow += (1 - slow) * 0.06; let dt = rdt * slow;
     // コートと プレイヤーの 絵が そろうまで カウントを はじめない（さいだい 8びょう）
-    if (!loaded && phase === 'count') { waitT += rdt; loaded = !scene.ready || scene.ready() || waitT > 8; if (!loaded) dt = 0; }
-    mbeat += dt * bps; const prevBeat = beat;
+    if (!loaded && phase === 'count') { waitT += rdt; loaded = ((!scene.ready || scene.ready()) && audio.bgmReady()) || waitT > 8; if (!loaded) dt = 0; else if (useSong) audio.playBgm(mbeat); }
+    { const mb = useSong ? audio.bgmBeat() : null; if (mb != null) mbeat = Math.max(mbeat - 0.25, mb); else mbeat += dt * bps; } const prevBeat = beat;
     if (phase === 'count' || phase === 'run' || phase === 'finale') beat = Math.max(beat, mbeat - offset);
     const q = Math.floor(mbeat * 4);
     if (q !== lastQ) { lastQ = q; audio.tick(q, phase === 'safe' || phase === 'rescue' || dojo ? 'safe' : phase === 'count' ? 'intro' : beat >= bossStart ? 'boss' : 'run'); if (dojo && q % 4 === 0) audio.sfx('count'); }
@@ -426,7 +428,7 @@ export function runStage(opts) {
     overlay.innerHTML = ''; audio.close(); scene.dispose(); try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { /* noop */ }
   }
   function setPause(v) {
-    if (dead || phase === 'safe' || phase === 'rescue') return; paused = v; last = performance.now();
+    if (dead || phase === 'safe' || phase === 'rescue') return; paused = v; last = performance.now(); audio.pauseBgm(v);
     if (v) {
       try { audio.ctx && audio.ctx.suspend(); } catch (e) { /* noop */ }
       const sk = SKILLS[curCue.skill]; const tips = sk.tips.length ? `<div class="tipbox"><b>${sk.i} ${sk.n} の コツ</b>${sk.tips.map((t) => `<span>・${t}</span>`).join('')}</div>` : '';
@@ -437,5 +439,5 @@ export function runStage(opts) {
   function onKey(e) { if (!video && (e.key === 'Escape' || e.key === 'p')) setPause(!paused); }
   document.addEventListener('keydown', onKey);
   raf = requestAnimationFrame((t) => { last = t; frame(t); });
-  return { stop, pause: () => setPause(true), debug: () => ({ beat, phase, score, tier, endBeat, cues: cues.length, skill: curCue.skill, steps: cues.filter((c) => c.stepName).map((c) => [c.skill, c.stepIdx, c.b0]), bounces: audio.bn || 0, actx: audio.ctx && audio.ctx.state }) };
+  return { stop, pause: () => setPause(true), debug: () => ({ bgm: audio.bgm ? { t: audio.bgm.el.currentTime, paused: audio.bgm.el.paused, failed: !!audio.bgm.failed, rs: audio.bgm.el.readyState, K: audio.bgm.K } : null, mbeat, bps, beat, phase, score, tier, endBeat, cues: cues.length, skill: curCue.skill, steps: cues.filter((c) => c.stepName).map((c) => [c.skill, c.stepIdx, c.b0]), bounces: audio.bn || 0, actx: audio.ctx && audio.ctx.state }) };
 }
