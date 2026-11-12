@@ -3,7 +3,7 @@
 // ・数字は 絵を 32px の マス目で はかって きめた もの（1マス 384px ＝ 1.65）
 // ・左右の 手は 「hdribL（左手）」「hdribR（右手）」の シートを つかいわける（反転は しない：せばんごうが うらがえるため）
 
-export const SHEETS = ['hpower', 'hdribL', 'hdribR', 'hside', 'hsideL', 'height', 'hleg', 'hwrap', 'hhead', 'hknees', 'hroll', 'hspin', 'hjstop'];
+export const SHEETS = ['htwo', 'hpower', 'hdribL', 'hdribR', 'hside', 'hsideL', 'height', 'hleg', 'hwrap', 'hhead', 'hknees', 'hroll', 'hspin', 'hjstop'];
 
 const R = 0.17;            // ボールの はんけい
 const DX = 0.56;           // ドリブルする ボールの よこの いち（手の 真下）
@@ -53,25 +53,32 @@ export function spritePose(st) {
   }
   // ピボット・ロールターン
   if (cue && (sk.turn || sk.combo === 'roll')) { const p = sk.turn ? 4 : 2; out.sheet = 'hroll'; out.f = Math.min(5, Math.floor((cb % p) / p * 6)); out.ball = { x: 0.3, y: sk.turn ? 0.62 : dribY, z: -0.15 }; return out; }
-  // 2ボール
+  // 2ボール：右の ボール＝右手、左の ボール＝左手。手の 上げ下げを ボールの 高さに 合わせる（V字は ボールが よこに うごく）
+  if (cue && sk.hand === 'two') {
+    const b2 = st.bp2 || bp; if (mem.cue2 !== cue) { mem.cue2 = cue; mem.max2 = 0.3; } mem.max2 = Math.max(mem.max2 * 0.997, b2.y, 0.3);
+    const t2 = clamp((b2.y - 0.13) / Math.max(0.12, mem.max2 - 0.13), 0, 1); const topT = sk.high ? 0.78 : sk.low ? 0.34 : TOP;
+    const upR = t > 0.55, upL = t2 > 0.55; out.sheet = 'htwo'; out.f = upL && upR ? 0 : !upL && !upR ? 1 : upL ? 2 : 3;
+    const sx = (x) => Math.sign(x || 1) * clamp(Math.abs(x) * (0.5 / 0.42), 0.26, 0.78);
+    out.ball = { x: sx(rx), y: R + t * (topT - R), z: 0.02 }; out.ball2 = { x: sx(b2.x), y: R + t2 * (topT - R), z: 0.02 }; return out;
+  }
   if (cue && sk.hand === 'two') { out.sheet = 'hdribL'; out.f = t > 0.6 ? 2 : 0; const t2 = st.bp2 ? clamp((st.bp2.y - 0.13) / Math.max(0.12, mem.max - 0.13), 0, 1) : t; out.sheet = 'hpower'; out.f = 0; out.ball = { x: DX * 0.85, y: dribY, z: 0.02 }; out.ball2 = { x: -DX * 0.85, y: R + t2 * (top - R), z: 0.02 }; return out; }
   // ボールを もつ（パワーポジション・ピタッ など）
   if (cue && cue.skill === 'jab') { const j = Math.sin(Math.min(1, (cb % 1) * 1.7) * Math.PI); out.sheet = (cue.dir || 1) > 0 ? 'hside' : 'hsideL'; out.f = j > 0.3 ? 1 : 0; out.ball = { x: 0.36 * ((cue.dir || 1) > 0 ? -1 : 1), y: 0.62, z: 0.05 }; return out; }
   if (hold) { out.sheet = 'hpower'; out.f = Math.floor(Math.max(0, beat) / 2) % 2 ? 5 : 0; out.ball = { x: 0.38, y: 0.62, z: 0.05 }; return out; }
 
   // ドリブル：ボールの ある がわの 手の シート。まんなかを とおる ときは ワザごとの コマ
-  const side = rx < 0 ? -1 : 1; const ax = Math.abs(rx);
+  const side = rx < 0 ? -1 : 1; const ax = Math.abs(rx); const bxS = clamp(rx / 0.42, -1, 1) * DX;
   const legsT = sk.legs || sk.combo === 'legs' || sk.fig8; const behindT = sk.behind || sk.combo === 'behind';
   if (ax < 0.24 && (sk.hand !== 'R' && sk.hand !== 'L')) {
     const u = clamp(rx / 0.24, -1, 1);
     if (behindT) { out.sheet = 'hwrap'; out.f = 2; out.ball = { x: u * 0.35, y: WAIST - 0.05, z: 0.3 }; }       // せなかの うしろを とおす（見える）
-    else if (legsT) { out.sheet = side < 0 ? 'hdribL' : 'hdribR'; out.f = 1; out.ball = { x: u * 0.22, y: 0.24, z: 0 }; } // 足の あいだ
-    else { out.sheet = 'hpower'; out.f = 0; out.ball = { x: u * 0.4, y: 0.24, z: -0.22 }; }                       // 体の まえ（フロントチェンジ）
+    else if (legsT) { out.sheet = side < 0 ? 'hdribL' : 'hdribR'; out.f = 1; out.ball = { x: u * 0.22, y: Math.min(dribY, 0.3), z: 0 }; } // 足の あいだ
+    else { out.sheet = 'hpower'; out.f = 0; out.ball = { x: bxS, y: dribY, z: 0.04 }; }                           // 体の まえ（フロントチェンジ）：V字に つく
     return out;
   }
   out.sheet = side < 0 ? 'hdribL' : 'hdribR';
   out.f = t > 0.72 ? 2 : t > 0.38 ? 4 : 0;
-  out.ball = { x: side * DX, y: dribY, z: 0.02 };
+  out.ball = { x: bxS, y: dribY, z: 0.02 };
   out.strong = strong;
   return out;
 }
