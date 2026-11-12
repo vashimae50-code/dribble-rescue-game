@@ -75,6 +75,23 @@ function pickSkyPhoto(themeName, stageSeed) {
   const n = (stageSeed == null) ? Math.floor(Math.random() * pool.length) : (stageSeed % pool.length);
   return pool[n];
 }
+// コートの中の ステージ：コートの絵を そのまま 背景にして、あまり スクロールしない
+const COURT_VP = { village: [0.28, 0.315, 0.332, 0.345, 0.285, 0.311], sunset: [0.385, 0.345, 0.345, 0.39], night: [0.335, 0.325, 0.415], snow: [0.34, 0.345], castle: [0.465, 0.385, 0.389], gym: [0.465, 0.395, 0.355, 0.373] };
+function buildCourtEnv(scene, o, th, D, n) {
+  const vps = COURT_VP[o.themeName]; const idx = n % vps.length; const vp = vps[idx]; const HW = o.HW, LW = o.LW; const SCREEN_VP = 0.42; // 画面の中で 地平線が くる高さ
+  let aspect = 16 / 9, img = null, bgT = null;
+  const draw = () => { if (!img) return; const cw = 1280, ch = Math.max(240, Math.round(1280 / aspect)); const cv = document.createElement('canvas'); cv.width = cw; cv.height = ch; const cx = cv.getContext('2d');
+    const sc = Math.max(cw / img.width, (SCREEN_VP * ch) / (vp * img.height), ((1 - SCREEN_VP) * ch) / ((1 - vp) * img.height)); const dw = img.width * sc, dh = img.height * sc;
+    cx.drawImage(img, (cw - dw) / 2, SCREEN_VP * ch - vp * dh, dw, dh);
+    const px = cx.getImageData(cw / 2 - 40, Math.round(SCREEN_VP * ch) + 6, 80, 8).data; let r = 0, g = 0, b = 0; for (let i = 0; i < px.length; i += 4) { r += px[i]; g += px[i + 1]; b += px[i + 2]; } const k = px.length / 4; if (scene.fog) scene.fog.color.setRGB(r / k / 255, g / k / 255, b / k / 255, THREE.SRGBColorSpace);
+    if (bgT) bgT.dispose(); bgT = new THREE.CanvasTexture(cv); bgT.colorSpace = THREE.SRGBColorSpace; scene.background = bgT; };
+  img = null; const im = new Image(); im.onload = () => { img = im; draw(); }; im.onerror = () => {}; im.src = `img/court/${o.themeName}${idx + 1}.jpg`;
+  scene.fog.near = 70; scene.fog.far = 135;
+  // 走っている かんじを 出す：レーンの 点線だけ うごかす
+  const laneT = tex(256, 256, (g, w, h) => { g.clearRect(0, 0, w, h); g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 5; g.setLineDash([70, 58]); for (const f of [0.5 - (LW * 0.5) / (HW * 2), 0.5 + (LW * 0.5) / (HW * 2)]) { g.beginPath(); g.moveTo(f * w, 0); g.lineTo(f * w, h); g.stroke(); } g.setLineDash([]); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 6; for (const f of [0.012, 0.988]) { g.beginPath(); g.moveTo(f * w, 0); g.lineTo(f * w, h); g.stroke(); } }, [1, 20]); D.push(laneT);
+  const lg = new THREE.PlaneGeometry(HW * 2, 200), lm = new THREE.MeshBasicMaterial({ map: laneT, transparent: true, depthWrite: false }); D.push(lg, lm); const lp = new THREE.Mesh(lg, lm); lp.rotation.x = -Math.PI / 2; lp.position.set(0, 0.01, -88); scene.add(lp);
+  return { update: (camZ) => { laneT.offset.y = (camZ / 10) % 1; }, setAspect: (a) => { if (a > 0 && Math.abs(a - aspect) > 0.01) { aspect = a; draw(); } }, bloom: th.bloom, theme: th, dispose: () => { if (bgT) bgT.dispose(); D.forEach((d) => { try { d.dispose(); } catch (e) { /* noop */ } }); } };
+}
 // ステージの おくに 見える けしき（コートの絵の 上はんぶん）。空の写真と べつべつに えらぶので、ステージごとに 組み合わせが かわる
 const BG_COUNT = { village: 6, sunset: 4, night: 3, snow: 2, castle: 3, gym: 4 };
 // けしきの絵ごとに、道（コートの床）と 道のわきに ならべる ものを そろえる
@@ -121,13 +138,16 @@ export function buildEnv(scene, o) {
   // 空
   const sky = add(tex(16, 512, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, th.sky[0]); gr.addColorStop(0.45, th.sky[1]); gr.addColorStop(0.62, th.sky[2]); gr.addColorStop(1, th.sky[2]); g.fillStyle = gr; g.fillRect(0, 0, w, h); }));
   scene.background = sky; scene.fog = new THREE.Fog(C(th.fog), th.indoor ? 40 : 34, th.indoor ? 120 : 130);
-  if (!th.indoor) { const seedStr = String(o.stageId || o.themeName || ''); let hs = 0; for (let i = 0; i < seedStr.length; i++) hs = (hs * 131 + seedStr.charCodeAt(i)) >>> 0; const photo = pickSkyPhoto(o.themeName, hs); if (photo) applySkyPhoto(scene, th, photo); }
+  const court = o.court !== false && COURT_VP[o.themeName];
+  if (!th.indoor && !court) { const seedStr = String(o.stageId || o.themeName || ''); let hs = 0; for (let i = 0; i < seedStr.length; i++) hs = (hs * 131 + seedStr.charCodeAt(i)) >>> 0; const photo = pickSkyPhoto(o.themeName, hs); if (photo) applySkyPhoto(scene, th, photo); }
   let bgN = 0;
-  { const ss = String(o.stageId || o.themeName || '') + 'bg'; let h2 = 7; for (let i = 0; i < ss.length; i++) h2 = (h2 * 31 + ss.charCodeAt(i)) >>> 0; { const mm = /-(\d+)$/.exec(String(o.stageId || '')); bgN = mm ? (+mm[1] - 1) : (h2 % 9973) % 997; } addBackdrop(scene, th, o.themeName, bgN, D); }
+  if (court) { const ss = String(o.stageId || ''); let h2 = 7; for (let i = 0; i < ss.length; i++) h2 = (h2 * 31 + ss.charCodeAt(i)) >>> 0; const mm = /-(\d+)$/.exec(ss); bgN = mm ? (+mm[1] - 1) : (h2 % 9973) % 997; }
+  else { const ss = String(o.stageId || o.themeName || '') + 'bg'; let h2 = 7; for (let i = 0; i < ss.length; i++) h2 = (h2 * 31 + ss.charCodeAt(i)) >>> 0; { const mm = /-(\d+)$/.exec(String(o.stageId || '')); bgN = mm ? (+mm[1] - 1) : (h2 % 9973) % 997; } addBackdrop(scene, th, o.themeName, bgN, D); }
   const sty = (BG_STYLE[o.themeName] || [])[bgN % (BG_COUNT[o.themeName] || 1)] || null; const roadKind = sty ? sty[0] : th.road; const kit = sty ? sty[1] : null;
   scene.add(new THREE.HemisphereLight(C(th.hemi[0]), C(th.hemi[1]), th.hemi[2]));
   const dl = new THREE.DirectionalLight(C(th.dir[0]), th.dir[1]); dl.position.set(-4, 9, 6); scene.add(dl);
   const glowT = o.glow;
+  if (court) return buildCourtEnv(scene, o, th, D, bgN);
   const far = new THREE.Group(); scene.add(far);        // カメラといっしょに うごく 遠景
   const spr = (map, color, sx, sy, x, y, z, op = 1, addBlend = false) => { const m = add(new THREE.SpriteMaterial({ map, color: C(color), transparent: true, opacity: op, depthWrite: false, fog: false, blending: addBlend ? THREE.AdditiveBlending : THREE.NormalBlending })); const s = new THREE.Sprite(m); s.scale.set(sx, sy, 1); s.position.set(x, y, z); far.add(s); return s; };
   if (!th.indoor) {

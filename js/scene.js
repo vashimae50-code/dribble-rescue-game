@@ -177,7 +177,7 @@ export function createScene(canvas, o) {
   if (o.bloom !== false) { try { composer = new EffectComposer(renderer); composer.addPass(new RenderPass(scene, cam)); const bl = new UnrealBloomPass(new THREE.Vector2(640, 360), env.bloom[0], 0.55, env.bloom[1]); composer.addPass(bl); composer.addPass(new OutputPass()); disposables.push(bl, composer); } catch (e) { composer = null; } }
   function resize() {
     const r = canvas.getBoundingClientRect(); const dpr = Math.min(window.devicePixelRatio || 1, 1600 / Math.max(1, r.width), 2);
-    renderer.setPixelRatio(dpr); renderer.setSize(r.width, r.height, false); if (composer) { composer.setPixelRatio(dpr); composer.setSize(r.width, r.height); } W = r.width; H = r.height; cam.aspect = W / Math.max(1, H); cam.updateProjectionMatrix();
+    renderer.setPixelRatio(dpr); renderer.setSize(r.width, r.height, false); if (composer) { composer.setPixelRatio(dpr); composer.setSize(r.width, r.height); } W = r.width; H = r.height; cam.aspect = W / Math.max(1, H); cam.updateProjectionMatrix(); if (env.setAspect) env.setAspect(cam.aspect);
   }
   resize();
 
