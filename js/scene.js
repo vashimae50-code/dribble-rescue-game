@@ -2,7 +2,7 @@
 import * as THREE from '../vendor/three.module.min.js';
 import { SKILLS } from './data.js';
 import { makeHuman } from './character.js';
-import { buildEnv } from './env.js';
+import { buildEnv, PLAYER_SHEETS } from './env.js';
 import { EffectComposer } from '../vendor/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from '../vendor/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from '../vendor/addons/postprocessing/UnrealBloomPass.js';
@@ -41,7 +41,7 @@ export function createScene(canvas, o) {
   const human = o.human ? makeHuman(o.human, suit, { num: 7, bigHead: 1.65 }) : null;
   // 敵も バスケットマン：ディフェンス 2人、おいかけてくる 1人、ボス 1人（べつの チームの ユニフォーム）
   // プレイヤーを 絵（スプライト）で 出す：右手ドリブル と パワーポジション
-  let pspr = null, psMir = false; const psT = {}; const PSN = ['hpower', 'hlegs', 'hbehind', 'hside', 'hsideL', 'height', 'hwrap', 'hhead', 'hknees', 'hroll', 'hspin', 'hjstop'];
+  let pspr = null, psMir = false; const psT = {}; const PSN = PLAYER_SHEETS;
   if (human && o.sprite !== false) { let n = 0; const ld = new THREE.TextureLoader(); for (const k of PSN) { const t = ld.load(`img/player/${k}.png`, () => { if (++n === PSN.length) { const m = new THREE.SpriteMaterial({ map: psT.hpower, transparent: true, alphaTest: 0.05 }); pspr = new THREE.Sprite(m); pspr.center.set(0.5, 0.01); pspr.scale.set(1.65, 1.65, 1); scene.add(pspr); human.setMainVisible(false); } }); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; psT[k] = t; } }
   const faceAtlas = o.human ? new THREE.TextureLoader().load('img/faces.png') : null; if (faceAtlas) faceAtlas.colorSpace = THREE.SRGBColorSpace;
   const mkFoe = (c, num, trim) => { const h = makeHuman(o.human, c, { num, trim, guide: false, skin: '#c98f66', shoe: '#22222a' }); h.root.visible = false; scene.add(h.root); return h; };
@@ -197,7 +197,7 @@ export function createScene(canvas, o) {
     const noBall = cue && cue.ballMode === 'none';
     P.position.set(laneX, 0, 0);
     let bp = null; if (human) bp = human.animate({ dt, beat, cue, sk, vx });
-    const bx = laneX + (bp ? bp.x : 0.4), by = bp ? bp.y : 0.8, bz = bp ? bp.z : -0.3;
+    let bx = laneX + (bp ? bp.x : 0.4), by = bp ? bp.y : 0.8, bz = bp ? bp.z : -0.3;
     if (pspr) { // 絵の コマえらび（ワザごとの 6コマ シート）
       const hold = sk.hand === 'hold' || !cue; const cb = cue ? Math.max(0, beat - cue.b0) : 0; let T = psT.hpower, f = 0, mir = false, psY = 0;
       const rx = bp ? bp.x : 0.4; if (rx < -0.08) psMir = false; else if (rx > 0.08) psMir = true;
@@ -210,7 +210,7 @@ export function createScene(canvas, o) {
       else if (hold) f = Math.floor(Math.max(0, beat) / 2) % 2 ? 5 : 0;
       else if (sk.behind || sk.combo === 'behind') { T = psT.hbehind; f = seq(1); }
       else if (sk.legs || sk.combo === 'legs') { T = psT.hlegs; f = seq(1); }
-      else { T = psT.hlegs; const t = (by - 0.13) / 0.6; f = t > 0.5 ? 3 : 2; } // ふつうの ドリブルは まだ 絵が ないので だいよう
+      else { const left = rx < 0; T = left ? psT.hdribL : psT.hdribR; const t = (by - 0.13) / 0.6; f = t > 0.6 ? 0 : t > 0.28 ? 1 : 2; bx = laneX + (left ? -0.5 : 0.5); } // ボールの 高さに 手の コマを 合わせ、ボールは 絵の 手の 真下に
       if (pspr.material.map !== T) { pspr.material.map = T; pspr.material.needsUpdate = true; }
       T.repeat.set(mir ? -1 / 3 : 1 / 3, 0.5); T.offset.set(((f % 3) + (mir ? 1 : 0)) / 3, f < 3 ? 0.5 : 0); pspr.position.set(laneX, psY, 0.02); }
     shadow.position.set(laneX, 0.012, 0); footGlow.position.set(laneX, 0.06, 0.1);

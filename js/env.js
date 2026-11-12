@@ -77,6 +77,11 @@ function pickSkyPhoto(themeName, stageSeed) {
 }
 // コートの中の ステージ：コートの絵を そのまま 背景にして、あまり スクロールしない
 const COURT_VP = { village: [0.28, 0.315, 0.332, 0.345, 0.285, 0.311], sunset: [0.385, 0.345, 0.345, 0.39], night: [0.335, 0.345], snow: [0.34, 0.345], castle: [0.465, 0.385, 0.389, 0.415, 0.325], gym: [0.465, 0.395, 0.355, 0.373] };
+const courtN = (stageId) => { const ss = String(stageId || ''); let h2 = 7; for (let i = 0; i < ss.length; i++) h2 = (h2 * 31 + ss.charCodeAt(i)) >>> 0; const mm = /-(\d+)$/.exec(ss); return mm ? (+mm[1] - 1) : (h2 % 9973) % 997; };
+const IMGS = {}; const courtImg = (theme, idx) => { const src = `img/court/${theme}${idx + 1}.jpg`; if (!IMGS[src]) { const im = new Image(); im.src = src; IMGS[src] = im; } return IMGS[src]; };
+// ステージの しょうかい画面の うちに、コートの絵と プレイヤーの絵を 先に 読みこんでおく
+export function preloadStage(theme, stageId) { const v = COURT_VP[theme]; if (v) courtImg(theme, courtN(stageId) % v.length); for (const k of PLAYER_SHEETS) { const src = `img/player/${k}.png`; if (!IMGS[src]) { const im = new Image(); im.src = src; IMGS[src] = im; } } }
+export const PLAYER_SHEETS = ['hpower', 'hlegs', 'hbehind', 'hside', 'hsideL', 'height', 'hwrap', 'hhead', 'hknees', 'hroll', 'hspin', 'hjstop', 'hdribL', 'hdribR'];
 function buildCourtEnv(scene, o, th, D, n) {
   const vps = COURT_VP[o.themeName]; const idx = n % vps.length; const vp = vps[idx]; const HW = o.HW, LW = o.LW; const SCREEN_VP = 0.42; // 画面の中で 地平線が くる高さ
   let aspect = 16 / 9, img = null, bgT = null;
@@ -90,7 +95,7 @@ function buildCourtEnv(scene, o, th, D, n) {
     if (tn === 'night' && idx > 0) { cx.globalCompositeOperation = 'multiply'; cx.fillStyle = '#7f86d8'; cx.fillRect(0, 0, cw, ch); cx.globalCompositeOperation = 'source-over'; cx.fillStyle = '#fff8d8'; cx.beginPath(); cx.arc(cw * 0.82, ch * 0.13, ch * 0.05, 0, TAU); cx.fill(); }
     const px = cx.getImageData(cw / 2 - 40, Math.round(SCREEN_VP * ch) + 6, 80, 8).data; let r = 0, g = 0, b = 0; for (let i = 0; i < px.length; i += 4) { r += px[i]; g += px[i + 1]; b += px[i + 2]; } const k = px.length / 4; if (scene.fog) scene.fog.color.setRGB(r / k / 255, g / k / 255, b / k / 255, THREE.SRGBColorSpace);
     if (bgT) bgT.dispose(); bgT = new THREE.CanvasTexture(cv); bgT.colorSpace = THREE.SRGBColorSpace; scene.background = bgT; };
-  img = null; const im = new Image(); im.onload = () => { img = im; draw(); }; im.onerror = () => {}; im.src = `img/court/${o.themeName}${idx + 1}.jpg`;
+  img = null; scene.background = new THREE.Color(th.indoor || th.glow > 0.4 ? '#141a30' : '#5a6f8a'); const im = courtImg(o.themeName, idx); if (im.complete && im.naturalWidth) { img = im; draw(); } else im.addEventListener('load', () => { img = im; draw(); });
   scene.fog.near = 70; scene.fog.far = 135;
   scene.add(new THREE.AmbientLight(0xffffff, th.glow > 0.4 ? 1.5 : 0.35)); // 暗いコートでも 人が はっきり 見えるように
   // 雪 と ひのこ
@@ -151,7 +156,7 @@ export function buildEnv(scene, o) {
   const court = o.court !== false && COURT_VP[o.themeName];
   if (!th.indoor && !court) { const seedStr = String(o.stageId || o.themeName || ''); let hs = 0; for (let i = 0; i < seedStr.length; i++) hs = (hs * 131 + seedStr.charCodeAt(i)) >>> 0; const photo = pickSkyPhoto(o.themeName, hs); if (photo) applySkyPhoto(scene, th, photo); }
   let bgN = 0;
-  if (court) { const ss = String(o.stageId || ''); let h2 = 7; for (let i = 0; i < ss.length; i++) h2 = (h2 * 31 + ss.charCodeAt(i)) >>> 0; const mm = /-(\d+)$/.exec(ss); bgN = mm ? (+mm[1] - 1) : (h2 % 9973) % 997; }
+  if (court) bgN = courtN(o.stageId);
   else { const ss = String(o.stageId || o.themeName || '') + 'bg'; let h2 = 7; for (let i = 0; i < ss.length; i++) h2 = (h2 * 31 + ss.charCodeAt(i)) >>> 0; { const mm = /-(\d+)$/.exec(String(o.stageId || '')); bgN = mm ? (+mm[1] - 1) : (h2 % 9973) % 997; } addBackdrop(scene, th, o.themeName, bgN, D); }
   const sty = (BG_STYLE[o.themeName] || [])[bgN % (BG_COUNT[o.themeName] || 1)] || null; const roadKind = sty ? sty[0] : th.road; const kit = sty ? sty[1] : null;
   scene.add(new THREE.HemisphereLight(C(th.hemi[0]), C(th.hemi[1]), th.hemi[2]));
