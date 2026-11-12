@@ -80,7 +80,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   const sil = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
   const setSilhouette = (on, color) => { if (on) sil.color.set(color); let i = 0; for (const m of meshes) { if (m.isSkinnedMesh) m.material = on ? sil : mats[i++]; else if (m.userData.mat0) m.visible = !on; else m.material = on ? sil : band; } outlines.forEach((ol) => { ol.visible = !on; }); };
   if (opt.guide !== false) meshes.forEach((m) => m.layers.enable(1));
-  const dispose = () => { geos.forEach((g) => g.dispose()); mats.forEach((m) => m.dispose()); numMats.forEach((m) => m.dispose()); band.dispose(); tor.dispose(); sil.dispose(); outlineMats.forEach((m) => m.dispose()); };
+  const dispose = () => { geos.forEach((g) => g.dispose()); mats.forEach((m) => m.dispose()); numMats.forEach((m) => m.dispose()); band.dispose(); tor.dispose(); sil.dispose(); outlineMats.forEach((m) => m.dispose()); if (faceMat) { faceMat.dispose(); faceTex.dispose(); } };
   root.updateMatrixWorld(true);
   const wp = (b) => b.getWorldPosition(V());
   const L = { up: wp(B.LeftUpLeg).distanceTo(wp(B.LeftLeg)), lo: wp(B.LeftLeg).distanceTo(wp(B.LeftFoot)), ua: wp(B.LeftArm).distanceTo(wp(B.LeftForeArm)), fa: wp(B.LeftForeArm).distanceTo(wp(B.LeftHand)) };
@@ -209,7 +209,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     bx = lbx; bz = lbz;
     const handY = Math.max(by + 0.13, S.hip.y - 0.36);
     for (const [h, s] of [[T.hl, -1], [T.hr, 1]]) {
-      if (st.mode === 'defend') h.set(s * 0.86, S.hip.y + 0.4 + Math.sin(beat * Math.PI * 2 + s) * 0.16, -0.3);
+      if (st.mode === 'defend') h.set(s * 0.76, S.hip.y + 0.44 + Math.sin(beat * Math.PI * 2 + s) * 0.16, -0.3);
       else if (st.mode === 'chase') { const sw = Math.sin(beat * Math.PI * 2 + (s > 0 ? 0 : Math.PI)); h.set(s * 0.3, S.hip.y + 0.25 + Math.max(0, sw) * 0.15, -0.3 - sw * 0.25); }
       else if (twoHands) h.set(s > 0 ? two1x : S.ball2.x, Math.max((s > 0 ? by : S.ball2.y) + 0.13, S.hip.y - 0.36), -0.28);
       else if (both) h.set(bx + s * 0.13, by + 0.02, bz);
@@ -235,7 +235,13 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     const behind = lbz > 0.2;
     ik(B.LeftArm, B.LeftForeArm, B.LeftHand, toW(S.hl).clone(), dirW(-0.8, -0.3, behind ? -0.6 : 0.7), L.ua, L.fa);
     ik(B.RightArm, B.RightForeArm, B.RightHand, toW(S.hr).clone(), dirW(0.8, -0.3, behind ? -0.6 : 0.7), L.ua, L.fa);
+    if (faceSp) { B.Head.getWorldPosition(t1); root.worldToLocal(t1); faceSp.position.copy(t1); }
     return S.ball;
   }
-  return { root, animate, setSilhouette, dispose, ball2: () => (S.has2 ? S.ball2 : null), height: hipsBind / 0.53 };
+  // かお：イラストの スプライトを 頭の 位置に のせる（もとの 頭は 小さく たたむ）
+  let faceSp = null, faceTex = null, faceMat = null;
+  const setFace = (tex, i) => { if (!tex || !B.Head) return;
+    if (!faceSp) { faceTex = tex.clone(); faceTex.repeat.set(0.1, 0.2); faceTex.needsUpdate = true; faceMat = new THREE.SpriteMaterial({ map: faceTex, transparent: true, alphaTest: 0.4 }); faceSp = new THREE.Sprite(faceMat); faceSp.center.set(0.5, 0.2); faceSp.scale.set(0.66, 0.66, 1); root.add(faceSp); B.Head.scale.setScalar(0.02); }
+    faceTex.offset.set((i % 10) * 0.1, 1 - (Math.floor(i / 10) + 1) * 0.2); };
+  return { root, animate, setSilhouette, setFace, dispose, ball2: () => (S.has2 ? S.ball2 : null), height: hipsBind / 0.53 };
 }

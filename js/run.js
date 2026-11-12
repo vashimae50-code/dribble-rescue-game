@@ -380,7 +380,9 @@ export function runStage(opts) {
     if (phase === 'rescue') { rescueT += rdt; if (rescueT > (hasBoss ? 2.4 : 2.2)) { finish(); return; } }
     redFlash = Math.max(0, redFlash - rdt * 1.5); boss.hit = Math.max(0, boss.hit - rdt * 3);
     const spd = phase === 'safe' || phase === 'rescue' || phase === 'count' ? (phase === 'count' ? 1 : 0) : (curCue.sp || 1);
-    scene.render({ camZ, dt, beat: Math.max(0, beat), mbeat, lane: curLane, cue: phase === 'count' ? null : curCue, speed: spd, cues, orbs: orbs.filter((o) => !o.got && !o.missed), boss, shake, chaser: dojo ? 0 : (window.__chaser ?? chaserShow), pip: phase === 'run' || phase === 'finale' ? pipRect : null });
+    // よこステップは ディフェンスに ぶつかる 手前で うごきはじめる（つぎのキューを 少し 先読み）
+    let visLane = curLane; if (phase === 'run') { const nx = cues.find((c) => c.b0 > beat && c.b0 - beat < 0.7 && c.lane1 !== c.lane0); if (nx) visLane = nx.lane1; }
+    scene.render({ camZ, dt, beat: Math.max(0, beat), mbeat, lane: visLane, cue: phase === 'count' ? null : curCue, speed: spd, cues, orbs: orbs.filter((o) => !o.got && !o.missed), boss, shake, chaser: dojo ? 0 : (window.__chaser ?? chaserShow), pip: phase === 'run' || phase === 'finale' ? pipRect : null });
     shake *= 0.86;
     drawHUD(curCue, cues[cues.indexOf(curCue) + 1]);
     if (recorder) { recorder.cctx.drawImage(gl, 0, 0, recorder.comp.width, recorder.comp.height); recorder.cctx.drawImage(hud, 0, 0, recorder.comp.width, recorder.comp.height); }

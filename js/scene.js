@@ -40,6 +40,7 @@ export function createScene(canvas, o) {
   // ---- プレイヤー（人型モデル） ----
   const human = o.human ? makeHuman(o.human, suit, { num: 7 }) : null;
   // 敵も バスケットマン：ディフェンス 2人、おいかけてくる 1人、ボス 1人（べつの チームの ユニフォーム）
+  const faceAtlas = o.human ? new THREE.TextureLoader().load('img/faces.png') : null; if (faceAtlas) faceAtlas.colorSpace = THREE.SRGBColorSpace;
   const mkFoe = (c, num, trim) => { const h = makeHuman(o.human, c, { num, trim, guide: false, skin: '#c98f66', shoe: '#22222a' }); h.root.visible = false; scene.add(h.root); return h; };
   const defs = o.human ? [mkFoe('#d9263c', 23, '#ffe03d'), mkFoe('#d9263c', 11, '#ffe03d'), mkFoe('#2a3a7a', 15, '#ffe03d'), mkFoe('#2a3a7a', 8, '#ffe03d')] : [];
   const rival = o.human ? mkFoe('#d9263c', 4, '#ffe03d') : null;
@@ -189,7 +190,7 @@ export function createScene(canvas, o) {
     rim.intensity = 3 + 3 * pulse;
 
     // プレイヤーの うごき
-    const tl = st.lane * LW; const prevX = laneX; laneX = lerp(laneX, tl, 1 - Math.exp(-dt * 8)); const vx = (laneX - prevX) / Math.max(dt, 0.001);
+    const tl = st.lane * LW; const prevX = laneX; laneX = lerp(laneX, tl, 1 - Math.exp(-dt * 11)); const vx = (laneX - prevX) / Math.max(dt, 0.001);
     const noBall = cue && cue.ballMode === 'none';
     P.position.set(laneX, 0, 0);
     let bp = null; if (human) bp = human.animate({ dt, beat, cue, sk, vx });
@@ -215,7 +216,7 @@ export function createScene(canvas, o) {
       if (c._robots) for (const slot of c._robots) { if (!slot.guard) continue; const r = slot.r; const pre = st.cues[st.cues.indexOf(c) - 1]; const fake = pre && pre.skill === 'jab' && beat >= pre.b0 ? -(c.dir || 1) : 0; r.rotation.z = lerp(r.rotation.z, -fake * 0.35, 0.1); r.position.x = lerp(r.position.x, c.lane0 * LW + fake * 0.7, 0.08); if (d < 0.5 && !human) { r.rotation.y += dt * 12; r.position.y += dt * 4; } }
     }
     if (defs.length) { const gs = []; for (const [c, gp] of gates) if (c._robots && gp.position.z < 1.5 && gp.position.z > -70) for (const slot of c._robots) gs.push([slot, gp]); gs.sort((a, b) => b[1].position.z - a[1].position.z);
-      defs.forEach((h, i) => { const it = gs[i]; h.root.visible = !!it; if (!it) return; const r = it[0].r; h.root.position.set(r.position.x, 0, it[1].position.z + r.position.z); h.root.rotation.set(0, Math.PI, r.rotation.z * 0.6); h.animate({ dt, beat: beat + i * 0.5, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); }); }
+      defs.forEach((h, i) => { const it = gs[i]; h.root.visible = !!it; if (!it) return; const r = it[0].r; if (h._slot !== it[0]) { h._slot = it[0]; if (it[0].face == null) it[0].face = Math.floor(Math.random() * 50); h.setFace(faceAtlas, it[0].face); } h.root.position.set(r.position.x, 0, it[1].position.z + r.position.z); h.root.rotation.set(0, Math.PI, r.rotation.z * 0.6); h.animate({ dt, beat: beat + i * 0.5, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); }); }
     for (const [c, gp] of gates) if (!live.has(c)) { scene.remove(gp); (gp.userData.mats || []).forEach((m) => m.dispose()); (gp.userData.drones || []).forEach((dr) => dr.userData.mat.dispose()); gates.delete(c); }
     // オーブ
     let n = 0;
