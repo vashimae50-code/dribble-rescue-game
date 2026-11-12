@@ -22,6 +22,8 @@ export function runStage(opts) {
   const scene = createScene(gl, { pal, theme: dojo ? 'gym' : world.theme, stageId: stage ? stage.id : 'dojo', bloom: settings.bloom, video, ...opts.look });
   const cam = !!pose;
   let bps = (dojo ? 76 : stage.bpm) / 60;
+  // ドリブルの音：ワールド（ゆか）ごとに かえる
+  audio.loadBounce(`sound/bounce_${{ village: 'd', night: 'b', sunset: 'c', snow: 'a', castle: 'e', gym: 'e' }[dojo ? 'gym' : world.theme] || 'd'}.wav`);
   const useSong = !dojo && !video && stage && stage.song && SONGS[stage.song]; // 曲ファイルの BGM（ゲームの 拍は 曲に あわせる）
   if (useSong) { audio.loadBgm(SONGS[stage.song], stage.rate || 1, stage.half || 1); bps = (SONGS[stage.song].bpm * (stage.rate || 1) / (stage.half || 1)) / 60; }
   let W = 0, H = 0, DPR = 1;

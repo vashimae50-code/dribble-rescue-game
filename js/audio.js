@@ -134,9 +134,12 @@ export class Audio {
     if (st === 0 && bar === 0 && barN % 8 === 0) [0, 4, 7, 12, 16].forEach((x, i) => this.osc('triangle', this.hz(x + 24), 0.08, 0.1, { delay: i * 0.045 }));   // きらきら
   }
   // バスケットボールが 体育館の ゆかに つく音（ドン＋ボールの ひびき＋ゆかの パン）
+  // ドリブルの音（録音した 音）。ステージごとに ちがう ゆかの 音
+  loadBounce(url) { if (!this.ctx || !url) return; fetch(url).then((r) => r.arrayBuffer()).then((b) => new Promise((res, rej) => this.ctx.decodeAudioData(b, res, rej))).then((buf) => { this.bounceBuf = buf; }).catch(() => { /* 合成音を つかう */ }); }
   bounce(power = 1) {
     this.bn = (this.bn || 0) + 1;
-    if (!this.on || !this.ctx) return; const c = this.ctx; const t = c.currentTime; const out = c.createGain(); out.gain.value = 1.25 * power; out.connect(this.out); if (this.reverb) out.connect(this.reverb);
+    if (!this.on || !this.ctx) return; const c = this.ctx; const t = c.currentTime;
+    if (this.bounceBuf) { const s = c.createBufferSource(); s.buffer = this.bounceBuf; s.playbackRate.value = (power > 1.2 ? 0.86 : 1) * (0.95 + Math.random() * 0.1); const g = c.createGain(); g.gain.value = Math.min(1.9, 1.1 * power); s.connect(g).connect(this.out); s.start(t); return; } const out = c.createGain(); out.gain.value = 1.25 * power; out.connect(this.out); if (this.reverb) out.connect(this.reverb);
     const tone = (type, f0, f1, dur, vol) => { const o = c.createOscillator(); const g = c.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(g).connect(out); o.start(t); o.stop(t + dur + 0.02); };
     tone('sine', 190, 70, 0.16, 0.9);            // ゆかの ドン
     tone('sine', 520, 300, 0.11, 1.0);           // ボールの ひびき（スマホでも 聞こえる高さ）
