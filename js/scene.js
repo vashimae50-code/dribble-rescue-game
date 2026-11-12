@@ -41,7 +41,7 @@ export function createScene(canvas, o) {
   const human = o.human ? makeHuman(o.human, suit, { num: 7 }) : null;
   // 敵も バスケットマン：ディフェンス 2人、おいかけてくる 1人、ボス 1人（べつの チームの ユニフォーム）
   const mkFoe = (c, num, trim) => { const h = makeHuman(o.human, c, { num, trim, guide: false, skin: '#c98f66', shoe: '#22222a' }); h.root.visible = false; scene.add(h.root); return h; };
-  const defs = o.human ? [mkFoe('#d9263c', 23, '#ffe03d'), mkFoe('#d9263c', 11, '#ffe03d')] : [];
+  const defs = o.human ? [mkFoe('#d9263c', 23, '#ffe03d'), mkFoe('#d9263c', 11, '#ffe03d'), mkFoe('#2a3a7a', 15, '#ffe03d'), mkFoe('#2a3a7a', 8, '#ffe03d')] : [];
   const rival = o.human ? mkFoe('#d9263c', 4, '#ffe03d') : null;
   const bossH = o.human ? mkFoe('#5a22c8', 0, '#ffe03d') : null;
   const P = human ? human.root : new THREE.Group(); scene.add(P);
@@ -91,9 +91,9 @@ export function createScene(canvas, o) {
       for (let l = -1; l <= 1; l++) {
         if (l === cue.lane1) continue;
         if (cue.guard && l === cue.lane0) continue;
-        const hz = new THREE.Mesh(G.plane, hazMat); hz.position.set(l * LW, 1.05, 0); hz.scale.set(LW * 0.9, 2.1, 1); gp.add(hz);
-        const dr = buildDrone(); dr.position.set(l * LW, 2.55, 0); gp.add(dr); (gp.userData.drones = gp.userData.drones || []).push(dr);
+        addDefender(gp, cue, l * LW, false);
       }
+      if (cue.guard) addDefender(gp, cue, cue.lane0 * LW, true);
       bar(lx - LW * 0.48, 1.4, 0, 0.1, 2.8, 0.1, cm(col)); bar(lx + LW * 0.48, 1.4, 0, 0.1, 2.8, 0.1, cm(col)); bar(lx, 2.8, 0, LW, 0.1, 0.1, cm(col));
       const pad = new THREE.Mesh(G.plane, cm(col, 0.35)); pad.rotation.x = -Math.PI / 2; pad.position.set(lx, 0.03, 1.5); pad.scale.set(LW * 0.9, 4, 1); gp.add(pad);
       const ar = new THREE.Mesh(G.plane, new THREE.MeshBasicMaterial({ map: chevTex, color: C(col), transparent: true, depthWrite: false })); ar.rotation.x = -Math.PI / 2; ar.rotation.z = cue.lane1 > cue.lane0 ? -Math.PI / 2 : Math.PI / 2; ar.position.set((cue.lane0 + cue.lane1) / 2 * LW, 0.05, 3.2); ar.scale.set(1.3, 1.3, 1); gp.add(ar); gp.userData.mats = [ar.material];
@@ -107,7 +107,6 @@ export function createScene(canvas, o) {
     }
     const txt = `${sk.i} ${cue.skill === 'step' || cue.skill === 'slide' || cue.skill === 'xstep' || cue.skill === 'drive' ? (cue.lane1 > cue.lane0 ? 'みぎへ ' : 'ひだりへ ') : ''}${cue.hand === 'L' && sk.hand === 'cur' ? 'ひだりで ' : cue.hand === 'R' && sk.hand === 'cur' ? 'みぎで ' : ''}${sk.n}`;
     const sp = new THREE.Sprite(label(txt, col)); sp.scale.set(4.6, 1.15, 1); sp.position.set(laneMove ? lx * 0.6 : 0, laneMove ? 3.5 : CEIL - 1.25, 0.1); gp.add(sp);
-    if (cue.guard) gp.add(buildRobot(cue.lane0 * LW, cue));
     scene.add(gp); return gp;
   }
   const robotMat = new THREE.MeshStandardMaterial({ color: 0x3a3f58, roughness: 0.35, metalness: 0.7 }); const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff2d55 });
@@ -119,14 +118,21 @@ export function createScene(canvas, o) {
     const r = new THREE.Mesh(droneRing, eyeMat); r.rotation.x = Math.PI / 2; d.add(r); d.userData.ring = r;
     const g2 = new THREE.Sprite(new THREE.SpriteMaterial({ map: shared.glow, color: 0xff2d55, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.7 })); g2.scale.set(2, 2, 1); d.add(g2); d.userData.mat = g2.material; return d;
   }
-  function buildRobot(x, cue) {
-    const r = new THREE.Group(); r.position.set(x, 0, -0.6);
-    if (human) { cue._robot = r; return r; }
-    const add = (geo, mat, px, py, pz, sx, sy, sz) => { const m = new THREE.Mesh(geo, mat); m.position.set(px, py, pz); m.scale.set(sx, sy, sz); r.add(m); return m; };
-    add(G.box, robotMat, 0, 1.15, 0, 0.8, 0.9, 0.5); add(G.box, robotMat, 0, 1.9, 0, 0.5, 0.42, 0.42); add(G.box, eyeMat, 0, 1.92, 0.22, 0.36, 0.1, 0.02);
-    add(G.box, robotMat, -0.75, 1.3, 0, 0.7, 0.16, 0.16); add(G.box, robotMat, 0.75, 1.3, 0, 0.7, 0.16, 0.16); add(G.box, eyeMat, -1.1, 1.3, 0, 0.12, 0.3, 0.3); add(G.box, eyeMat, 1.1, 1.3, 0, 0.12, 0.3, 0.3);
-    add(G.box, robotMat, -0.22, 0.35, 0, 0.22, 0.7, 0.26); add(G.box, robotMat, 0.22, 0.35, 0, 0.22, 0.7, 0.26);
-    cue._robot = r; return r;
+  // レーンを ふさぐ ディフェンス（人がいれば 人、いなければ ロボットで だいよう）
+  function addDefender(gp, cue, x, guard) {
+    const r = new THREE.Group(); r.position.set(x, 0, -0.6); gp.add(r);
+    (cue._robots = cue._robots || []).push({ r, guard });
+    if (human) return r;
+    if (guard) {
+      const add = (geo, mat, px, py, pz, sx, sy, sz) => { const m = new THREE.Mesh(geo, mat); m.position.set(px, py, pz); m.scale.set(sx, sy, sz); r.add(m); return m; };
+      add(G.box, robotMat, 0, 1.15, 0, 0.8, 0.9, 0.5); add(G.box, robotMat, 0, 1.9, 0, 0.5, 0.42, 0.42); add(G.box, eyeMat, 0, 1.92, 0.22, 0.36, 0.1, 0.02);
+      add(G.box, robotMat, -0.75, 1.3, 0, 0.7, 0.16, 0.16); add(G.box, robotMat, 0.75, 1.3, 0, 0.7, 0.16, 0.16); add(G.box, eyeMat, -1.1, 1.3, 0, 0.12, 0.3, 0.3); add(G.box, eyeMat, 1.1, 1.3, 0, 0.12, 0.3, 0.3);
+      add(G.box, robotMat, -0.22, 0.35, 0, 0.22, 0.7, 0.26); add(G.box, robotMat, 0.22, 0.35, 0, 0.22, 0.7, 0.26);
+    } else {
+      const hz = new THREE.Mesh(G.plane, hazMat); hz.position.set(x, 1.05, 0); hz.scale.set(LW * 0.9, 2.1, 1); gp.add(hz);
+      const dr = buildDrone(); dr.position.set(x, 2.55, 0); gp.add(dr); (gp.userData.drones = gp.userData.drones || []).push(dr);
+    }
+    return r;
   }
 
   // ---- ⚡オーブ ----
@@ -206,10 +212,10 @@ export function createScene(canvas, o) {
       if ((c.skill === 'rest' || c.noGate) && !c.goal) continue; const d = (c.goal ? c.z1 : c.z0) - st.camZ; if (d > 86 || d < -4) continue;
       live.add(c); let gp = gates.get(c); if (!gp) { gp = buildGate(c); gates.set(c, gp); }
       gp.position.z = -d; gp.visible = d > -0.8; if (gp.userData.drones) for (const dr of gp.userData.drones) { dr.position.y = 2.55 + Math.sin(st.mbeat * 3 + dr.position.x) * 0.12; dr.userData.ring.rotation.z += dt * 9; } if (gp.userData.spin) gp.userData.spin.rotation.z += dt * 3; if (gp.userData.scan) gp.userData.scan.material.opacity = 0.18 + 0.14 * Math.sin(st.mbeat * TAU);
-      if (c._robot) { const r = c._robot; const pre = st.cues[st.cues.indexOf(c) - 1]; const fake = pre && pre.skill === 'jab' && beat >= pre.b0 ? -(c.dir || 1) : 0; r.rotation.z = lerp(r.rotation.z, -fake * 0.35, 0.1); r.position.x = lerp(r.position.x, c.lane0 * LW + fake * 0.7, 0.08); if (d < 0.5 && !human) { r.rotation.y += dt * 12; r.position.y += dt * 4; } }
+      if (c._robots) for (const slot of c._robots) { if (!slot.guard) continue; const r = slot.r; const pre = st.cues[st.cues.indexOf(c) - 1]; const fake = pre && pre.skill === 'jab' && beat >= pre.b0 ? -(c.dir || 1) : 0; r.rotation.z = lerp(r.rotation.z, -fake * 0.35, 0.1); r.position.x = lerp(r.position.x, c.lane0 * LW + fake * 0.7, 0.08); if (d < 0.5 && !human) { r.rotation.y += dt * 12; r.position.y += dt * 4; } }
     }
-    if (defs.length) { const gs = []; for (const [c, gp] of gates) if (c._robot && gp.position.z < 1.5 && gp.position.z > -70) gs.push([c, gp]); gs.sort((a, b) => b[1].position.z - a[1].position.z);
-      defs.forEach((h, i) => { const it = gs[i]; h.root.visible = !!it; if (!it) return; const r = it[0]._robot; h.root.position.set(r.position.x, 0, it[1].position.z + r.position.z); h.root.rotation.set(0, Math.PI, r.rotation.z * 0.6); h.animate({ dt, beat: beat + i * 0.5, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); }); }
+    if (defs.length) { const gs = []; for (const [c, gp] of gates) if (c._robots && gp.position.z < 1.5 && gp.position.z > -70) for (const slot of c._robots) gs.push([slot, gp]); gs.sort((a, b) => b[1].position.z - a[1].position.z);
+      defs.forEach((h, i) => { const it = gs[i]; h.root.visible = !!it; if (!it) return; const r = it[0].r; h.root.position.set(r.position.x, 0, it[1].position.z + r.position.z); h.root.rotation.set(0, Math.PI, r.rotation.z * 0.6); h.animate({ dt, beat: beat + i * 0.5, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); }); }
     for (const [c, gp] of gates) if (!live.has(c)) { scene.remove(gp); (gp.userData.mats || []).forEach((m) => m.dispose()); (gp.userData.drones || []).forEach((dr) => dr.userData.mat.dispose()); gates.delete(c); }
     // オーブ
     let n = 0;

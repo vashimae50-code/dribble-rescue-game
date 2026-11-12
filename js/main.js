@@ -1,11 +1,11 @@
 // ドリブルレスキュー！ メニュー・成長・ごほうび
 import { SKILLS, SKILL_IDS, RANKS, TIERS, tierOf, rankSkills, poolFor, WORLDS, MISSIONS, STAGES, sl, FRIENDS, BOSS_FRIENDS, ALL_FRIENDS, BALLS, SUITS, CAPSULE_COST, AVATARS,
-  S, save, addPlayer, player, totalStars, mastery, canTest, dayState, missionProgress, stamp, esc } from './data.js';
+  S, save, addPlayer, renamePlayer, player, totalStars, mastery, canTest, dayState, missionProgress, stamp, esc } from './data.js';
 import { runStage } from './run.js';
 
 const app = document.getElementById('app'); const nav = document.getElementById('nav'); const gameEl = document.getElementById('game');
 const gl = document.getElementById('gl'); const hud = document.getElementById('hud'); const overlay = document.getElementById('overlay'); const video = document.getElementById('pip');
-let game = null, pose = null, wake = null, tab = 'home';
+let game = null, pose = null, wake = null, tab = 'home', videoMode = false;
 const $ = (s) => app.querySelector(s);
 const friend = (id) => ALL_FRIENDS.find((f) => f.id === id);
 
@@ -56,15 +56,15 @@ function stages() {
     return `<section class="world ${locked ? 'locked' : ''}" style="--a:${w.pal.a};--b:${w.pal.b};--bg:${w.pal.bg}">
       <h2>WORLD ${wi + 1}　${w.name} ${locked ? `<small>🔒 ⭐${w.need}こで ひらく</small>` : ''}</h2>
       <div class="sgrid">${STAGES.filter((s) => s.wi === wi && !s.sp).map((s) => { const m = MISSIONS[s.mission]; const st = p.stars[s.id] || 0;
-        return `<button class="stage ${m.boss ? 'boss' : ''}" ${locked ? 'disabled' : ''} data-act="stage" data-id="${s.id}"><span class="s-i">${m.i}</span><b>${wi + 1}-${s.mi + 1}</b><small>${m.n}</small><span class="s-st">${[1, 2, 3].map((n) => `<i class="${n <= st ? 'on' : ''}">★</i>`).join('')}</span></button>`; }).join('')}</div>
-    </section>`; }).join('') + `<section class="world" style="--a:#ffb86b;--b:#ff7a1a;--bg:#2a1608"><h2>スペシャル</h2><div class="sgrid">${STAGES.filter((x) => x.sp).map((x) => `<button class="stage" data-act="stage" data-id="${x.id}"><span class="s-i">${MISSIONS[x.mission].i}</span><b>${x.sp}</b><small>${MISSIONS[x.mission].n}</small><span class="s-st">${[1, 2, 3].map((n) => `<i class="${n <= (p.stars[x.id] || 0) ? 'on' : ''}">★</i>`).join('')}</span></button>`).join('')}</div><p class="hint">SP は ボールが 2つ いるよ。L1・L2 は ワザを ステップで おぼえる ステージ。</p></section>`, 'stages');
+        return `<button class="stage ${m.boss ? 'boss' : ''}" ${locked ? 'disabled' : ''} data-act="stage" data-id="${s.id}" title="${wi + 1}-${s.mi + 1}"><span class="s-i">${m.i}</span><b>${m.n}</b><small>${wi + 1}-${s.mi + 1}</small><span class="s-st">${[1, 2, 3].map((n) => `<i class="${n <= st ? 'on' : ''}">★</i>`).join('')}</span></button>`; }).join('')}</div>
+    </section>`; }).join('') + `<section class="world" style="--a:#ffb86b;--b:#ff7a1a;--bg:#2a1608"><h2>スペシャル</h2><div class="sgrid">${STAGES.filter((x) => x.sp).map((x) => `<button class="stage" data-act="stage" data-id="${x.id}"><span class="s-i">${MISSIONS[x.mission].i}</span><b>${x.sp}</b><small>${MISSIONS[x.mission].n}</small><span class="s-st">${[1, 2, 3].map((n) => `<i class="${n <= (p.stars[x.id] || 0) ? 'on' : ''}">★</i>`).join('')}</span></button>`).join('')}</div><p class="hint">SP は ボールが 2つ いるよ。L1・L2・L3 は ワザを ステップで おぼえる ステージ。H1 は うごかずに ハンドリングだけ れんしゅう。</p></section>`, 'stages');
 }
 function stageIntro(id) {
   const s = STAGES.find((x) => x.id === id); const p = player(); const m = MISSIONS[s.mission]; const pool = poolFor(p.rank);
-  const feat = pool.filter((k) => (m.w[k] || 0) > 1).slice(0, 6); const list = m.pool || (m.plan ? [...new Set(m.plan.flat().map((x) => x[0]))].filter((k) => SKILLS[k].combo || k === m.learn) : feat.length ? feat : pool.slice(-6));
+  const feat = pool.filter((k) => (m.w[k] || 0) > 1).slice(0, 6); const list = (m.pool && m.pool.length > 8 ? m.pool.slice(0, 8) : m.pool) || (m.plan ? [...new Set(m.plan.flat().map((x) => x[0]))].filter((k) => SKILLS[k].combo || k === m.learn) : feat.length ? feat : pool.slice(-6));
   show(`<div class="card intro" style="--a:${s.world.pal.a};--b:${s.world.pal.b}">
       <div class="intro-h"><span class="bob">${m.i}</span><div><b>${s.world.name} ${sl(s)}</b><h1>${m.n}</h1><small>${m.d}</small></div></div>
-      <p class="hint">${m.plan ? m.steps.join('<br>') : m.pool ? 'ボールを 2つ よういしよう。' : `きみの ランク（R${p.rank} ${RANKS[p.rank].n}）に 合わせた ワザが 出るよ。`}</p>
+      <p class="hint">${m.plan ? m.steps.join('<br>') : m.pool && m.pool.some((k) => SKILLS[k].hand === 'two') ? 'ボールを 2つ よういしよう。' : m.pool ? 'うごかないで、ハンドリングの ワザだけ 出るよ。' : `きみの ランク（R${p.rank} ${RANKS[p.rank].n}）に 合わせた ワザが 出るよ。`}</p>
       <div class="legend">${list.map((k) => `<div class="tile" style="--c:${SKILLS[k].c}"><b>${SKILLS[k].i} ${SKILLS[k].n}</b><span>${SKILLS[k].tips[0]}</span></div>`).join('')}</div>
       <p class="hint">${S.settings.camera ? '📷 カメラはんてい ON：全身が うつる ばしょに 立とう' : '📺 がめんの お手本に 合わせて うごこう。まわりに ぶつかる物が ないか たしかめてね'}</p>
       <button class="big" id="go">▶ スタート</button><p class="hint" id="msg"></p>
@@ -115,7 +115,8 @@ async function start(o) {
   let human = null; try { if (msg) msg.textContent = 'キャラクターを よみこみちゅう…'; human = await (await import('./character.js')).loadHuman(); } catch (e) { human = null; }
   const look = { human, suit: SUITS.find((x) => x.id === p.suit)?.c, ball: BALLS.find((x) => x.id === p.ball), buddy: p.buddy ? friend(p.buddy)?.e : null };
   try {
-    const vid = new URLSearchParams(location.search).get('video');
+    const qVid = new URLSearchParams(location.search).get('video');
+    const vid = qVid || (st.videoRec && o.mode === 'stage' && o.stage ? o.stage.id : null); videoMode = !!vid;
     game = runStage({ gl, hud, overlay, ...o, video: !!vid, videoName: vid, actx, player: p, settings: st, pose, look,
       onQuit: () => { game = null; o.mode === 'dojo' ? training() : stages(); },
       onEnd: (r) => { game = null; if (pose) { pose.stop(); pose = null; } result(o, r, noCam); } });
@@ -239,12 +240,12 @@ function how() {
 function settings() {
   const st = S.settings; const tg = (k, l) => `<label class="toggle"><input type="checkbox" data-set="${k}" ${st[k] ? 'checked' : ''}><span>${l}</span></label>`;
   show(`<div class="card"><h2>⚙️ せってい（おうちの人むけ）</h2>
-    ${tg('camera', '📷 カメラはんていを つかう')}<div class="prow"><b>🗣️ こえの あいず</b><div class="seg">${[['en', 'English'], ['ja', 'にほんご（iPhoneでは 音楽が 止まることが あります）'], ['', 'オフ']].map(([v, l]) => `<button class="${(st.voice || '') === v || (st.voice === true && v === 'ja') ? 'on' : ''}" data-voice="${v}">${l}</button>`).join('')}</div></div>${tg('bloom', '✨ ひかりの えんしゅつ（うごきが おもい ときは オフ）')}${tg('music', '🎵 おんがく')}${tg('sound', '🔊 こうかおん')}${tg('openAll', '🔓 すべての ワールドを ひらく（おためし用）')}${tg('swap', '📷 右手と左手を 入れかえる（ぎゃくに 数えるとき）')}
+    ${tg('camera', '📷 カメラはんていを つかう')}<div class="prow"><b>🗣️ こえの あいず</b><div class="seg">${[['en', 'English'], ['ja', 'にほんご（iPhoneでは 音楽が 止まることが あります）'], ['', 'オフ']].map(([v, l]) => `<button class="${(st.voice || '') === v || (st.voice === true && v === 'ja') ? 'on' : ''}" data-voice="${v}">${l}</button>`).join('')}</div></div>${tg('bloom', '✨ ひかりの えんしゅつ（うごきが おもい ときは オフ）')}${tg('music', '🎵 おんがく')}${tg('sound', '🔊 こうかおん')}${tg('openAll', '🔓 すべての ワールドを ひらく（おためし用）')}${tg('swap', '📷 右手と左手を 入れかえる（ぎゃくに 数えるとき）')}${tg('videoRec', '🎬 どうが ろくがモード（つぎに あそぶ ステージを じどうで ろくがする・セーフゾーンの せんたくも スキップ）')}
     <div class="prow"><b>🎵 おんがくの スタイル</b><div class="seg">${[['workout', 'ダンス（アップテンポ）'], ['game', 'ゲーム（ピコピコ）']].map(([v, l]) => `<button class="${(st.musicStyle || 'workout') === v ? 'on' : ''}" data-ms="${v}">${l}</button>`).join('')}</div></div>
     <h3>🔊 おとの テスト</h3><p class="hint">音が 出ないときに、どの方式なら 聞こえるかを たしかめます。1つずつ おして、聞こえたものを 教えてください。</p>
     <div class="btns"><button class="big ghost" id="ta">① 合成音</button><button class="big ghost" id="tb">② 音声ファイル</button><button class="big ghost" id="tc">③ こえ → 合成音</button></div><p class="hint" id="tout"></p>
     <h3>プレイヤーと ランク</h3><p class="hint">いまの じつりょくに 合わせて、スタートの ランクを えらんでください。ランクが 上がるほど むずかしい ワザが 出ます。</p>
-    ${S.players.map((p) => `<div class="prow"><b>${p.avatar} ${esc(p.name)}</b><div class="seg">${[1, 2, 3, 4, 5].map((r) => `<button class="${p.rank === r ? 'on' : ''}" data-rank="${r}" data-pid="${p.id}">R${r}</button>`).join('')}</div><button class="mini danger" data-del="${p.id}">けす</button></div>`).join('')}
+    ${S.players.map((p) => `<div class="prow"><b>${p.avatar}</b><input class="pname-edit" maxlength="10" value="${esc(p.name)}" data-pid="${p.id}" style="width:6em"><div class="seg">${[1, 2, 3, 4, 5].map((r) => `<button class="${p.rank === r ? 'on' : ''}" data-rank="${r}" data-pid="${p.id}">R${r}</button>`).join('')}</div><button class="mini danger" data-del="${p.id}">けす</button></div>`).join('')}
     <p class="hint">${[1, 2, 3, 4, 5].map((r) => `R${r} ${RANKS[r].n}：${rankSkills(r).map((k) => SKILLS[k].n).join('・')}`).join('<br>')}</p>
     <p class="hint">きろくは この たんまつの ブラウザの 中だけに ほぞんされます。</p></div>`, 'home');
   app.querySelectorAll('[data-set]').forEach((i) => i.addEventListener('change', () => { st[i.dataset.set] = i.checked; save(); }));
@@ -257,6 +258,7 @@ function settings() {
   app.querySelectorAll('[data-ms]').forEach((b) => b.addEventListener('click', () => { st.musicStyle = b.dataset.ms; save(); settings(); }));
   app.querySelectorAll('[data-voice]').forEach((b) => b.addEventListener('click', () => { st.voice = b.dataset.voice || false; save(); settings(); }));
   app.querySelectorAll('[data-rank]').forEach((b) => b.addEventListener('click', () => { const p = S.players.find((x) => x.id === b.dataset.pid); p.rank = +b.dataset.rank; p.day = null; save(); settings(); }));
+  app.querySelectorAll('.pname-edit').forEach((i) => i.addEventListener('change', () => { const p = S.players.find((x) => x.id === i.dataset.pid); if (p) renamePlayer(p, i.value); settings(); }));
   app.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => { if (b.dataset.sure) { S.players = S.players.filter((x) => x.id !== b.dataset.del); if (S.current === b.dataset.del) S.current = null; save(); settings(); } else { b.dataset.sure = '1'; b.textContent = 'ほんとうに けす'; } }));
 }
 function addLog(p, e) { const d = new Date(); p.log = p.log || []; p.log.unshift({ ...e, d: `${d.getMonth() + 1}/${d.getDate()}`, h: `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}` }); p.log = p.log.slice(0, 40); p.lastPlay = Date.now(); }
@@ -314,7 +316,7 @@ const acts = {
     p[d.kind] = it.id; save(); shop(); },
 };
 document.addEventListener('click', (e) => { const b = e.target.closest('[data-act]'); if (b && !b.disabled && acts[b.dataset.act] && (app.contains(b) || nav.contains(b))) acts[b.dataset.act](b.dataset); });
-document.getElementById('pause').addEventListener('click', () => game && game.pause());
-document.addEventListener('visibilitychange', () => { if (document.hidden && game) game.pause(); });
+document.getElementById('pause').addEventListener('click', () => game && !videoMode && game.pause());
+document.addEventListener('visibilitychange', () => { if (document.hidden && game && !videoMode) game.pause(); });
 window.__game = () => game;
 who();

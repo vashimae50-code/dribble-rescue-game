@@ -44,12 +44,15 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   root.updateMatrixWorld(true);
   model.traverse((o) => { if (!o.isSkinnedMesh) return; const g = o.geometry; geos.push(g); const si = g.attributes.skinIndex, sw = g.attributes.skinWeight, pos = g.attributes.position, nor = g.attributes.normal; const col = new Float32Array(pos.count * 3);
     for (let i = 0; i < pos.count; i++) { let best = 0, bw = -1; for (let k = 0; k < 4; k++) { const w = sw.getComponent(i, k); if (w > bw) { bw = w; best = si.getComponent(i, k); } }
-      const bn = o.skeleton.bones[best].name; tmpV.fromBufferAttribute(pos, i); const x = tmpV.x, y = tmpV.y, z = tmpV.z; const c = regionOf(bn, x, y); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+      const bn = o.skeleton.bones[best].name; tmpV.fromBufferAttribute(pos, i); const x = tmpV.x, y = tmpV.y, z = tmpV.z; const c = regionOf(bn, x, y);
+      // うらがわ・つなぎ目を ほんの少し くらくして、のっぺりしすぎないように（かんいAO）
+      const ao = nor ? 0.86 + 0.14 * clamp(nor.getY(i) * 0.5 + 0.5, 0, 1) : 1;
+      col[i * 3] = c.r * ao; col[i * 3 + 1] = c.g * ao; col[i * 3 + 2] = c.b * ao;
       // 服の ところは 少し ふくらませて、ぴったり しすぎない ように
       if (nor && cloth(c) && !/Foot|Toe/.test(bn)) { const legs = /UpLeg|Hips/.test(bn); const k = legs ? 0.02 + 0.035 * clamp((0.95 - y) / 0.35, 0, 1) : 0.014; pos.setXYZ(i, x + nor.getX(i) * k, y + nor.getY(i) * k, z + nor.getZ(i) * k); }
       if (/Spine/.test(bn) && Math.abs(x) < 0.06 && y > 1.2 && y < 1.4) { zBack = Math.max(zBack, -z); zFront = Math.max(zFront === 1 ? -1 : zFront, z); } }
     pos.needsUpdate = true; g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.62, metalness: 0.02, emissive: 0x1a1410, emissiveIntensity: 0.35 }); o.material = m; meshes.push(o); mats.push(m); });
+    const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.58, metalness: 0, emissive: 0x1a1410, emissiveIntensity: 0.2 }); o.material = m; meshes.push(o); mats.push(m); });
   // ヘッドバンド
   const band = new THREE.MeshBasicMaterial({ color: suitC }); const tor = new THREE.TorusGeometry(1, 0.22, 8, 20);
   const attach = (bone, r, y, rx) => { if (!bone) return; const t = new THREE.Mesh(tor, band); const ws = bone.getWorldScale(new THREE.Vector3()).x || 1; t.scale.setScalar(r / ws); t.position.y = y / ws; t.rotation.x = rx; bone.add(t); meshes.push(t); };

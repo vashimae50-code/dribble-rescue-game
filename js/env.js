@@ -85,6 +85,7 @@ export function buildEnv(scene, o) {
   const items = []; const SPAN = 198;
   const put = (obj, x, z0) => { obj.userData = { x, z0 }; obj.position.x = x; scene.add(obj); items.push(obj); };
   const mats = {}; const lam = (k, mk) => mats[k] || (mats[k] = add(mk()));
+  const lam2 = (k, col, flat) => lam(k, () => (flat ? new THREE.MeshBasicMaterial({ color: C(col), side: THREE.DoubleSide }) : new THREE.MeshLambertMaterial({ color: C(col) })));
   const coneG = add(new THREE.ConeGeometry(1, 1, 4)); const cylG = add(new THREE.CylinderGeometry(1, 1, 1, 8)); const icoG = add(new THREE.IcosahedronGeometry(1, 1)); const pineG = add(new THREE.ConeGeometry(1, 1, 7));
   const mesh = (geo, mat, sx, sy, sz, x, y, z, ry = 0) => { const m = new THREE.Mesh(geo, mat); m.scale.set(sx, sy, sz); m.position.set(x, y, z); m.rotation.y = ry; return m; };
   if (th.house) {
@@ -110,6 +111,35 @@ export function buildEnv(scene, o) {
   if (th.lamp) { const pole = lam('po', () => new THREE.MeshLambertMaterial({ color: 0x2a2a3a })); const bulb = lam('bu', () => new THREE.MeshBasicMaterial({ color: C(th.lava ? '#ff8a2a' : '#ffe9a0') }));
     for (let i = 0; i < 12; i++) { const s = i % 2 ? 1 : -1; const gp = new THREE.Group(); gp.add(mesh(cylG, pole, 0.07, 3.2, 0.07, 0, 1.6, 0)); gp.add(mesh(icoG, bulb, 0.24, 0.28, 0.24, 0, 3.3, 0)); const sp = new THREE.Sprite(add(new THREE.SpriteMaterial({ map: glowT, color: C(th.lava ? '#ff7a1a' : '#ffd97a'), transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending }))); sp.scale.set(3, 3, 1); sp.position.y = 3.3; gp.add(sp); put(gp, s * (HW + 0.6), i * (SPAN / 12) + 2); } }
   { const wood = lam('cr', () => new THREE.MeshLambertMaterial({ color: C(th.indoor ? '#3a5fc8' : '#b07a3a') })); for (let i = 0; i < (th.indoor ? 0 : 10); i++) { const s = i % 2 ? 1 : -1; const gp = new THREE.Group(); gp.add(mesh(boxG, wood, 0.9, 0.9, 0.9, 0, 0.45, 0, rnd())); if (rnd() < 0.5) gp.add(mesh(cylG, wood, 0.4, 1, 0.4, 0.9, 0.5, 0.3)); put(gp, s * (HW + 0.9 + rnd()), i * (SPAN / 10) + 9); } }
+  // ランドマーク：ワールドごとに めだつ たてものを 2つ（ワールドらしさ・バリュエーションを ふやす）
+  if (!th.indoor) {
+    const lm = (geo, mat, sx, sy, sz, x, y, z, ry = 0) => mesh(geo, mat, sx, sy, sz, x, y, z, ry);
+    const landmark = (build, side, z) => { const gp = new THREE.Group(); build(gp); put(gp, side * (HW + 7), z); };
+    if (o.themeName === 'village') {
+      const hub = lam2('mlhub', '#6a4020'); const blade = lam2('mlbl', '#e8e0c8');
+      const build = (gp) => { gp.add(lm(cylG, hub, 1.1, 3.2, 1.1, 0, 1.6, 0)); const wheel = new THREE.Group();
+        for (let k = 0; k < 6; k++) { const bl = new THREE.Mesh(boxG, blade); bl.scale.set(0.18, 2.6, 0.5); bl.position.set(Math.cos(k * Math.PI / 3) * 1.3, Math.sin(k * Math.PI / 3) * 1.3, 0); bl.rotation.z = k * Math.PI / 3; wheel.add(bl); }
+        wheel.position.set(0, 3.4, 1.0); gp.add(wheel); gp.userData.spin = wheel; };
+      landmark(build, -1, 36); landmark(build, 1, 132);
+    } else if (o.themeName === 'night') {
+      const stone = lam2('ctw', '#4a4460'); const faceT = add(tex(128, 128, (g) => { g.fillStyle = '#fff6d0'; g.beginPath(); g.arc(64, 64, 58, 0, TAU); g.fill(); g.strokeStyle = '#2a2450'; g.lineWidth = 6; g.beginPath(); g.moveTo(64, 64); g.lineTo(64, 20); g.moveTo(64, 64); g.lineTo(96, 64); g.stroke(); }));
+      const faceM = add(new THREE.SpriteMaterial({ map: faceT, transparent: true, fog: false }));
+      const build = (gp) => { gp.add(lm(boxG, stone, 1.6, 7, 1.6, 0, 3.5, 0)); const face = new THREE.Sprite(faceM); face.scale.set(1.3, 1.3, 1); face.position.set(0, 6.6, 0.9); gp.add(face); };
+      landmark(build, -1, 40); landmark(build, 1, 150);
+    } else if (o.themeName === 'sunset') {
+      const pier = lam2('pr', '#2f4a6a'); const flag = lam2('fl', '#ffb13d', true);
+      const build = (gp) => { gp.add(lm(cylG, pier, 0.7, 6, 0.7, 0, 3, 0)); gp.add(lm(boxG, flag, 1.4, 0.9, 0.05, 0.8, 5.6, 0)); };
+      landmark(build, -1, 44); landmark(build, 1, 138);
+    } else if (o.themeName === 'snow') {
+      const snow = lam2('kam', '#f4fbff');
+      const build = (gp) => { gp.add(lm(icoG, snow, 2.2, 1.6, 2.2, 0, 1.0, 0)); const sp = new THREE.Sprite(add(new THREE.SpriteMaterial({ map: glowT, color: C('#ffe9a0'), transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending }))); sp.scale.set(1.6, 1.6, 1); sp.position.set(0, 1.0, 1.4); gp.add(sp); };
+      landmark(build, -1, 50); landmark(build, 1, 160);
+    } else if (o.themeName === 'castle') {
+      const stone = lam2('bst', '#4a3030');
+      const build = (gp) => { gp.add(lm(cylG, stone, 1.3, 5, 1.3, 0, 2.5, 0)); const sp = new THREE.Sprite(add(new THREE.SpriteMaterial({ map: glowT, color: C('#ff7a1a'), transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }))); sp.scale.set(2.4, 2.4, 1); sp.position.set(0, 5.4, 0); gp.add(sp); };
+      landmark(build, -1, 30); landmark(build, 1, 120);
+    }
+  }
   if (th.indoor) { // 体育館
     const wt = add(tex(256, 256, (g, w, h) => { g.fillStyle = '#e9e2d0'; g.fillRect(0, 0, w, h); g.fillStyle = '#2f5fc8'; g.fillRect(0, h * 0.62, w, h * 0.38); g.fillStyle = 'rgba(0,0,0,.15)'; for (let i = 0; i < 4; i++) g.fillRect(i * 64, h * 0.62, 3, h); g.fillStyle = '#bfb8a6'; g.fillRect(0, h * 0.2, w, 6); }, [16, 1]));
     const wm = add(new THREE.MeshLambertMaterial({ map: wt })); const wg = add(new THREE.PlaneGeometry(200, 9));
@@ -119,7 +149,7 @@ export function buildEnv(scene, o) {
   }
   function update(camZ, dt, camX) {
     road.offset.y = (camZ / 10) % 1; sideT.offset.y = (camZ / 10) % 1;
-    for (const it of items) { let z = (it.userData.z0 - camZ) % SPAN; if (z < -12) z += SPAN; it.position.z = -z + 6; }
+    for (const it of items) { let z = (it.userData.z0 - camZ) % SPAN; if (z < -12) z += SPAN; it.position.z = -z + 6; if (it.userData.spin) it.userData.spin.rotation.z += dt * 0.6; }
     far.position.x = camX * 0.9; far.children.forEach((c) => { if (c.userData.drift) { c.position.x += c.userData.drift * dt; if (c.position.x > 170) c.position.x = -170; } });
   }
   return { update, bloom: th.bloom, theme: th, dispose: () => D.forEach((d) => { try { d.dispose(); } catch (e) { /* noop */ } }) };

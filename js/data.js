@@ -84,6 +84,8 @@ export const SKILLS = {
     tips: ['トン・とおす の 2びょうし', '前の足の うしろに ボールを おとす', 'かおを 上げて、ひくい しせいの まま'] },
   c1behind: { en: 'One dribble, behind the back', r: 4, n: '1ドリブル → ビハインド', i: '1️⃣🔄', c: '#d79dff', say: 'ワンドリブル ビハインド', hand: 'combo', combo: 'behind', reps: 1, cyc: 2, len: 8,
     tips: ['トン・うしろ の 2びょうし', 'おしりの うしろで ななめ前に おし出す', 'はんたいの 手を こしの よこで まって おく'] },
+  c1cross: { en: 'One dribble, crossover', r: 3, n: '1ドリブル → フロントチェンジ', i: '1️⃣🔀', c: '#ffe03d', say: 'ワンドリブル フロントチェンジ', hand: 'combo', combo: 'cross', reps: 1, cyc: 2, len: 8,
+    tips: ['トン・チェンジ の 2びょうし', 'ひざより ひくく、体の 前を 通す', 'かおを 上げて、リズムを くずさない'] },
   // ランク5：抜く
   jab: { en: 'Jab', r: 5, n: 'ジャブ', i: '👣', c: '#ffb13d', say: 'ジャブ', hand: 'hold', sp: 0.25, len: 2, jab: 1,
     tips: ['小さく 速く、ふみ出して すぐ もどす', 'かたと ボールも 少し ゆらす', 'じく足は ゆかから はなさない'] },
@@ -141,6 +143,8 @@ export const MISSIONS = {
   guard:   { n: 'ディフェンスぬき', i: '⛹️', d: 'ディフェンスの よこを ぬけ！', w: { drive: 6, jab: 3, step: 3, slide: 3, xstep: 3, hesi: 2 }, guards: 1, vt: 'ディフェンスを ぬく ドライブ' },
   stealth: { n: 'ステルス', i: '🔦', d: 'ひくく・ピタッで センサーを かわせ', w: { low: 4, freeze: 4, stance: 3, back: 3, jstop: 2 }, vt: 'ロー ドリブル とっくん' },
   two:     { n: '2ボール チャレンジ', i: '🏀🏀', d: 'ボールを 2つ つかう ステージ', w: {}, pool: ['two1', 'two2', 'twohi', 'twolo', 'twov'], vt: '2ボール ハンドリング' },
+  handle:  { n: 'ハンドリング どうじょう', i: '🤹', d: 'うごかないで、ハンドリングの ワザだけ れんしゅう', w: {},
+    pool: SKILL_IDS.filter((k) => !SKILLS[k].lane && SKILLS[k].hand !== 'two'), vt: 'ハンドリング とっくん' },
   lLegs:   { n: 'レッグスルー しゅうとく', i: '🦵', d: '4つの ステップで レッグスルーを おぼえよう', w: {}, fin: 1, learn: 'legs', vt: 'レッグスルー しゅうとく',
     steps: ['ステップ1　ボールを 足の まわりで うごかす', 'ステップ2　2回 ついて → とおす', 'ステップ3　1回 ついて → とおす', 'さいご　れんぞくで とおす'],
     plan: [[['wrapl', 8], ['low', 4], ['wrap8', 8], ['cross', 4], ['wrapl', 8], ['low', 4]],
@@ -153,6 +157,12 @@ export const MISSIONS = {
       [['c2behind', 8], ['semi', 4], ['c2behind', 8], ['swingb', 4], ['c2behind', 8], ['wrapw', 4], ['c2behind', 8]],
       [['c1behind', 8], ['c2behind', 4], ['c1behind', 8], ['swingb', 4], ['c1behind', 8], ['pound', 4]],
       [['behind', 4], ['c1behind', 4], ['behind', 8], ['c2behind', 8], ['behind', 8], ['cross', 4], ['behind', 4]]] },
+  lCross:  { n: 'フロントチェンジ しゅうとく', i: '🔀', d: '4つの ステップで フロントチェンジを きわめよう', w: {}, fin: 1, learn: 'cross', vt: 'フロントチェンジ しゅうとく',
+    steps: ['ステップ1　かた手で 左右に うごかす（チェンジの もと）', 'ステップ2　2回 ついて → チェンジ', 'ステップ3　1回 ついて → チェンジ', 'さいご　れんぞくで チェンジ'],
+    plan: [[['frontv', 8], ['pound', 4], ['frontv', 8], ['cross', 4], ['frontv', 8], ['pound', 4]],
+      [['c2cross', 8], ['cross', 4], ['c2cross', 8], ['dcross', 4], ['c2cross', 8], ['pound', 4], ['c2cross', 8]],
+      [['c1cross', 8], ['c2cross', 4], ['c1cross', 8], ['frontv', 4], ['c1cross', 8], ['pound', 4]],
+      [['cross', 4], ['c1cross', 4], ['cross', 8], ['c2cross2', 8], ['cross', 8], ['dcross', 4], ['cross', 4]]] },
   boss:    { n: 'ボスせん', i: '👾', d: 'ボスを たおして なかまを すくえ', w: {}, boss: 1, vt: '試合形式 ちょうせん' },
 };
 const ORDER = ['dodge', 'steps', 'weak', 'guard', 'stealth', 'boss'];
@@ -162,6 +172,8 @@ export const STAGES = WORLDS.flatMap((w, wi) => ORDER.map((m, mi) => ({
 STAGES.push({ id: 'sp-two', world: WORLDS[2], wi: 2, mi: 6, mission: 'two', name: '2ボール チャレンジ', bpm: 96, sections: 3, sp: 'SP' });
 STAGES.push({ id: 'sp-legs', world: WORLDS[1], wi: 1, mi: 7, mission: 'lLegs', name: 'レッグスルー しゅうとく', bpm: 88, sections: 3, sp: 'L1' });
 STAGES.push({ id: 'sp-behind', world: WORLDS[3], wi: 3, mi: 8, mission: 'lBehind', name: 'バックチェンジ しゅうとく', bpm: 88, sections: 3, sp: 'L2' });
+STAGES.push({ id: 'sp-handle', world: WORLDS[0], wi: 0, mi: 9, mission: 'handle', name: 'ハンドリング どうじょう', bpm: 92, sections: 3, sp: 'H1' });
+STAGES.push({ id: 'sp-cross', world: WORLDS[4], wi: 4, mi: 10, mission: 'lCross', name: 'フロントチェンジ しゅうとく', bpm: 88, sections: 3, sp: 'L3' });
 export const sl = (s) => s.sp || `${s.wi + 1}-${s.mi + 1}`;
 
 // ---------- なかま・みため ----------
@@ -182,7 +194,7 @@ export const AVATARS = ['🦸', '🥷', '🧑‍🚀', '🐺', '🦈', '🐬', '
 
 // ---------- 保存 ----------
 const KEY = 'dribble-rescue-v2';
-const def = () => ({ players: [], current: null, settings: { voice: 'en', sound: true, music: true, camera: false, sens: 'normal', swap: false, openAll: true, bloom: true, v: 4 } });
+const def = () => ({ players: [], current: null, settings: { voice: 'en', sound: true, music: true, camera: false, sens: 'normal', swap: false, openAll: true, bloom: true, videoRec: false, v: 4 } });
 export const S = (() => {
   try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.players)) { const old = s.settings || {}; s.settings = { ...def().settings, ...old }; if (old.v !== 4) { s.settings.voice = 'en'; s.settings.v = 4; } return s; } } catch (e) { /* noop */ }
   return def();
@@ -195,6 +207,7 @@ function newPlayer(name, avatar, rank = 1) {
     balls: ['std'], ball: 'std', suits: ['cy'], suit: 'cy', stars: {}, best: {}, verified: {}, bossDone: {}, plays: 0, stamps: 0, tickets: 0, lastDay: '', day: null, tipIdx: {}, leftReps: 0, rightReps: 0 };
 }
 export function addPlayer(name, avatar, rank) { S.players = S.players.filter((x) => !(x.guest && x.plays === 0)); const p = newPlayer(name, avatar, rank); S.players.push(p); S.current = p.id; save(); return p; }
+export function renamePlayer(p, name) { const n = (name || '').trim().slice(0, 10); if (!n) return false; p.name = n; delete p.guest; save(); return true; }
 export function player() {
   let p = S.players.find((x) => x.id === S.current) || S.players[0];
   if (!p) { p = newPlayer('プレイヤー', '🏀'); p.guest = true; S.players.push(p); }
