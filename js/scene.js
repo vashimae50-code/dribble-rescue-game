@@ -41,7 +41,7 @@ export function createScene(canvas, o) {
   const human = o.human ? makeHuman(o.human, suit, { num: 7, bigHead: 1.65 }) : null;
   // 敵も バスケットマン：ディフェンス 2人、おいかけてくる 1人、ボス 1人（べつの チームの ユニフォーム）
   // プレイヤーを 絵（スプライト）で 出す：右手ドリブル と パワーポジション
-  let pspr = null, psMir = false; const psT = {}; const PSN = ['hpower', 'hlegs', 'hbehind', 'hside', 'hsideL', 'height', 'hwrap', 'hhead', 'hknees', 'hroll', 'hspin'];
+  let pspr = null, psMir = false; const psT = {}; const PSN = ['hpower', 'hlegs', 'hbehind', 'hside', 'hsideL', 'height', 'hwrap', 'hhead', 'hknees', 'hroll', 'hspin', 'hjstop'];
   if (human && o.sprite !== false) { let n = 0; const ld = new THREE.TextureLoader(); for (const k of PSN) { const t = ld.load(`img/player/${k}.png`, () => { if (++n === PSN.length) { const m = new THREE.SpriteMaterial({ map: psT.hpower, transparent: true, alphaTest: 0.05 }); pspr = new THREE.Sprite(m); pspr.center.set(0.5, 0.01); pspr.scale.set(1.65, 1.65, 1); scene.add(pspr); human.setMainVisible(false); } }); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; psT[k] = t; } }
   const faceAtlas = o.human ? new THREE.TextureLoader().load('img/faces.png') : null; if (faceAtlas) faceAtlas.colorSpace = THREE.SRGBColorSpace;
   const mkFoe = (c, num, trim) => { const h = makeHuman(o.human, c, { num, trim, guide: false, skin: '#c98f66', shoe: '#22222a' }); h.root.visible = false; scene.add(h.root); return h; };
@@ -206,7 +206,7 @@ export function createScene(canvas, o) {
       else if (Math.abs(vx) > 0.9) { T = vx > 0 ? psT.hside : psT.hsideL; f = 1 + Math.floor(performance.now() / 100) % 4; }
       else if (cue && sk.handle && HM[sk.handle]) { T = HM[sk.handle]; f = seq(2); }
       else if (cue && (sk.turn || sk.combo === 'roll')) { T = psT.hroll; f = seq(sk.turn ? 4 : 2); }
-      else if (cue && sk.jump) { f = 0; if (cb < 1) psY = Math.sin(Math.PI * cb) * 0.3; }
+      else if (cue && sk.jump) { T = psT.hjstop; f = cb < 1 ? Math.min(3, Math.floor(cb * 4)) : cb < 1.5 ? 4 : 5; if (cb < 1) psY = Math.sin(Math.PI * cb) * 0.3; }
       else if (hold) f = Math.floor(Math.max(0, beat) / 2) % 2 ? 5 : 0;
       else if (sk.behind || sk.combo === 'behind') { T = psT.hbehind; f = seq(1); }
       else if (sk.legs || sk.combo === 'legs') { T = psT.hlegs; f = seq(1); }
