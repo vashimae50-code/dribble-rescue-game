@@ -158,7 +158,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     T.fl.set(-Wd, 0, 0); T.fr.set(Wd, 0, 0);
     if (moving && stride > 0) {
       const phi = beat * Math.PI * cad * runDir;
-      for (const [f, s] of [[T.fl, 0], [T.fr, Math.PI]]) { const th = phi + s; f.z = stride * Math.cos(th); f.y = Math.max(0, Math.sin(th)) * lift; f.x *= 0.7; }
+      for (const [f, s] of [[T.fl, 0], [T.fr, Math.PI]]) { const th = phi + s; f.z = stride * Math.cos(th); f.y = Math.max(0, Math.sin(th)) * lift; f.x *= guard || crouch >= 0.6 ? 0.7 : 0.5; }
       rootY += Math.abs(Math.sin(beat * Math.PI * cad)) * 0.035;
     } else if (!hold) { rootY -= bounce * 0.02; }
     if (sk.legs) { const sg = -Math.tanh(Math.cos(Math.PI * cb) * 3) * (cue.hand0 === 'L' ? -1 : 1); T.fl.z = 0.3 * sg; T.fr.z = -0.3 * sg; const hop = Math.pow(Math.abs(Math.sin(Math.PI * cb)), 6) * 0.07; T.fl.y = T.fr.y = hop; Wd = 0.22; T.fl.x = -0.22; T.fr.x = 0.22; }
@@ -218,6 +218,8 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
       else { const sw = moving ? Math.sin(beat * Math.PI * cad + (s > 0 ? 0 : Math.PI)) * 0.2 : 0; h.set(s * 0.3, S.hip.y - 0.02 + Math.abs(sw) * 0.1, -0.08 + sw); }
     }
     S.hl.lerp(T.hl, kh); S.hr.lerp(T.hr, kh);
+    // ひざの むき：はしっているときは まっすぐ、かまえ・その場の ワザ・ディフェンスのときは 外に ひらく
+    { const run = moving && stride > 0 && !guard && !hold && !st.mode && crouch < 0.6; S.knee = lerp(S.knee ?? 1, run ? 0 : 1, 1 - Math.exp(-dt * 8)); }
 
     // --- 骨に あてはめる ---
     model.traverse((o) => { if (o.isBone) { o.position.copy(o.userData.p0 || (o.userData.p0 = o.position.clone())); o.quaternion.copy(o.userData.q0 || (o.userData.q0 = o.quaternion.clone())); } });
@@ -229,7 +231,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     for (const b of [B.Spine, B.Spine1, B.Spine2]) preWorld(b, axisQ(ry, S.twist * 0.22).multiply(axisQ(rz, S.roll * 0.17)).multiply(axisQ(rx, -S.pitch * 0.22)));
     preWorld(B.Neck, axisQ(rx, S.pitch * 0.45)); preWorld(B.Head, axisQ(ry, -S.twist * 0.5).multiply(axisQ(rx, S.pitch * 0.3)));
     // 足
-    const foot = (up, lo, ft, toe, tgt, s) => { const a = V().copy(tgt); a.y += ankleH; ik(up, lo, ft, toW(a).clone(), dirW(s * 0.42, 0.1, -1), L.up, L.lo); const tt = V().copy(tgt); tt.z -= 0.2; tt.x += s * 0.03; tt.y = Math.max(0.02, tgt.y * 0.6 + 0.02); aim(ft, toe, toW(tt).clone()); };
+    const foot = (up, lo, ft, toe, tgt, s) => { const a = V().copy(tgt); a.y += ankleH; ik(up, lo, ft, toW(a).clone(), dirW(s * (0.06 + 0.36 * S.knee), 0.1, -1), L.up, L.lo); const tt = V().copy(tgt); tt.z -= 0.2; tt.x += s * 0.03; tt.y = Math.max(0.02, tgt.y * 0.6 + 0.02); aim(ft, toe, toW(tt).clone()); };
     foot(B.LeftUpLeg, B.LeftLeg, B.LeftFoot, B.LeftToeBase, S.fl, -1); foot(B.RightUpLeg, B.RightLeg, B.RightFoot, B.RightToeBase, S.fr, 1);
     // うで
     const behind = lbz > 0.2;
@@ -240,6 +242,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   }
   // かお：イラストの スプライトを 頭の 位置に のせる（もとの 頭は 小さく たたむ）
   let faceSp = null, faceTex = null, faceMat = null;
+  if (opt.bigHead && B.Head) B.Head.scale.setScalar(opt.bigHead); // イラストの 顔と 同じ テイスト（頭 大きめ）
   const setFace = (tex, i) => { if (!tex || !B.Head) return;
     if (!faceSp) { faceTex = tex.clone(); faceTex.repeat.set(0.1, 0.2); faceTex.needsUpdate = true; faceMat = new THREE.SpriteMaterial({ map: faceTex, transparent: true, alphaTest: 0.4 }); faceSp = new THREE.Sprite(faceMat); faceSp.center.set(0.5, 0.2); faceSp.scale.set(0.66, 0.66, 1); root.add(faceSp); B.Head.scale.setScalar(0.02); }
     faceTex.offset.set((i % 10) * 0.1, 1 - (Math.floor(i / 10) + 1) * 0.2); };

@@ -38,7 +38,7 @@ export function createScene(canvas, o) {
   // ---- 背景の世界 ----
   const env = buildEnv(scene, { themeName: o.theme, stageId: o.stageId, HW, LW, glow: shared.glow });
   // ---- プレイヤー（人型モデル） ----
-  const human = o.human ? makeHuman(o.human, suit, { num: 7 }) : null;
+  const human = o.human ? makeHuman(o.human, suit, { num: 7, bigHead: 1.65 }) : null;
   // 敵も バスケットマン：ディフェンス 2人、おいかけてくる 1人、ボス 1人（べつの チームの ユニフォーム）
   const faceAtlas = o.human ? new THREE.TextureLoader().load('img/faces.png') : null; if (faceAtlas) faceAtlas.colorSpace = THREE.SRGBColorSpace;
   const mkFoe = (c, num, trim) => { const h = makeHuman(o.human, c, { num, trim, guide: false, skin: '#c98f66', shoe: '#22222a' }); h.root.visible = false; scene.add(h.root); return h; };
