@@ -2,7 +2,8 @@
 import * as THREE from '../vendor/three.module.min.js';
 import { SKILLS } from './data.js';
 import { makeHuman } from './character.js';
-import { buildEnv, PLAYER_SHEETS } from './env.js';
+import { buildEnv } from './env.js';
+import { spritePose, SHEETS } from './sprite.js';
 import { EffectComposer } from '../vendor/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from '../vendor/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from '../vendor/addons/postprocessing/UnrealBloomPass.js';
@@ -41,13 +42,14 @@ export function createScene(canvas, o) {
   const human = o.human ? makeHuman(o.human, suit, { num: 7, bigHead: 1.65 }) : null;
   // 敵も バスケットマン：ディフェンス 2人、おいかけてくる 1人、ボス 1人（べつの チームの ユニフォーム）
   // プレイヤーを 絵（スプライト）で 出す：右手ドリブル と パワーポジション
-  let pspr = null, psMir = false; const psT = {}; const PSN = PLAYER_SHEETS;
-  if (human && o.sprite !== false) { let n = 0; const ld = new THREE.TextureLoader(); for (const k of PSN) { const t = ld.load(`img/player/${k}.png`, () => { if (++n === PSN.length) { const m = new THREE.SpriteMaterial({ map: psT.hpower, transparent: true, alphaTest: 0.05 }); pspr = new THREE.Sprite(m); pspr.center.set(0.5, 0.01); pspr.scale.set(1.65, 1.65, 1); scene.add(pspr); human.setMainVisible(false); } }); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; psT[k] = t; } }
+  let pspr = null, psHit = false; const psMem = {}; const psT = {}; const PSN = SHEETS; const psPre = o.girl ? 'g_' : '';
+  const impact = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.75, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })); impact.rotation.x = -Math.PI / 2; impact.visible = false; scene.add(impact); disposables.push(impact.geometry, impact.material);
+  if (human && o.sprite !== false) { let n = 0; const ld = new THREE.TextureLoader(); for (const k of PSN) { const t = ld.load(`img/player/${psPre}${k}.webp`, () => { if (++n === PSN.length) { const m = new THREE.SpriteMaterial({ map: psT.hpower, transparent: true, alphaTest: 0.05 }); pspr = new THREE.Sprite(m); pspr.center.set(0.5, 0.01); pspr.scale.set(1.65, 1.65, 1); scene.add(pspr); human.setMainVisible(false); } }); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; psT[k] = t; } }
   const faceAtlas = o.human ? new THREE.TextureLoader().load('img/faces.png') : null; if (faceAtlas) faceAtlas.colorSpace = THREE.SRGBColorSpace;
   const mkFoe = (c, num, trim) => { const h = makeHuman(o.human, c, { num, trim, guide: false, skin: '#c98f66', shoe: '#22222a' }); h.root.visible = false; scene.add(h.root); return h; };
   const defs = o.human ? [mkFoe('#d9263c', 23, '#ffe03d'), mkFoe('#d9263c', 11, '#ffe03d'), mkFoe('#2a3a7a', 15, '#ffe03d'), mkFoe('#2a3a7a', 8, '#ffe03d')] : [];
   const rival = o.human ? mkFoe('#d9263c', 4, '#ffe03d') : null;
-  const bossH = o.human ? mkFoe('#5a22c8', 0, '#ffe03d') : null;
+  const bossH = o.human ? mkFoe('#1c2450', 99, '#ffe03d') : null;
   const P = human ? human.root : new THREE.Group(); scene.add(P);
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.55, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.5 })); shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.012; scene.add(shadow); disposables.push(shadow.geometry, shadow.material);
   const footGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: shared.glow, color: C(suit), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.25 })); footGlow.scale.set(2.0, 0.8, 1); scene.add(footGlow); disposables.push(footGlow.material);
@@ -198,25 +200,22 @@ export function createScene(canvas, o) {
     P.position.set(laneX, 0, 0);
     let bp = null; if (human) bp = human.animate({ dt, beat, cue, sk, vx });
     let bx = laneX + (bp ? bp.x : 0.4), by = bp ? bp.y : 0.8, bz = bp ? bp.z : -0.3;
-    if (pspr) { // 絵の コマえらび（ワザごとの 6コマ シート）
-      const hold = sk.hand === 'hold' || !cue; const cb = cue ? Math.max(0, beat - cue.b0) : 0; let T = psT.hpower, f = 0, mir = false, psY = 0;
-      const rx = bp ? bp.x : 0.4; if (rx < -0.08) psMir = false; else if (rx > 0.08) psMir = true;
-      const seq = (n) => Math.min(5, Math.floor((cb % n) / n * 6)); const HM = { eight: psT.height, wrap: psT.hwrap, head: psT.hhead, knees: psT.hknees };
-      if (cue && sk.spin) { T = psT.hspin; const u = Math.min(1, cb / 1.6); f = Math.min(5, Math.floor(u * u * (3 - 2 * u) * 6)); if ((cue.dir || 1) < 0) f = (6 - f) % 6; }
-      else if (Math.abs(vx) > 0.9) { T = vx > 0 ? psT.hside : psT.hsideL; f = 1 + Math.floor(performance.now() / 100) % 4; }
-      else if (cue && sk.handle && HM[sk.handle]) { T = HM[sk.handle]; f = seq(2); }
-      else if (cue && (sk.turn || sk.combo === 'roll')) { T = psT.hroll; f = seq(sk.turn ? 4 : 2); }
-      else if (cue && sk.jump) { T = psT.hjstop; f = cb < 1 ? Math.min(3, Math.floor(cb * 4)) : cb < 1.5 ? 4 : 5; if (cb < 1) psY = Math.sin(Math.PI * cb) * 0.3; }
-      else if (hold) f = Math.floor(Math.max(0, beat) / 2) % 2 ? 5 : 0;
-      else if (sk.behind || sk.combo === 'behind') { T = psT.hbehind; f = seq(1); }
-      else if (sk.legs || sk.combo === 'legs') { T = psT.hlegs; f = seq(1); }
-      else { const left = rx < 0; T = left ? psT.hdribL : psT.hdribR; const t = (by - 0.13) / 0.6; f = t > 0.55 ? 3 : 2; bx = laneX + (left ? -0.6 : 0.6); } // ボールの 高さに 手の コマを 合わせ、ボールは 絵の 手の 真下に
+    let pose = null;
+    if (pspr) { // 絵の コマえらび と ボールの いち（js/sprite.js）
+      pose = spritePose({ sk, cue, beat, vx, bp, bp2: human && human.ball2(), mem: psMem });
+      const T = psT[pose.sheet] || psT.hpower; const f = pose.f;
       if (pspr.material.map !== T) { pspr.material.map = T; pspr.material.needsUpdate = true; }
-      T.repeat.set(mir ? -1 / 3 : 1 / 3, 0.5); T.offset.set(((f % 3) + (mir ? 1 : 0)) / 3, f < 3 ? 0.5 : 0); pspr.position.set(laneX, psY, 0.02); }
+      T.repeat.set(1 / 3, 0.5); T.offset.set((f % 3) / 3, f < 3 ? 0.5 : 0); pspr.position.set(laneX, pose.lift, 0.02);
+      if (pose.ball) { bx = laneX + pose.ball.x; by = pose.ball.y; bz = pose.ball.z; }
+    }
+    // つよく ドリブル：ボールを 大きく、ゆかに つくたびに 大きな わ
+    { const big = pose && pose.strong ? 1.3 : 1; ball.scale.setScalar(lerp(ball.scale.x, big, 0.2));
+      if (pose && pose.strong) { if (by < 0.26 && !psHit) { psHit = true; impact.position.set(bx, 0.02, bz); impact.scale.setScalar(0.3); impact.material.opacity = 0.95; impact.material.color.set(sk.c); camShake = Math.max(camShake, 0.35); } if (by > 0.4) psHit = false; }
+      if (impact.material.opacity > 0) { impact.scale.multiplyScalar(1 + dt * 7); impact.material.opacity = Math.max(0, impact.material.opacity - dt * 2.6); } impact.visible = impact.material.opacity > 0.01; }
     shadow.position.set(laneX, 0.012, 0); footGlow.position.set(laneX, 0.06, 0.1);
     ball.visible = ballGlow.visible = ballShadow.visible = !noBall;
     ball.position.set(bx, by, bz); ball.rotation.x -= dt * 8; ballGlow.position.copy(ball.position); ballGlow.material.color.set(sk.c); ballLight.position.copy(ball.position); ballLight.color.set(sk.c);
-    { const b2 = human && human.ball2(); ball2.visible = !!b2 && !noBall; if (b2) { ball2.position.set(laneX + b2.x, b2.y, b2.z); ball2.rotation.x -= dt * 8; } }
+    { const b2 = human && human.ball2(); ball2.visible = !!b2 && !noBall; if (b2) { if (pose && pose.ball2) ball2.position.set(laneX + pose.ball2.x, pose.ball2.y, pose.ball2.z); else ball2.position.set(laneX + b2.x, b2.y, b2.z); ball2.rotation.x -= dt * 8; } }
     ballShadow.position.set(bx, 0.014, bz); ballShadow.scale.setScalar(0.25 + (1 - Math.min(1, by / 1.2)) * 0.2);
     // ボールの あと（スワイプのような ひかりの線）
     for (let i = TR - 1; i > 0; i--) { trPos[i * 3] = trPos[i * 3 - 3] ; trPos[i * 3 + 1] = trPos[i * 3 - 2]; trPos[i * 3 + 2] = trPos[i * 3 - 1] + (st.speed || 0) * dt * 2.2; }
@@ -248,7 +247,7 @@ export function createScene(canvas, o) {
       boss.position.set(Math.sin(st.mbeat * 0.7) * 1.2 + (Math.random() - 0.5) * bossHit * 0.5, bossY + Math.sin(st.mbeat * 1.4) * 0.25, st.boss.finale ? -24 : -34);
       boss.userData.ring.rotation.x += dt * 1.2; boss.userData.ring.rotation.y += dt * 0.8; boss.rotation.y = Math.sin(st.mbeat * 0.5) * 0.3; boss.userData.eye.scale.setScalar(1 + bossHit * 0.5 + pulse * 0.15);
       boss.userData.eyeMat.color.set(bossHit > 0.3 ? 0xffffff : 0xff2d55); if (st.boss.dead) boss.scale.multiplyScalar(0.9); else boss.scale.setScalar(0.5);
-      if (bossH) { for (const ch of boss.children) if (!ch.isSprite) ch.visible = false; bossH.root.visible = boss.visible; if (st.boss.dead) bossH.root.scale.multiplyScalar(0.9); else bossH.root.scale.setScalar(st.boss.finale ? 4.6 : 6); bossH.root.position.set(boss.position.x * 1.6, 0, boss.position.z); bossH.root.rotation.set(0, Math.PI, 0); bossH.animate({ dt, beat: beat * 0.5, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); }
+      if (bossH) { if (!bossH._face && faceAtlas) { bossH._face = true; bossH.setFace(faceAtlas, Math.floor(Math.random() * 50)); } for (const ch of boss.children) if (!ch.isSprite) ch.visible = false; bossH.root.visible = boss.visible; if (st.boss.dead) bossH.root.scale.multiplyScalar(0.9); else bossH.root.scale.setScalar(st.boss.finale ? 4.6 : 6); bossH.root.position.set(boss.position.x * 1.6, 0, boss.position.z); bossH.root.rotation.set(0, Math.PI, 0); bossH.animate({ dt, beat: beat * 0.5, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); }
     }
     // つぶ
     for (let i = 0; i < PN; i++) { if (pLife[i] <= 0) continue; pLife[i] -= dt; pVel[i * 3 + 1] -= 9 * dt; pPos[i * 3] += pVel[i * 3] * dt; pPos[i * 3 + 1] += pVel[i * 3 + 1] * dt; pPos[i * 3 + 2] += pVel[i * 3 + 2] * dt + (st.speed || 0) * dt * 6; if (pLife[i] <= 0) pPos[i * 3 + 1] = -50; }
@@ -279,5 +278,6 @@ export function createScene(canvas, o) {
   const v = new THREE.Vector3();
   function project(x, y, z) { v.set(x, y, z).project(cam); return [(v.x * 0.5 + 0.5) * W, (-v.y * 0.5 + 0.5) * H]; }
   function dispose() { if (human) { scene.remove(human.root); human.dispose(); } for (const h of [...defs, rival, bossH]) if (h) { scene.remove(h.root); h.dispose(); } env.dispose(); for (const [, gp] of gates) (gp.userData.mats || []).forEach((m) => m.dispose()); disposables.forEach((d) => { try { d.dispose(); } catch (e) { /* noop */ } }); }
-  return { render, resize, burst, project, dispose, get laneX() { return laneX; }, bossPos: () => boss.position };
+  const ready = () => (!env.ready || env.ready()) && (!human || o.sprite === false || !!pspr);
+  return { render, resize, burst, project, dispose, ready, get laneX() { return laneX; }, bossPos: () => boss.position };
 }

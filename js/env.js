@@ -78,10 +78,10 @@ function pickSkyPhoto(themeName, stageSeed) {
 // コートの中の ステージ：コートの絵を そのまま 背景にして、あまり スクロールしない
 const COURT_VP = { village: [0.28, 0.315, 0.332, 0.345, 0.285, 0.311], sunset: [0.385, 0.345, 0.345, 0.39], night: [0.335, 0.345], snow: [0.34, 0.345], castle: [0.465, 0.385, 0.389, 0.415, 0.325], gym: [0.465, 0.395, 0.355, 0.373] };
 const courtN = (stageId) => { const ss = String(stageId || ''); let h2 = 7; for (let i = 0; i < ss.length; i++) h2 = (h2 * 31 + ss.charCodeAt(i)) >>> 0; const mm = /-(\d+)$/.exec(ss); return mm ? (+mm[1] - 1) : (h2 % 9973) % 997; };
-const IMGS = {}; const courtImg = (theme, idx) => { const src = `img/court/${theme}${idx + 1}.jpg`; if (!IMGS[src]) { const im = new Image(); im.src = src; IMGS[src] = im; } return IMGS[src]; };
+const IMGS = {}; const courtImg = (theme, idx) => { const src = `img/court/${theme}${idx + 1}.webp`; if (!IMGS[src]) { const im = new Image(); im.src = src; IMGS[src] = im; } return IMGS[src]; };
 // ステージの しょうかい画面の うちに、コートの絵と プレイヤーの絵を 先に 読みこんでおく
-export function preloadStage(theme, stageId) { const v = COURT_VP[theme]; if (v) courtImg(theme, courtN(stageId) % v.length); for (const k of PLAYER_SHEETS) { const src = `img/player/${k}.png`; if (!IMGS[src]) { const im = new Image(); im.src = src; IMGS[src] = im; } } }
-export const PLAYER_SHEETS = ['hpower', 'hlegs', 'hbehind', 'hside', 'hsideL', 'height', 'hwrap', 'hhead', 'hknees', 'hroll', 'hspin', 'hjstop', 'hdribL', 'hdribR'];
+export function preloadStage(theme, stageId, girl) { const v = COURT_VP[theme]; if (v) courtImg(theme, courtN(stageId) % v.length); for (const k of PLAYER_SHEETS) { const src = `img/player/${girl ? 'g_' : ''}${k}.webp`; if (!IMGS[src]) { const im = new Image(); im.src = src; IMGS[src] = im; } } }
+import { SHEETS as PLAYER_SHEETS } from './sprite.js';
 function buildCourtEnv(scene, o, th, D, n) {
   const vps = COURT_VP[o.themeName]; const idx = n % vps.length; const vp = vps[idx]; const HW = o.HW, LW = o.LW; const SCREEN_VP = 0.42; // 画面の中で 地平線が くる高さ
   let aspect = 16 / 9, img = null, bgT = null;
@@ -105,7 +105,7 @@ function buildCourtEnv(scene, o, th, D, n) {
   // 走っている かんじを 出す：レーンの 点線だけ うごかす
   const laneT = tex(256, 256, (g, w, h) => { g.clearRect(0, 0, w, h); g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 5; g.setLineDash([70, 58]); for (const f of [0.5 - (LW * 0.5) / (HW * 2), 0.5 + (LW * 0.5) / (HW * 2)]) { g.beginPath(); g.moveTo(f * w, 0); g.lineTo(f * w, h); g.stroke(); } g.setLineDash([]); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 6; for (const f of [0.012, 0.988]) { g.beginPath(); g.moveTo(f * w, 0); g.lineTo(f * w, h); g.stroke(); } }, [1, 20]); D.push(laneT);
   const lg = new THREE.PlaneGeometry(HW * 2, 200), lm = new THREE.MeshBasicMaterial({ map: laneT, transparent: true, depthWrite: false }); D.push(lg, lm); const lp = new THREE.Mesh(lg, lm); lp.rotation.x = -Math.PI / 2; lp.position.set(0, 0.01, -88); scene.add(lp);
-  return { update: (camZ, dt) => { laneT.offset.y = (camZ / 10) % 1; stepPts(dt || 0.016); }, setAspect: (a) => { if (a > 0 && Math.abs(a - aspect) > 0.01) { aspect = a; draw(); } }, bloom: th.bloom, theme: th, dispose: () => { if (bgT) bgT.dispose(); D.forEach((d) => { try { d.dispose(); } catch (e) { /* noop */ } }); } };
+  return { ready: () => !!img, update: (camZ, dt) => { laneT.offset.y = (camZ / 10) % 1; stepPts(dt || 0.016); }, setAspect: (a) => { if (a > 0 && Math.abs(a - aspect) > 0.01) { aspect = a; draw(); } }, bloom: th.bloom, theme: th, dispose: () => { if (bgT) bgT.dispose(); D.forEach((d) => { try { d.dispose(); } catch (e) { /* noop */ } }); } };
 }
 // ステージの おくに 見える けしき（コートの絵の 上はんぶん）。空の写真と べつべつに えらぶので、ステージごとに 組み合わせが かわる
 const BG_COUNT = { village: 6, sunset: 4, night: 3, snow: 2, castle: 3, gym: 4 };

@@ -132,6 +132,7 @@ export function runStage(opts) {
 
   // ---------- 状態 ----------
   let beat = video ? -7 : -4, mbeat = 0, offset = video ? 7 : 4, lastQ = -1, last = performance.now();
+  let loaded = false, waitT = 0;
   let phase = 'count'; let paused = false, dead = false, raf = 0;
   let score = 0, combo = 0, maxCombo = 0, hearts = 3, chaser = 0.3, chaserShow = 0.3;
   let cuesOk = 0, cuesAll = 0, orbsGot = 0, dribbles = 0, leftReps = 0, rightReps = 0;
@@ -276,8 +277,11 @@ export function runStage(opts) {
     if (c.ballMode !== 'none') {
       const pos = (q) => [q.x * hx, fy - r * 0.14 - q.h * (fy - r * 0.14 - top)];
       if (!p.hold) { g.lineCap = 'round'; const N = 12; let prev = pos(p); for (let i = 1; i <= N; i++) { const q = pos(ballPath(c, b - i * 0.045)); g.globalAlpha = alpha * (1 - i / N) * (sk.behind ? 0.5 : 0.95); g.strokeStyle = col; g.lineWidth = r * 0.2 * (1 - i / N) + 1; g.beginPath(); g.moveTo(prev[0], prev[1]); g.lineTo(q[0], q[1]); g.stroke(); prev = q; } g.globalAlpha = alpha; }
-      const bp = pos(p); const br = r * 0.15; const gr = g.createRadialGradient(bp[0] - br * 0.3, bp[1] - br * 0.3, br * 0.1, bp[0], bp[1], br); gr.addColorStop(0, '#ffc27a'); gr.addColorStop(1, '#e8590c'); g.globalAlpha = alpha * (sk.behind ? 0.6 : 1); g.fillStyle = gr; g.beginPath(); g.arc(bp[0], bp[1], br, 0, TAU); g.fill(); g.strokeStyle = '#5c2000'; g.lineWidth = Math.max(1, r * 0.015); g.beginPath(); g.moveTo(bp[0] - br, bp[1]); g.lineTo(bp[0] + br, bp[1]); g.stroke(); g.globalAlpha = alpha;
-      if (c.skill === 'pound' && p.h < 0.12) { g.strokeStyle = '#fff'; g.lineWidth = r * 0.03; for (let i = -2; i <= 2; i++) { if (!i) continue; g.beginPath(); g.moveTo(bp[0] + i * r * 0.1, fy); g.lineTo(bp[0] + i * r * 0.17, fy - r * 0.12); g.stroke(); } }
+      const bp = pos(p); const strong = c.skill === 'pound'; const br = r * (strong ? 0.24 : 0.15); const gr = g.createRadialGradient(bp[0] - br * 0.3, bp[1] - br * 0.3, br * 0.1, bp[0], bp[1], br); gr.addColorStop(0, '#ffc27a'); gr.addColorStop(1, '#e8590c'); g.globalAlpha = alpha * (sk.behind ? 0.6 : 1); g.fillStyle = gr; g.beginPath(); g.arc(bp[0], bp[1], br, 0, TAU); g.fill(); g.strokeStyle = '#5c2000'; g.lineWidth = Math.max(1, r * 0.015); g.beginPath(); g.moveTo(bp[0] - br, bp[1]); g.lineTo(bp[0] + br, bp[1]); g.stroke(); g.globalAlpha = alpha;
+      if (strong) { // つよく：ゆかに つく たびに 大きな わ と しょうげき線
+        const hit = Math.max(0, 1 - p.h * 5); if (hit > 0) { g.globalAlpha = alpha * hit; g.strokeStyle = '#fff'; g.lineWidth = r * 0.045; g.beginPath(); g.ellipse(bp[0], fy, r * (0.25 + 0.45 * (1 - hit)), r * (0.07 + 0.1 * (1 - hit)), 0, 0, TAU); g.stroke();
+          for (let i = -3; i <= 3; i++) { if (!i) continue; g.beginPath(); g.moveTo(bp[0] + i * r * 0.11, fy - r * 0.02); g.lineTo(bp[0] + i * r * 0.2, fy - r * 0.2); g.stroke(); } g.globalAlpha = alpha; }
+        g.fillStyle = '#fff'; g.font = `900 ${Math.round(r * 0.2)}px sans-serif`; g.textAlign = 'center'; g.fillText('ドン！', bp[0], bp[1] - br - r * 0.08); }
     }
     if (c.skill === 'freeze') { g.strokeStyle = '#ff2d55'; g.lineWidth = r * 0.08; g.beginPath(); g.arc(0, 0, r * 0.7, 0, TAU); g.stroke(); }
     if (c.skill === 'hesi') { g.fillStyle = col; for (let i = 0; i < 3; i++) { g.globalAlpha = alpha * (frac(b) > i / 3 ? 1 : 0.25); g.beginPath(); g.arc((i - 1) * r * 0.22, -r * 0.72, r * 0.06, 0, TAU); g.fill(); } g.globalAlpha = alpha; }
@@ -338,7 +342,9 @@ export function runStage(opts) {
     const rdt = Math.min(video ? 0.5 : (window.__dtcap || 0.05), (now - last) / 1000);
     if (video) { (window.__ft || (window.__ft = [])).push(now - last); if (window.__ft.length > 2000) window.__ft.shift(); }
     last = now; if (paused) return;
-    slow += (1 - slow) * 0.06; const dt = rdt * slow;
+    slow += (1 - slow) * 0.06; let dt = rdt * slow;
+    // コートと プレイヤーの 絵が そろうまで カウントを はじめない（さいだい 8びょう）
+    if (!loaded && phase === 'count') { waitT += rdt; loaded = !scene.ready || scene.ready() || waitT > 8; if (!loaded) dt = 0; }
     mbeat += dt * bps; const prevBeat = beat;
     if (phase === 'count' || phase === 'run' || phase === 'finale') beat = Math.max(beat, mbeat - offset);
     const q = Math.floor(mbeat * 4);
@@ -385,6 +391,7 @@ export function runStage(opts) {
     scene.render({ camZ, dt, beat: Math.max(0, beat), mbeat, lane: visLane, cue: phase === 'count' ? null : curCue, speed: spd, cues, orbs: orbs.filter((o) => !o.got && !o.missed), boss, shake, chaser: dojo ? 0 : (window.__chaser ?? chaserShow), pip: phase === 'run' || phase === 'finale' ? pipRect : null });
     shake *= 0.86;
     drawHUD(curCue, cues[cues.indexOf(curCue) + 1]);
+    if (!loaded) { g.fillStyle = 'rgba(7,11,36,.82)'; g.fillRect(0, 0, W, H); g.fillStyle = '#fff'; g.font = `900 ${Math.round(Math.min(W, H) * 0.06)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('じゅんびちゅう' + '.'.repeat(1 + Math.floor(waitT * 3) % 3), W / 2, H / 2); }
     if (recorder) { recorder.cctx.drawImage(gl, 0, 0, recorder.comp.width, recorder.comp.height); recorder.cctx.drawImage(hud, 0, 0, recorder.comp.width, recorder.comp.height); }
   }
 
