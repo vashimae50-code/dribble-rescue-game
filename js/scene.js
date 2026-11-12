@@ -42,7 +42,7 @@ export function createScene(canvas, o) {
   // 敵も バスケットマン：ディフェンス 2人、おいかけてくる 1人、ボス 1人（べつの チームの ユニフォーム）
   // プレイヤーを 絵（スプライト）で 出す：右手ドリブル と パワーポジション
   let pspr = null, psMir = false; const psT = {};
-  if (human && o.sprite !== false) { let n = 0; const ld = new THREE.TextureLoader(); for (const k of ['dribble', 'power']) { const t = ld.load(`img/player/${k}.png`, () => { if (++n === 2) { const m = new THREE.SpriteMaterial({ map: psT.power, transparent: true, alphaTest: 0.05 }); pspr = new THREE.Sprite(m); pspr.center.set(0.5, 0.01); pspr.scale.set(2.05, 2.05, 1); scene.add(pspr); human.setMainVisible(false); } }); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; psT[k] = t; } }
+  if (human && o.sprite !== false) { let n = 0; const ld = new THREE.TextureLoader(); for (const k of ['dribble', 'power', 'legs']) { const t = ld.load(`img/player/${k}.png`, () => { if (++n === 3) { const m = new THREE.SpriteMaterial({ map: psT.power, transparent: true, alphaTest: 0.05 }); pspr = new THREE.Sprite(m); pspr.center.set(0.5, 0.01); pspr.scale.set(2.05, 2.05, 1); scene.add(pspr); human.setMainVisible(false); } }); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; psT[k] = t; } }
   const faceAtlas = o.human ? new THREE.TextureLoader().load('img/faces.png') : null; if (faceAtlas) faceAtlas.colorSpace = THREE.SRGBColorSpace;
   const mkFoe = (c, num, trim) => { const h = makeHuman(o.human, c, { num, trim, guide: false, skin: '#c98f66', shoe: '#22222a' }); h.root.visible = false; scene.add(h.root); return h; };
   const defs = o.human ? [mkFoe('#d9263c', 23, '#ffe03d'), mkFoe('#d9263c', 11, '#ffe03d'), mkFoe('#2a3a7a', 15, '#ffe03d'), mkFoe('#2a3a7a', 8, '#ffe03d')] : [];
@@ -198,8 +198,8 @@ export function createScene(canvas, o) {
     P.position.set(laneX, 0, 0);
     let bp = null; if (human) bp = human.animate({ dt, beat, cue, sk, vx });
     const bx = laneX + (bp ? bp.x : 0.4), by = bp ? bp.y : 0.8, bz = bp ? bp.z : -0.3;
-    if (pspr) { const hold = sk.hand === 'hold' || !cue; const T = hold ? psT.power : psT.dribble; if (pspr.material.map !== T) { pspr.material.map = T; pspr.material.needsUpdate = true; }
-      let f; if (hold) f = [0, 1, 2, 1][Math.floor(Math.max(0, beat)) % 4]; else { const t = (by - 0.13) / 0.6; f = t > 0.62 ? 0 : t > 0.3 ? 1 : 2; const rx = bp ? bp.x : 0.4; if (rx < -0.08) psMir = true; else if (rx > 0.08) psMir = false; }
+    if (pspr) { const hold = sk.hand === 'hold' || !cue; const legs = !hold && (sk.legs || sk.combo === 'legs'); const T = hold ? psT.power : legs ? psT.legs : psT.dribble; if (pspr.material.map !== T) { pspr.material.map = T; pspr.material.needsUpdate = true; }
+      let f; if (hold) f = [0, 1, 2, 1][Math.floor(Math.max(0, beat)) % 4]; else if (legs) { const cb = Math.max(0, beat - cue.b0); f = Math.min(5, Math.floor((cb % 1) * 6)); psMir = (Math.floor(cb) % 2 === 1) !== (cue.hand0 === 'L'); } else { const t = (by - 0.13) / 0.6; f = t > 0.62 ? 0 : t > 0.3 ? 1 : 2; const rx = bp ? bp.x : 0.4; if (rx < -0.08) psMir = true; else if (rx > 0.08) psMir = false; }
       const mir = !hold && psMir; T.repeat.set(mir ? -1 / 3 : 1 / 3, 0.5); T.offset.set(((f % 3) + (mir ? 1 : 0)) / 3, f < 3 ? 0.5 : 0); pspr.position.set(laneX, 0, 0.02); }
     shadow.position.set(laneX, 0.012, 0); footGlow.position.set(laneX, 0.06, 0.1);
     ball.visible = ballGlow.visible = ballShadow.visible = !noBall;
