@@ -36,7 +36,7 @@ export function createScene(canvas, o) {
   const ballLight = new THREE.PointLight(0xff9a3d, 2.5, 4); scene.add(ballLight);
 
   // ---- 背景の世界 ----
-  const env = buildEnv(scene, { themeName: o.theme, HW, LW, glow: shared.glow });
+  const env = buildEnv(scene, { themeName: o.theme, stageId: o.stageId, HW, LW, glow: shared.glow });
   // ---- プレイヤー（人型モデル） ----
   const human = o.human ? makeHuman(o.human, suit, { num: 7 }) : null;
   // 敵も バスケットマン：ディフェンス 2人、おいかけてくる 1人、ボス 1人（べつの チームの ユニフォーム）

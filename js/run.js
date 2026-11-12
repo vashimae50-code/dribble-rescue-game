@@ -19,7 +19,7 @@ export function runStage(opts) {
   const g = hud.getContext('2d');
   const wi = stage ? (stage.wi ?? 0) : 0; const video = !!opts.video;
   const audio = new Audio(settings, dojo ? 48 : world.base, { ctx: opts.actx, major: dojo || ['village', 'sunset', 'snow'].includes(world.theme), riff: dojo ? 2 : wi, bpm: dojo ? 86 : stage.bpm, record: video });
-  const scene = createScene(gl, { pal, theme: dojo ? 'gym' : world.theme, bloom: settings.bloom, video, ...opts.look });
+  const scene = createScene(gl, { pal, theme: dojo ? 'gym' : world.theme, stageId: stage ? stage.id : 'dojo', bloom: settings.bloom, video, ...opts.look });
   const cam = !!pose;
   let bps = (dojo ? 76 : stage.bpm) / 60;
   let W = 0, H = 0, DPR = 1;
@@ -406,7 +406,7 @@ export function runStage(opts) {
       overlay.querySelector('#resume').addEventListener('click', () => setPause(false)); overlay.querySelector('#quit').addEventListener('click', () => { stop(); onQuit(); });
     } else { overlay.innerHTML = ''; try { audio.ctx && audio.ctx.resume(); } catch (e) { /* noop */ } }
   }
-  function onKey(e) { if (e.key === 'Escape' || e.key === 'p') setPause(!paused); }
+  function onKey(e) { if (!video && (e.key === 'Escape' || e.key === 'p')) setPause(!paused); }
   document.addEventListener('keydown', onKey);
   raf = requestAnimationFrame((t) => { last = t; frame(t); });
   return { stop, pause: () => setPause(true), debug: () => ({ beat, phase, score, tier, endBeat, cues: cues.length, skill: curCue.skill, steps: cues.filter((c) => c.stepName).map((c) => [c.skill, c.stepIdx, c.b0]), bounces: audio.bn || 0, actx: audio.ctx && audio.ctx.state }) };

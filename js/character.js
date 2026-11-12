@@ -156,7 +156,8 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
       by = Math.min(by, 0.13 + (by - 0.13) * 0.8);
     }
     // 敵（ディフェンス／おいかける）の うごき
-    if (st.mode === 'defend') { const sh = Math.sin(beat * Math.PI); crouch = 0.85; pitch = 0.3; T.fl.set(-0.4 + sh * 0.06, Math.max(0, sh) * 0.05, 0); T.fr.set(0.4 + sh * 0.06, Math.max(0, -sh) * 0.05, 0); hipX = sh * 0.05; rootY = 0; }
+    // ディフェンスの しせい：ひざを 深く おとし、足を 広く、うでを 大きく 広げる（本物の ディフェンスの かまえを イメージ）
+    if (st.mode === 'defend') { const sh = Math.sin(beat * Math.PI); crouch = 0.98; pitch = 0.38; T.fl.set(-0.46 + sh * 0.07, Math.max(0, sh) * 0.05, 0); T.fr.set(0.46 + sh * 0.07, Math.max(0, -sh) * 0.05, 0); hipX = sh * 0.06; rootY = 0; }
     if (st.mode === 'chase') { const phi = beat * Math.PI * 2; crouch = 0.5; pitch = 0.5; T.fl.set(-0.14, Math.max(0, Math.sin(phi)) * 0.2, 0.42 * Math.cos(phi)); T.fr.set(0.14, Math.max(0, -Math.sin(phi)) * 0.2, -0.42 * Math.cos(phi)); }
     // よこへの うごき（ステップ）
     const lat = Math.min(1, Math.abs(st.vx) / 2.2);
@@ -193,7 +194,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     bx = lbx; bz = lbz;
     const handY = Math.max(by + 0.13, S.hip.y - 0.36);
     for (const [h, s] of [[T.hl, -1], [T.hr, 1]]) {
-      if (st.mode === 'defend') h.set(s * 0.7, S.hip.y + 0.42 + Math.sin(beat * Math.PI * 2 + s) * 0.14, -0.28);
+      if (st.mode === 'defend') h.set(s * 0.86, S.hip.y + 0.4 + Math.sin(beat * Math.PI * 2 + s) * 0.16, -0.3);
       else if (st.mode === 'chase') { const sw = Math.sin(beat * Math.PI * 2 + (s > 0 ? 0 : Math.PI)); h.set(s * 0.3, S.hip.y + 0.25 + Math.max(0, sw) * 0.15, -0.3 - sw * 0.25); }
       else if (twoHands) h.set(s > 0 ? two1x : S.ball2.x, Math.max((s > 0 ? by : S.ball2.y) + 0.13, S.hip.y - 0.36), -0.28);
       else if (both) h.set(bx + s * 0.13, by + 0.02, bz);
