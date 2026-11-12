@@ -24,6 +24,15 @@ const V = () => new THREE.Vector3(); const Q = () => new THREE.Quaternion();
 const lerp = (a, b, t) => a + (b - a) * t; const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const smooth = (x) => x * x * (3 - 2 * x); const TAU2 = Math.PI * 2;
 
+// アニメ風の セルシェーディング用の グラデーション（3だんかい の あかるさ）
+let toonGrad = null;
+function gradientMap3() {
+  if (toonGrad) return toonGrad;
+  const data = new Uint8Array([80, 80, 80, 255, 175, 175, 175, 255, 255, 255, 255, 255]);
+  const t = new THREE.DataTexture(data, 3, 1); t.needsUpdate = true; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false;
+  toonGrad = t; return t;
+}
+
 export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   const model = cloneModel(template);
   const root = new THREE.Group(); const holder = new THREE.Group(); holder.rotation.y = Math.PI; holder.add(model); root.add(holder);
@@ -40,7 +49,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     if (/Shoulder/.test(n)) return ax < 0.15 ? JERSEY : SKIN;
     if (/Neck/.test(n)) return SKIN; if (/Head/.test(n)) return y > 1.62 ? HAIR : SKIN; return SKIN; };
   const cloth = (c) => c === JERSEY || c === SHORTS || c === TRIM;
-  const meshes = []; const mats = []; const tmpV = new THREE.Vector3(); const geos = []; let zBack = -1, zFront = 1;
+  const meshes = []; const mats = []; const outlines = []; const outlineMats = []; const tmpV = new THREE.Vector3(); const geos = []; let zBack = -1, zFront = 1;
   root.updateMatrixWorld(true);
   model.traverse((o) => { if (!o.isSkinnedMesh) return; const g = o.geometry; geos.push(g); const si = g.attributes.skinIndex, sw = g.attributes.skinWeight, pos = g.attributes.position, nor = g.attributes.normal; const col = new Float32Array(pos.count * 3);
     for (let i = 0; i < pos.count; i++) { let best = 0, bw = -1; for (let k = 0; k < 4; k++) { const w = sw.getComponent(i, k); if (w > bw) { bw = w; best = si.getComponent(i, k); } }
@@ -52,7 +61,13 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
       if (nor && cloth(c) && !/Foot|Toe/.test(bn)) { const legs = /UpLeg|Hips/.test(bn); const k = legs ? 0.02 + 0.035 * clamp((0.95 - y) / 0.35, 0, 1) : 0.014; pos.setXYZ(i, x + nor.getX(i) * k, y + nor.getY(i) * k, z + nor.getZ(i) * k); }
       if (/Spine/.test(bn) && Math.abs(x) < 0.06 && y > 1.2 && y < 1.4) { zBack = Math.max(zBack, -z); zFront = Math.max(zFront === 1 ? -1 : zFront, z); } }
     pos.needsUpdate = true; g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.58, metalness: 0, emissive: 0x1a1410, emissiveIntensity: 0.2 }); o.material = m; meshes.push(o); mats.push(m); });
+    // アニメっぽい セルシェーディング（段々の 色わけ）に
+    const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradientMap3(), emissive: 0x1a1410, emissiveIntensity: 0.22 }); o.material = m; meshes.push(o); mats.push(m);
+    // ふちどり（アウトライン）：ひとまわり 大きい 黒の うらめんメッシュを かさねる
+    const om = new THREE.MeshBasicMaterial({ color: 0x120e0c, side: THREE.BackSide }); om.onBeforeCompile = (sh) => { sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n transformed += normalize(normal) * 0.013;'); };
+    const ol = new THREE.SkinnedMesh(g, om); ol.bind(o.skeleton, o.bindMatrix); ol.frustumCulled = false;
+    ol.userData.par = o.parent || model; outlines.push(ol); outlineMats.push(om); });
+  outlines.forEach((ol) => { ol.userData.par.add(ol); if (opt.guide !== false) ol.layers.enable(1); });
   // ヘッドバンド
   const band = new THREE.MeshBasicMaterial({ color: suitC }); const tor = new THREE.TorusGeometry(1, 0.22, 8, 20);
   const attach = (bone, r, y, rx) => { if (!bone) return; const t = new THREE.Mesh(tor, band); const ws = bone.getWorldScale(new THREE.Vector3()).x || 1; t.scale.setScalar(r / ws); t.position.y = y / ws; t.rotation.x = rx; bone.add(t); meshes.push(t); };
@@ -63,9 +78,9 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     const inv = new THREE.Matrix4().copy(B.Spine2.matrixWorld).invert(); const mw = new THREE.Matrix4();
     for (const [zz, ry, sz, yy] of [[-(zBack + 0.03), Math.PI, 0.25, 1.3], [zFront + 0.03, 0, 0.13, 1.36]]) { const pl = new THREE.Mesh(pg, nm); const lm = new THREE.Matrix4().compose(new THREE.Vector3(0, yy, zz), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), ry), new THREE.Vector3(sz, sz, sz)); mw.multiplyMatrices(model.matrixWorld, lm); mw.premultiply(inv); mw.decompose(pl.position, pl.quaternion, pl.scale); pl.userData.mat0 = nm; B.Spine2.add(pl); meshes.push(pl); } }
   const sil = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
-  const setSilhouette = (on, color) => { if (on) sil.color.set(color); let i = 0; for (const m of meshes) { if (m.isSkinnedMesh) m.material = on ? sil : mats[i++]; else if (m.userData.mat0) m.visible = !on; else m.material = on ? sil : band; } };
+  const setSilhouette = (on, color) => { if (on) sil.color.set(color); let i = 0; for (const m of meshes) { if (m.isSkinnedMesh) m.material = on ? sil : mats[i++]; else if (m.userData.mat0) m.visible = !on; else m.material = on ? sil : band; } outlines.forEach((ol) => { ol.visible = !on; }); };
   if (opt.guide !== false) meshes.forEach((m) => m.layers.enable(1));
-  const dispose = () => { geos.forEach((g) => g.dispose()); mats.forEach((m) => m.dispose()); numMats.forEach((m) => m.dispose()); band.dispose(); tor.dispose(); sil.dispose(); };
+  const dispose = () => { geos.forEach((g) => g.dispose()); mats.forEach((m) => m.dispose()); numMats.forEach((m) => m.dispose()); band.dispose(); tor.dispose(); sil.dispose(); outlineMats.forEach((m) => m.dispose()); };
   root.updateMatrixWorld(true);
   const wp = (b) => b.getWorldPosition(V());
   const L = { up: wp(B.LeftUpLeg).distanceTo(wp(B.LeftLeg)), lo: wp(B.LeftLeg).distanceTo(wp(B.LeftFoot)), ua: wp(B.LeftArm).distanceTo(wp(B.LeftForeArm)), fa: wp(B.LeftForeArm).distanceTo(wp(B.LeftHand)) };
