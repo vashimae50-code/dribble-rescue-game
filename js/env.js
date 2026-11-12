@@ -68,6 +68,22 @@ function pickSkyPhoto(themeName, stageSeed) {
   const n = (stageSeed == null) ? Math.floor(Math.random() * pool.length) : (stageSeed % pool.length);
   return pool[n];
 }
+// ステージの おくに 見える けしき（コートの絵の 上はんぶん）。空の写真と べつべつに えらぶので、ステージごとに 組み合わせが かわる
+const BG_COUNT = { village: 6, sunset: 4, night: 3, snow: 2, castle: 3, gym: 4 };
+function addBackdrop(scene, th, themeName, n, D) {
+  const cnt = BG_COUNT[themeName]; if (!cnt) return; const img = new Image();
+  img.onload = () => {
+    const cw = 768, ch = Math.round(768 * img.height / img.width); const cv = document.createElement('canvas'); cv.width = cw; cv.height = ch; const cx = cv.getContext('2d'); cx.drawImage(img, 0, 0, cw, ch);
+    // 下は きりの色に とかす
+    let gr = cx.createLinearGradient(0, ch * 0.8, 0, ch); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, th.fog); cx.fillStyle = gr; cx.fillRect(0, ch * 0.8, cw, ch * 0.2);
+    // 上と 左右は すきとおらせて、空の写真に つなげる
+    cx.globalCompositeOperation = 'destination-out'; const fade = (x0, y0, x1, y1, rx, ry, rw, rh) => { const g2 = cx.createLinearGradient(x0, y0, x1, y1); g2.addColorStop(0, 'rgba(0,0,0,1)'); g2.addColorStop(1, 'rgba(0,0,0,0)'); cx.fillStyle = g2; cx.fillRect(rx, ry, rw, rh); };
+    const tf = th.indoor ? 0.05 : 0.3; fade(0, 0, 0, ch * tf, 0, 0, cw, ch * tf); fade(0, 0, cw * 0.14, 0, 0, 0, cw * 0.14, ch); fade(cw, 0, cw * 0.86, 0, cw * 0.86, 0, cw * 0.14, ch);
+    const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; const m = new THREE.MeshBasicMaterial({ map: t, transparent: true, fog: false, depthWrite: false });
+    const W = th.indoor ? 86 : 165, H = W * ch / cw; const g = new THREE.PlaneGeometry(W, H); const pl = new THREE.Mesh(g, m); pl.position.set(0, H / 2 - 6, th.indoor ? -112 : -124); pl.renderOrder = -5; scene.add(pl); D.push(t, m, g);
+  };
+  img.onerror = () => {}; img.src = `img/bg/${themeName}${(n % cnt) + 1}.jpg`;
+}
 // 写真を 空の背景に なじませる（下のほうを fog の色に とかし込む）
 function applySkyPhoto(scene, th, file) {
   const img = new Image(); img.crossOrigin = 'anonymous';
@@ -91,6 +107,7 @@ export function buildEnv(scene, o) {
   const sky = add(tex(16, 512, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, th.sky[0]); gr.addColorStop(0.45, th.sky[1]); gr.addColorStop(0.62, th.sky[2]); gr.addColorStop(1, th.sky[2]); g.fillStyle = gr; g.fillRect(0, 0, w, h); }));
   scene.background = sky; scene.fog = new THREE.Fog(C(th.fog), th.indoor ? 40 : 34, th.indoor ? 120 : 130);
   if (!th.indoor) { const seedStr = String(o.stageId || o.themeName || ''); let hs = 0; for (let i = 0; i < seedStr.length; i++) hs = (hs * 131 + seedStr.charCodeAt(i)) >>> 0; const photo = pickSkyPhoto(o.themeName, hs); if (photo) applySkyPhoto(scene, th, photo); }
+  { const ss = String(o.stageId || o.themeName || '') + 'bg'; let h2 = 7; for (let i = 0; i < ss.length; i++) h2 = (h2 * 31 + ss.charCodeAt(i)) >>> 0; addBackdrop(scene, th, o.themeName, h2 >>> 3, D); }
   scene.add(new THREE.HemisphereLight(C(th.hemi[0]), C(th.hemi[1]), th.hemi[2]));
   const dl = new THREE.DirectionalLight(C(th.dir[0]), th.dir[1]); dl.position.set(-4, 9, 6); scene.add(dl);
   const glowT = o.glow;
