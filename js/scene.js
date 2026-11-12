@@ -50,6 +50,7 @@ export function createScene(canvas, o) {
   const defs = o.human ? [mkFoe('#d9263c', 23, '#ffe03d'), mkFoe('#d9263c', 11, '#ffe03d'), mkFoe('#2a3a7a', 15, '#ffe03d'), mkFoe('#2a3a7a', 8, '#ffe03d')] : [];
   const rival = o.human ? mkFoe('#d9263c', 4, '#ffe03d') : null;
   const bossH = o.human ? mkFoe('#1c2450', 99, '#ffe03d') : null;
+  const midH = o.human ? mkFoe('#d9263c', 5, '#ffe03d') : null; if (midH) midH.root.visible = false; // ちゅうボス（大きな ディフェンス）
   const P = human ? human.root : new THREE.Group(); scene.add(P);
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.55, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.5 })); shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.012; scene.add(shadow); disposables.push(shadow.geometry, shadow.material);
   const footGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: shared.glow, color: C(suit), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.25 })); footGlow.scale.set(2.0, 0.8, 1); scene.add(footGlow); disposables.push(footGlow.material);
@@ -198,11 +199,12 @@ export function createScene(canvas, o) {
     const tl = st.lane * LW; const prevX = laneX; laneX = lerp(laneX, tl, 1 - Math.exp(-dt * 11)); const vx = (laneX - prevX) / Math.max(dt, 0.001);
     const noBall = cue && cue.ballMode === 'none';
     P.position.set(laneX, 0, 0);
-    let bp = null; if (human) bp = human.animate({ dt, beat, cue, sk, vx });
+    const abeat = cue && cue.rush ? cue.b0 + (beat - cue.b0) * 2 : beat; // れんだ：ドリブルを 2ばいの はやさに
+    let bp = null; if (human) bp = human.animate({ dt, beat: abeat, cue, sk, vx });
     let bx = laneX + (bp ? bp.x : 0.4), by = bp ? bp.y : 0.8, bz = bp ? bp.z : -0.3;
     let pose = null;
     if (pspr) { // 絵の コマえらび と ボールの いち（js/sprite.js）
-      pose = spritePose({ sk, cue, beat, vx, bp, bp2: human && human.ball2(), mem: psMem });
+      pose = spritePose({ sk, cue, beat: abeat, vx, bp, bp2: human && human.ball2(), mem: psMem });
       const T = psT[pose.sheet] || psT.hpower; const f = pose.f;
       if (pspr.material.map !== T) { pspr.material.map = T; pspr.material.needsUpdate = true; }
       T.repeat.set(1 / 3, 0.5); T.offset.set((f % 3) / 3, f < 3 ? 0.5 : 0); pspr.position.set(laneX, pose.lift, 0.02);
@@ -242,6 +244,12 @@ export function createScene(canvas, o) {
       dummy.scale.setScalar(1.5 + pulse * 0.3); dummy.updateMatrix(); halo.setMatrixAt(n, dummy.matrix); halo.setColorAt(n, tmpC.set(ob.c)); n++; }
     orbs.count = halo.count = n; orbs.instanceMatrix.needsUpdate = halo.instanceMatrix.needsUpdate = true; if (orbs.instanceColor) orbs.instanceColor.needsUpdate = true; if (halo.instanceColor) halo.instanceColor.needsUpdate = true;
     // ボス
+    // ちゅうボス：プレイヤーの まえに 大きな ディフェンス。たおれたら ちぢんで きえる
+    if (midH) { const m = st.mid; midH.root.visible = !!(m && m.on && !m.gone);
+      if (midH.root.visible) { if (!midH._face && faceAtlas) { midH._face = true; midH.setFace(faceAtlas, Math.floor(Math.random() * 50)); }
+        const hit = m.hit || 0; const sc = m.dead ? Math.max(0.01, midH.root.scale.x * (1 - dt * 3)) : 1.75; midH.root.scale.setScalar(sc);
+        midH.root.position.set(laneX + Math.sin(beat * 2.1) * 0.5 + (Math.random() - 0.5) * hit * 0.35, 0, -7.5); midH.root.rotation.set(m.dead ? -0.6 : 0, Math.PI, Math.sin(beat * 2.1) * 0.08);
+        midH.animate({ dt, beat: beat * 1.2, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); } }
     if (st.boss && st.boss.on) {
       boss.visible = !st.boss.gone; bossY = lerp(bossY, 2.3, 0.04); bossHit = Math.max(st.boss.hit || 0, bossHit - dt * 3);
       boss.position.set(Math.sin(st.mbeat * 0.7) * 1.2 + (Math.random() - 0.5) * bossHit * 0.5, bossY + Math.sin(st.mbeat * 1.4) * 0.25, st.boss.finale ? -24 : -34);
@@ -277,7 +285,7 @@ export function createScene(canvas, o) {
   }
   const v = new THREE.Vector3();
   function project(x, y, z) { v.set(x, y, z).project(cam); return [(v.x * 0.5 + 0.5) * W, (-v.y * 0.5 + 0.5) * H]; }
-  function dispose() { if (human) { scene.remove(human.root); human.dispose(); } for (const h of [...defs, rival, bossH]) if (h) { scene.remove(h.root); h.dispose(); } env.dispose(); for (const [, gp] of gates) (gp.userData.mats || []).forEach((m) => m.dispose()); disposables.forEach((d) => { try { d.dispose(); } catch (e) { /* noop */ } }); }
+  function dispose() { if (human) { scene.remove(human.root); human.dispose(); } for (const h of [...defs, rival, bossH, midH]) if (h) { scene.remove(h.root); h.dispose(); } env.dispose(); for (const [, gp] of gates) (gp.userData.mats || []).forEach((m) => m.dispose()); disposables.forEach((d) => { try { d.dispose(); } catch (e) { /* noop */ } }); }
   const ready = () => (!env.ready || env.ready()) && (!human || o.sprite === false || !!pspr);
-  return { render, resize, burst, project, dispose, ready, get laneX() { return laneX; }, bossPos: () => boss.position };
+  return { render, resize, burst, project, dispose, ready, get laneX() { return laneX; }, bossPos: () => boss.position, midPos: () => midH ? midH.root.position : boss.position };
 }

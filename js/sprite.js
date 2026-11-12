@@ -3,7 +3,7 @@
 // ・数字は 絵を 32px の マス目で はかって きめた もの（1マス 384px ＝ 1.65）
 // ・左右の 手は 「hdribL（左手）」「hdribR（右手）」の シートを つかいわける（反転は しない：せばんごうが うらがえるため）
 
-export const SHEETS = ['htwo', 'hpower', 'hdribL', 'hdribR', 'hside', 'hsideL', 'height', 'hleg', 'hwrap', 'hhead', 'hknees', 'hroll', 'hspin', 'hjstop'];
+export const SHEETS = ['htwo', 'hlowL', 'hlowR', 'hpower', 'hdribL', 'hdribR', 'hside', 'hsideL', 'height', 'hleg', 'hwrap', 'hhead', 'hknees', 'hroll', 'hspin', 'hjstop'];
 
 const R = 0.17;            // ボールの はんけい
 const DX = 0.56;           // ドリブルする ボールの よこの いち（手の 真下）
@@ -31,7 +31,7 @@ export function spritePose(st) {
   const t = bp ? clamp((bp.y - 0.13) / Math.max(0.12, mem.max - 0.13), 0, 1) : 1;
   const rx = bp ? bp.x : 0.4;
   const strong = sk === undefined ? false : (cue && cue.skill === 'pound');
-  const top = strong ? TOP + 0.08 : sk.low ? 0.36 : TOP;
+  const top = strong ? TOP + 0.08 : sk.low ? 0.34 : TOP;
   const dribY = R + t * (top - R);
 
   // スピン（その場で 1回転）
@@ -71,14 +71,15 @@ export function spritePose(st) {
   const legsT = sk.legs || sk.combo === 'legs' || sk.fig8; const behindT = sk.behind || sk.combo === 'behind';
   if (ax < 0.24 && (sk.hand !== 'R' && sk.hand !== 'L')) {
     const u = clamp(rx / 0.24, -1, 1);
-    if (behindT) { out.sheet = 'hwrap'; out.f = 2; out.ball = { x: u * 0.35, y: WAIST - 0.05, z: 0.3 }; }       // せなかの うしろを とおす（見える）
+    if (behindT) { out.sheet = t > 0.45 ? 'hwrap' : side < 0 ? 'hdribL' : 'hdribR'; out.f = t > 0.45 ? 2 : 0; out.ball = { x: bxS, y: dribY, z: 0.28 }; } // せなかの うしろで V字に ゆかに つく（見える）
     else if (legsT) { out.sheet = side < 0 ? 'hdribL' : 'hdribR'; out.f = 1; out.ball = { x: u * 0.22, y: Math.min(dribY, 0.3), z: 0 }; } // 足の あいだ
-    else { out.sheet = 'hpower'; out.f = 0; out.ball = { x: bxS, y: dribY, z: 0.04 }; }                           // 体の まえ（フロントチェンジ）：V字に つく
+    else { out.sheet = 'hpower'; out.f = 0; out.ball = { x: bxS, y: dribY, z: -0.2 }; }                           // 体の まえ（フロントチェンジ）：V字に つく。体の むこうがわ＝足の あいだから 見える
     return out;
   }
-  out.sheet = side < 0 ? 'hdribL' : 'hdribR';
+  out.sheet = sk.low ? (side < 0 ? 'hlowL' : 'hlowR') : side < 0 ? 'hdribL' : 'hdribR';
   out.f = t > 0.72 ? 2 : t > 0.38 ? 4 : 0;
-  out.ball = { x: bxS, y: dribY, z: 0.02 };
+  // まんなかに ちかづくほど 体の まえ（むこうがわ）へ：フロントチェンジ・かたてフロントが うしろを とおらない
+  out.ball = { x: bxS, y: dribY, z: behindT ? 0.02 : 0.02 - 0.22 * clamp(1 - ax / 0.42, 0, 1) };
   out.strong = strong;
   return out;
 }

@@ -140,6 +140,16 @@ export function runStage(opts) {
   let shake = 0, flash = 0, flashCol = '#fff', redFlash = 0, slow = 1;
   let curCue = cues[0], spokenFor = null, countShown = null, curLane = 0;
   const boss = { on: false, hp: 1, hit: 0, dead: false, gone: false, finale: false };
+  const mid = { on: false, hp: 1, hit: 0, dead: false, gone: false }; let rushExt = 0; const rushT = [];
+  // れんだ（ボス・ちゅうボス）：そのステージの ドリブルの ワザで はやく つよく
+  const rushSkill = (list) => { const n = {}; for (const c of list) { const k = c.skill; const sk = SKILLS[k]; if (!sk || sk.hand === 'hold' || sk.hand === 'two' || sk.lane || sk.handle || sk.jump || sk.spin || sk.turn || k === 'rest') continue; n[k] = (n[k] || 0) + 1; } const k = Object.keys(n).sort((a, b) => n[b] - n[a])[0]; return k || 'fast'; };
+  function rushHit() { // カメラで ドリブルを 見つけたとき：はやいほど 大ダメージ
+    const tgt = phase === 'finale' ? boss : curCue && curCue.mid && mid.on && !mid.dead ? mid : null; if (!tgt) return;
+    rushT.push(beat); while (rushT.length && beat - rushT[0] > 2) rushT.shift(); const rate = rushT.length / (2 / bps);
+    const pow = clamp(rate / 2.4, 0.35, 1.6); tgt.hp = Math.max(0, tgt.hp - (tgt === boss ? 0.02 : 0.08) * pow); tgt.hit = 1; shake = Math.max(shake, 0.2 + 0.25 * pow);
+    if (pow > 1.1 && Math.random() < 0.35) addText(['つよい！', 'はやい！', 'いいぞ！'][Math.floor(Math.random() * 3)], '#ffe03d', 0.8, 0.42, 0.6);
+    if (tgt === mid && mid.hp <= 0) killMid(true); }
+  function killMid(byHit) { mid.dead = true; mid.hp = 0; audio.sfx('boom'); shake = 1.2; const mp = scene.midPos(); scene.burst(mp.x, 2, mp.z, '#ffe03d', 70, 2); addText(byHit ? 'ディフェンスを ぬいた！' : 'ぬいた！', '#7dffb0', 1.2); sayBoth('ぬいた！', 'Beat him!'); setTimeout(() => { mid.gone = true; }, 800); }
   const texts = []; const shots = []; let bounceKey = -1; let pipRect = null;
   let trackedF = 0, allF = 0, lowNow = false, rescueT = 0, safeTimer = null, hxNow = 0, hyNow = 0;
   const tipIdx = { ...(pl.tipIdx || {}) };
@@ -156,6 +166,7 @@ export function runStage(opts) {
     s.f++; if (res.tracked) s.tr++; if (res.low || !res.legsVisible) s.lowF++;
     if (res.hx != null) { if (s.hx0 == null) { s.hx0 = res.hx; s.hy0 = res.hy; } s.move = Math.max(s.move, (res.hx - s.hx0) * (c.dir || 1)); s.rise = Math.max(s.rise, s.hy0 - res.hy); }
     for (const ev of res.events) {
+      if (phase === 'finale' || (c.mid && mid.on)) rushHit();
       dribbles++; s.n++; if (ev.hand === 'right') { s.R++; rightReps++; } else { s.L++; leftReps++; }
       if (s.last && s.last !== ev.hand) s.sw++; s.last = ev.hand; if (beat - c.b0 > 1) s.late++;
       const want = c.hand === 'R' ? 'right' : c.hand === 'L' ? 'left' : null;
@@ -189,7 +200,7 @@ export function runStage(opts) {
     audio.sfx('orb', cam ? combo % 13 : orbsGot % 8);
     scene.burst(o.x, o.y, -Math.max(0.3, o.z - zAt(beat)), o.c, 8, 0.6);
   }
-  function bossShot() { const need = cues.filter((c) => c.boss && c.skill !== 'rest').length || 1; boss.hp = Math.max(0.1, boss.hp - 0.9 / need); shots.push({ t: 0 }); audio.sfx('shot'); }
+  function bossShot() { const need = cues.filter((c) => c.boss && c.skill !== 'rest').length || 1; boss.hp = Math.max(0.45, boss.hp - 0.5 / need); shots.push({ t: 0 }); audio.sfx('shot'); }
 
   // ---------- セーフゾーン ----------
   function hardest() { const seen = Object.keys(counts).filter((k) => SKILLS[k].tips.length); if (!seen.length) return null; return seen.sort((a, b) => (failCounts[b] || 0) - (failCounts[a] || 0) || SKILLS[b].r - SKILLS[a].r || (pl.m[a] || 0) - (pl.m[b] || 0))[0]; }
@@ -198,9 +209,10 @@ export function runStage(opts) {
     if (t === 2) tier = Math.min(2, tier + 1); else if (t === 0) { tier = Math.max(0, tier - 1); chaser = Math.max(0.1, chaser - 0.15); }
     if (test) tier = 1;
     sectionIdx++;
+    if (sectionIdx === 2 && !dojo && !test && !mission.plan && SECTIONS >= 3) { addCue('rest', { len: 2, noGate: true }).midIntro = true; const m = addCue(rushSkill(cues), { len: 8, hand: curHand }); m.mid = true; m.rush = true; }
     addSection(sectionIdx === 2 ? 44 : 36); if (sectionIdx < SECTIONS) safes.push(endBeat);
     if (sectionIdx === SECTIONS) {
-      if (hasBoss) { bossStart = endBeat; addCue('rest', { len: 4, noGate: true }).bossIntro = true; addSection(40, true); finaleBeat = endBeat; addCue('fast', { len: 8, boss: true, hand: curHand }).finale = true; }
+      if (hasBoss) { bossStart = endBeat; addCue('rest', { len: 4, noGate: true }).bossIntro = true; addSection(40, true); finaleBeat = endBeat; { const f = addCue(rushSkill(cues.filter((c) => c.boss)), { len: 16, boss: true, hand: curHand }); f.finale = true; f.rush = true; } }
       else addCue('rest', { len: 6, noGate: true }).goal = true;
     }
     if (t === 0) { const k = hardest(); if (k) addText(`コツ：${tipFor(k)}`, '#ffe9a8', 0.75, 0.26, 2.6); }
@@ -301,6 +313,7 @@ export function runStage(opts) {
       pill(mx - 6 * DPR, my - 7 * DPR, mw + 12 * DPR, 14 * DPR, '#040820'); pill(mx, my - 4 * DPR, Math.max(8 * DPR, mw * (1 - chaserShow)), 8 * DPR, chaserShow > 0.7 ? '#ff2d55' : pal.a, 1);
       g.font = `${Math.round(fs)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🏃', mx + mw + fs * 0.7, my); g.fillText('🚨', mx + mw * (1 - chaserShow) + (chaserShow > 0.7 ? Math.sin(mbeat * 12) * 3 * DPR : 0), my);
       txt(beat >= bossStart ? 'BOSS' : test ? 'しょうきゅうテスト' : `エリア ${Math.min(SECTIONS, sectionIdx)}/${SECTIONS}`, cx, my + fs * 1.05, fs * 0.62, '#cfd8ff');
+      if (mid.on && !mid.dead) { const bw = Math.min(W * 0.4, 420 * DPR), bh = 12 * DPR, bx = cx - bw / 2, by = my + fs * 2.3; pill(bx - 4, by - 4, bw + 8, bh + 8, '#040820'); pill(bx, by, Math.max(bh, bw * mid.hp), bh, '#ff8a28', 1); txt('ちゅうボス ディフェンス', cx, by + bh + fs * 0.6, fs * 0.6, '#ffe0c0'); }
       if (boss.on && !boss.dead) { const bw = Math.min(W * 0.5, 520 * DPR), bh = 14 * DPR, bx = cx - bw / 2, by = my + fs * 2.3; pill(bx - 4, by - 4, bw + 8, bh + 8, '#040820'); pill(bx, by, Math.max(bh, bw * boss.hp), bh, '#ff2d55', 1); txt(test ? 'しけんかん' : world.boss, cx, by + bh + fs * 0.6, fs * 0.6, '#ffd0d8'); }
     } else {
       const set = [...dojoSets].reverse().find((s) => beat >= s.b0); const sk = SKILLS[opts.skill];
@@ -358,20 +371,25 @@ export function runStage(opts) {
       else {
         const c = cueAt(beat);
         if (c !== curCue) {
-          judge(curCue); curCue = c; curLane = c.lane1; const sk = SKILLS[c.skill];
+          const prevC = curCue; judge(curCue); curCue = c; if (prevC && prevC.mid && mid.on && !mid.dead) killMid(false); curLane = c.lane1; const sk = SKILLS[c.skill];
           if (c.bpm) bps = c.bpm / 60;
           if (c.skill !== 'rest') { audio.sfx(sk.sp > 1.2 ? 'whoosh' : 'gate'); flash = 0.4; flashCol = sk.c; shake = Math.max(shake, sk.sp > 1.2 ? 0.6 : 0.25); scene.burst(c.lane1 * LW, 1.5, -1, sk.c, 26, 1.3); if (sk.jump) { audio.sfx('jump'); setTimeout(() => !dead && audio.sfx('land'), 500 / bps); } if (c.skill === 'drive') slow = 0.55; }
           if (c.stepName) { texts.length = 0; addText(c.stepName, '#ffe9a8', 0.8, 0.3, 2.4); sayBoth(c.stepName.split('　')[0], ['Step one', 'Step two', 'Step three', 'Final step'][c.stepIdx]); }
           if (c.goal) { texts.length = 0; addText('🏁 ゴールは すぐそこ！', '#ffe03d', 1.1, 0.3, 1.6); sayBoth('ゴールは すぐそこ', 'Go!'); }
           if (c.setName) { addText(c.setName, '#7dffb0', 0.8, 0.4, 1.6); sayBoth(c.setName.split('　')[1] || '', ['Slow', 'Normal speed', 'Game speed'][dojoSets.indexOf(c)]); }
           if (c.bossIntro) { boss.on = true; addText(`⚠️ ${test ? 'しけんかん' : world.boss} があらわれた！`, '#ff4d6d', 1.2); audio.sfx('warn'); sayBoth('ボスだ！', 'Boss incoming!'); }
-          if (c.finale) { phase = 'finale'; boss.finale = true; addText('いまだ！ れんだ！！', '#3df5ff', 1.6); sayBoth('いまだ！はやく！', 'Now! Go go go!'); }
+          if (c.finale) { phase = 'finale'; boss.finale = true; rushT.length = 0; addText(`いまだ！ ${SKILLS[c.skill].n}で れんだ！！`, '#3df5ff', 1.4, 0.34, 1.8); sayBoth('いまだ！はやく つよく！', 'Now! Fast and hard!'); }
+          if (c.rushMore) { addText('まだまだ！ もっと はやく つよく！', '#ff8da1', 1.2); sayBoth('まだまだ！', 'Keep going!'); }
+          if (c.midIntro) { mid.on = true; mid.hp = 1; mid.dead = false; mid.gone = false; addText('🛡️ ちゅうボス！ はやい ドリブルで ぬけ！', '#ff8a28', 1.15, 0.34, 1.6); audio.sfx('warn'); sayBoth('ちゅうボスだ！はやく ドリブル！', 'Mini boss! Dribble fast!'); }
+          if (c.mid) rushT.length = 0;
         }
         const next = cues[cues.indexOf(curCue) + 1];
         if (next && next.skill !== 'rest' && spokenFor !== next && next.b0 - beat <= 2) { spokenFor = next; const sk = SKILLS[next.skill]; sayBoth(((sk.lane || sk.jab) && next.dir ? (next.dir > 0 ? 'みぎへ ' : 'ひだりへ ') : '') + sk.say, enLabel(next) + '!'); audio.sfx('warn'); }
         // ボールが ゆかに つく音
-        if (curCue.hand !== 'hold' && curCue.ballMode !== 'none') { const skc = SKILLS[curCue.skill]; const dbl = (skc.dbl ? 2 : 1) * (skc.quick || 1) * (skc.fig8 ? 2 : 1) * (skc.two === 'alt' ? 2 : 1); const alt = skc.vmove || curCue.hand === 'alt' || (curCue.hand === 'alt1' && beat - curCue.b0 < 1); const key = Math.floor(beat * dbl + (alt ? 0.5 : 0)); if (key !== bounceKey) { bounceKey = key; const k = curCue.skill; audio.sfx('bounce', k === 'pound' || k === 'drive' ? 1.25 : SKILLS[k].low ? 0.7 : k === 'fast' ? 0.85 : 1); } }
+        if (curCue.hand !== 'hold' && curCue.ballMode !== 'none') { const skc = SKILLS[curCue.skill]; const dbl = (skc.dbl ? 2 : 1) * (curCue.rush ? 2 : 1) * (skc.quick || 1) * (skc.fig8 ? 2 : 1) * (skc.two === 'alt' ? 2 : 1); const alt = skc.vmove || curCue.hand === 'alt' || (curCue.hand === 'alt1' && beat - curCue.b0 < 1); const key = Math.floor(beat * dbl + (alt ? 0.5 : 0)); if (key !== bounceKey) { bounceKey = key; const k = curCue.skill; audio.sfx('bounce', k === 'pound' || k === 'drive' ? 1.25 : SKILLS[k].low ? 0.7 : k === 'fast' ? 0.85 : 1); } }
         for (const o of orbs) { if (o.got || o.missed) continue; if (o.z <= camZ + 0.4) { if (cam && o.cue.hand !== 'hold') { o.missed = true; combo = 0; } else collect(o); } }
+        if (phase === 'finale' && boss.hp <= 0.001 && endBeat > beat) endBeat = beat; // たおしたら すぐ おわり
+        if (beat >= endBeat && (dojo || sectionIdx >= SECTIONS) && phase === 'finale' && cam && boss.hp > 0.03 && rushExt < 2) { rushExt++; const f = addCue(curCue.skill, { len: 8, boss: true, hand: curHand }); f.rush = true; f.rushMore = true; }
         if (beat >= endBeat && (dojo || sectionIdx >= SECTIONS)) {
           judge(curCue); phase = 'rescue'; rescueT = 0; flash = 1; flashCol = '#fff';
           if (hasBoss) { boss.dead = true; boss.hp = 0; audio.sfx('boom'); shake = 2; const bp = scene.bossPos(); scene.burst(bp.x, bp.y, bp.z + 2, '#ffe03d', 120, 3); scene.burst(bp.x, bp.y, bp.z + 2, '#ff4d6d', 90, 2.2); slow = 0.3; sayBoth('やったー！', 'You did it!'); setTimeout(() => { boss.gone = true; }, 700); }
@@ -380,15 +398,16 @@ export function runStage(opts) {
         if (dojo) chaser = 0;
         else if (!cam) { const target = (curCue.sp || 1) > 1.2 ? 0.12 : 0.3 + 0.35 * frac((beat % 48) / 48); chaser += (target - chaser) * dt * 0.8; }
         else chaser = Math.min(1, chaser + dt * 0.004);
-        if (phase === 'finale') { const t = clamp((beat - finaleBeat) / 8, 0, 1); boss.hp = Math.max(0.01, 0.1 * (1 - t)); boss.hit = 0.7; shake = Math.max(shake, 0.3 + t * 0.6); }
+        if (phase === 'finale') { if (!cam) { if (boss.hp0 == null) boss.hp0 = boss.hp; const t = clamp((beat - finaleBeat) / 16, 0, 1); boss.hp = Math.max(0.005, boss.hp0 * (1 - t)); boss.hit = Math.max(boss.hit, 0.5 + 0.5 * Math.abs(Math.sin(beat * Math.PI * 2))); } shake = Math.max(shake, 0.25 + (1 - boss.hp) * 0.4); }
+        if (curCue.mid && mid.on && !mid.dead && !cam) { mid.hp = Math.max(0, 1 - (beat - curCue.b0) / (curCue.b1 - curCue.b0)); mid.hit = Math.max(mid.hit, Math.abs(Math.sin(beat * Math.PI * 2))); }
       }
     }
     if (phase === 'rescue') { rescueT += rdt; if (rescueT > (hasBoss ? 2.4 : 2.2)) { finish(); return; } }
-    redFlash = Math.max(0, redFlash - rdt * 1.5); boss.hit = Math.max(0, boss.hit - rdt * 3);
+    redFlash = Math.max(0, redFlash - rdt * 1.5); boss.hit = Math.max(0, boss.hit - rdt * 3); mid.hit = Math.max(0, mid.hit - rdt * 3);
     const spd = phase === 'safe' || phase === 'rescue' || phase === 'count' ? (phase === 'count' ? 1 : 0) : (curCue.sp || 1);
     // よこステップは ディフェンスに ぶつかる 手前で うごきはじめる（つぎのキューを 少し 先読み）
     let visLane = curLane; if (phase === 'run') { const nx = cues.find((c) => c.b0 > beat && c.b0 - beat < 0.7 && c.lane1 !== c.lane0); if (nx) visLane = nx.lane1; }
-    scene.render({ camZ, dt, beat: Math.max(0, beat), mbeat, lane: visLane, cue: phase === 'count' ? null : curCue, speed: spd, cues, orbs: orbs.filter((o) => !o.got && !o.missed), boss, shake, chaser: dojo ? 0 : (window.__chaser ?? chaserShow), pip: phase === 'run' || phase === 'finale' ? pipRect : null });
+    scene.render({ camZ, dt, beat: Math.max(0, beat), mbeat, lane: visLane, cue: phase === 'count' ? null : curCue, speed: spd, cues, orbs: orbs.filter((o) => !o.got && !o.missed), boss, mid, shake, chaser: dojo ? 0 : (window.__chaser ?? chaserShow), pip: phase === 'run' || phase === 'finale' ? pipRect : null });
     shake *= 0.86;
     drawHUD(curCue, cues[cues.indexOf(curCue) + 1]);
     if (!loaded) { g.fillStyle = 'rgba(7,11,36,.82)'; g.fillRect(0, 0, W, H); g.fillStyle = '#fff'; g.font = `900 ${Math.round(Math.min(W, H) * 0.06)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('じゅんびちゅう' + '.'.repeat(1 + Math.floor(waitT * 3) % 3), W / 2, H / 2); }
