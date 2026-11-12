@@ -210,7 +210,7 @@ export function createScene(canvas, o) {
       else if (hold) f = Math.floor(Math.max(0, beat) / 2) % 2 ? 5 : 0;
       else if (sk.behind || sk.combo === 'behind') { T = psT.hbehind; f = seq(1); }
       else if (sk.legs || sk.combo === 'legs') { T = psT.hlegs; f = seq(1); }
-      else { const left = rx < 0; T = left ? psT.hdribL : psT.hdribR; const t = (by - 0.13) / 0.6; f = t > 0.6 ? 0 : t > 0.28 ? 1 : 2; bx = laneX + (left ? -0.5 : 0.5); } // ボールの 高さに 手の コマを 合わせ、ボールは 絵の 手の 真下に
+      else { const left = rx < 0; T = left ? psT.hdribL : psT.hdribR; const t = (by - 0.13) / 0.6; f = t > 0.55 ? 3 : 2; bx = laneX + (left ? -0.6 : 0.6); } // ボールの 高さに 手の コマを 合わせ、ボールは 絵の 手の 真下に
       if (pspr.material.map !== T) { pspr.material.map = T; pspr.material.needsUpdate = true; }
       T.repeat.set(mir ? -1 / 3 : 1 / 3, 0.5); T.offset.set(((f % 3) + (mir ? 1 : 0)) / 3, f < 3 ? 0.5 : 0); pspr.position.set(laneX, psY, 0.02); }
     shadow.position.set(laneX, 0.012, 0); footGlow.position.set(laneX, 0.06, 0.1);
