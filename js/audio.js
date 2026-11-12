@@ -2,7 +2,7 @@
 // ---------- 音 ----------
 export class Audio {
   constructor(settings, base, opt = {}) {
-    this.on = settings.sound; this.musicOn = settings.music; this.base = base; this.ctx = null; this.major = opt.major !== false; this.melody = MELODIES[(opt.riff || 0) % MELODIES.length]; this.style = settings.musicStyle || 'workout'; this.hookIdx = opt.riff || 0; this.bpm = opt.bpm || 104;
+    this.on = settings.sound; this.musicOn = settings.music; this.vm = settings.volMusic ?? 0.5; this.vb = settings.volBall ?? 1; this.vv = settings.volVoice ?? 1; setVoiceVol(this.vv); this.base = base; this.ctx = null; this.major = opt.major !== false; this.melody = MELODIES[(opt.riff || 0) % MELODIES.length]; this.style = settings.musicStyle || 'workout'; this.hookIdx = opt.riff || 0; this.bpm = opt.bpm || 104;
     try {
       this.ctx = opt.ctx || new (window.AudioContext || window.webkitAudioContext)();
       this.out = this.ctx.createDynamicsCompressor();
@@ -10,7 +10,8 @@ export class Audio {
       this.out.connect(this.master).connect(this.ctx.destination);
       if (opt.record) { this.recDest = this.ctx.createMediaStreamDestination(); this.master.connect(this.recDest); }
       { const sr = this.ctx.sampleRate; const len = Math.floor(sr * 0.7); const ir = this.ctx.createBuffer(2, len, sr); for (let c = 0; c < 2; c++) { const d2 = ir.getChannelData(c); for (let i = 0; i < len; i++) d2[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); } this.reverb = this.ctx.createConvolver(); this.reverb.buffer = ir; const rg = this.ctx.createGain(); rg.gain.value = 0.5; this.reverb.connect(rg).connect(this.master); }
-      this.music = this.ctx.createGain(); this.music.gain.value = 1; this.music.connect(this.out); this.sfxBus = this.out;
+      this.musicVol = this.ctx.createGain(); this.musicVol.gain.value = this.vm; this.musicVol.connect(this.out); // おんがくの おおきさ（せってい）
+      this.music = this.ctx.createGain(); this.music.gain.value = 1; this.music.connect(this.musicVol); this.sfxBus = this.out;
       const n = this.ctx.sampleRate; const buf = this.ctx.createBuffer(1, n, n); const d = buf.getChannelData(0);
       for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
       this.noiseBuf = buf;
@@ -47,7 +48,7 @@ export class Audio {
   }
   say(text) {
     if (!this.ctx || !this.voice) return false; const b = this.voice[String(text).toLowerCase()]; if (!b) return false;
-    try { if (this.lastSay) { try { this.lastSay.stop(); } catch (e) { /* noop */ } } const s = this.ctx.createBufferSource(); s.buffer = b; const g = this.ctx.createGain(); g.gain.value = 0.8; s.connect(g).connect(this.master); s.start(); this.lastSay = s;
+    try { if (this.lastSay) { try { this.lastSay.stop(); } catch (e) { /* noop */ } } const s = this.ctx.createBufferSource(); s.buffer = b; const g = this.ctx.createGain(); g.gain.value = 0.8 * this.vv; s.connect(g).connect(this.master); s.start(); this.lastSay = s;
       const t = this.ctx.currentTime; this.music.gain.cancelScheduledValues(t); this.music.gain.setTargetAtTime(0.6, t, 0.03); this.music.gain.setTargetAtTime(1, t + b.duration, 0.15); } catch (e) { return false; }
     return true;
   }
@@ -57,7 +58,7 @@ export class Audio {
     if (!this.ctx || !this.musicOn || !song) return null;
     const el = new window.Audio(); el.preload = 'auto'; el.src = song.file; el.playbackRate = rate; el.defaultPlaybackRate = rate;
     el.preservesPitch = true; el.mozPreservesPitch = true; el.webkitPreservesPitch = true;
-    try { const src = this.ctx.createMediaElementSource(el); const g = this.ctx.createGain(); g.gain.value = 0.85; src.connect(g).connect(this.out); this.bgmGain = g; } catch (e) { /* そのまま 鳴らす */ }
+    try { const src = this.ctx.createMediaElementSource(el); const g = this.ctx.createGain(); g.gain.value = 0.85; src.connect(g).connect(this.musicVol || this.out); this.bgmGain = g; } catch (e) { /* そのまま 鳴らす */ }
     this.bgm = { el, spb: 60 / song.bpm, t0: song.t0, half, rate, K: 0, started: false };
     try { el.load(); } catch (e) { /* noop */ }
     return this.bgm;
@@ -139,7 +140,7 @@ export class Audio {
   bounce(power = 1) {
     this.bn = (this.bn || 0) + 1;
     if (!this.on || !this.ctx) return; const c = this.ctx; const t = c.currentTime;
-    if (this.bounceBuf) { const s = c.createBufferSource(); s.buffer = this.bounceBuf; s.playbackRate.value = (power > 1.2 ? 0.86 : 1) * (0.95 + Math.random() * 0.1); const g = c.createGain(); g.gain.value = Math.min(1.9, 1.1 * power); s.connect(g).connect(this.out); s.start(t); return; } const out = c.createGain(); out.gain.value = 1.25 * power; out.connect(this.out); if (this.reverb) out.connect(this.reverb);
+    if (this.bounceBuf) { const s = c.createBufferSource(); s.buffer = this.bounceBuf; s.playbackRate.value = (power > 1.2 ? 0.86 : 1) * (0.95 + Math.random() * 0.1); const g = c.createGain(); g.gain.value = Math.min(1.9, 1.1 * power) * this.vb; s.connect(g).connect(this.out); s.start(t); return; } const out = c.createGain(); out.gain.value = 1.25 * power * this.vb; out.connect(this.out); if (this.reverb) out.connect(this.reverb);
     const tone = (type, f0, f1, dur, vol) => { const o = c.createOscillator(); const g = c.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(g).connect(out); o.start(t); o.stop(t + dur + 0.02); };
     tone('sine', 190, 70, 0.16, 0.9);            // ゆかの ドン
     tone('sine', 520, 300, 0.11, 1.0);           // ボールの ひびき（スマホでも 聞こえる高さ）
@@ -197,7 +198,8 @@ let enVoice = null; let jaVoice = null;
 function pickVoices() { try { const vs = window.speechSynthesis.getVoices(); const pref = ['Samantha', 'Google US English', 'Ava', 'Allison', 'Karen', 'Daniel', 'Aaron']; enVoice = pref.map((n) => vs.find((v) => v.name.includes(n) && v.lang.startsWith('en'))).find(Boolean) || vs.find((v) => v.lang === 'en-US') || vs.find((v) => v.lang.startsWith('en')) || null; jaVoice = vs.find((v) => v.lang.startsWith('ja')) || null; } catch (e) { /* noop */ } }
 try { if (window.speechSynthesis) { pickVoices(); window.speechSynthesis.onvoiceschanged = pickVoices; } } catch (e) { /* noop */ }
 // mode: 'en' | 'ja' | false。en / ja の両方の文を渡す
+let voiceVol = 1; export function setVoiceVol(v) { voiceVol = Math.max(0, Math.min(1, v)); }
 export function speak(ja, mode, en) {
   if (!mode) return; const useEn = mode === 'en'; const text = useEn ? en : ja; if (!text) return;
-  try { const ss = window.speechSynthesis; if (!ss) return; if (!enVoice && !jaVoice) pickVoices(); ss.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = useEn ? 'en-US' : 'ja-JP'; const v = useEn ? enVoice : jaVoice; if (v) u.voice = v; u.rate = useEn ? 1.05 : 1.2; u.pitch = useEn ? 1.15 : 1; u.volume = 1; ss.speak(u); } catch (e) { /* noop */ }
+  try { const ss = window.speechSynthesis; if (!ss) return; if (!enVoice && !jaVoice) pickVoices(); ss.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = useEn ? 'en-US' : 'ja-JP'; const v = useEn ? enVoice : jaVoice; if (v) u.voice = v; u.rate = useEn ? 1.05 : 1.2; u.pitch = useEn ? 1.15 : 1; u.volume = voiceVol; if (voiceVol <= 0) return; ss.speak(u); } catch (e) { /* noop */ }
 }
