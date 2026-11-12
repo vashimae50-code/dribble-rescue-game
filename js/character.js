@@ -246,5 +246,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   const setFace = (tex, i) => { if (!tex || !B.Head) return;
     if (!faceSp) { faceTex = tex.clone(); faceTex.repeat.set(0.1, 0.2); faceTex.needsUpdate = true; faceMat = new THREE.SpriteMaterial({ map: faceTex, transparent: true, alphaTest: 0.4 }); faceSp = new THREE.Sprite(faceMat); faceSp.center.set(0.5, 0.2); faceSp.scale.set(0.66, 0.66, 1); root.add(faceSp); B.Head.scale.setScalar(0.02); }
     faceTex.offset.set((i % 10) * 0.1, 1 - (Math.floor(i / 10) + 1) * 0.2); };
-  return { root, animate, setSilhouette, setFace, dispose, ball2: () => (S.has2 ? S.ball2 : null), height: hipsBind / 0.53 };
+  // メインの画面では かくす（お手本の 小まど だけに 出す）。絵の スプライトで プレイヤーを 出すとき用
+  const setMainVisible = (on) => { for (const m of [...meshes, ...outlines]) { if (on) m.layers.enable(0); else m.layers.disable(0); } };
+  return { root, animate, setSilhouette, setFace, setMainVisible, dispose, ball2: () => (S.has2 ? S.ball2 : null), height: hipsBind / 0.53 };
 }

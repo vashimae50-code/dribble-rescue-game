@@ -76,21 +76,31 @@ function pickSkyPhoto(themeName, stageSeed) {
   return pool[n];
 }
 // コートの中の ステージ：コートの絵を そのまま 背景にして、あまり スクロールしない
-const COURT_VP = { village: [0.28, 0.315, 0.332, 0.345, 0.285, 0.311], sunset: [0.385, 0.345, 0.345, 0.39], night: [0.335, 0.325, 0.415], snow: [0.34, 0.345], castle: [0.465, 0.385, 0.389], gym: [0.465, 0.395, 0.355, 0.373] };
+const COURT_VP = { village: [0.28, 0.315, 0.332, 0.345, 0.285, 0.311], sunset: [0.385, 0.345, 0.345, 0.39], night: [0.335, 0.345], snow: [0.34, 0.345], castle: [0.465, 0.385, 0.389, 0.415, 0.325], gym: [0.465, 0.395, 0.355, 0.373] };
 function buildCourtEnv(scene, o, th, D, n) {
   const vps = COURT_VP[o.themeName]; const idx = n % vps.length; const vp = vps[idx]; const HW = o.HW, LW = o.LW; const SCREEN_VP = 0.42; // 画面の中で 地平線が くる高さ
   let aspect = 16 / 9, img = null, bgT = null;
   const draw = () => { if (!img) return; const cw = 1280, ch = Math.max(240, Math.round(1280 / aspect)); const cv = document.createElement('canvas'); cv.width = cw; cv.height = ch; const cx = cv.getContext('2d');
     const sc = Math.max(cw / img.width, (SCREEN_VP * ch) / (vp * img.height), ((1 - SCREEN_VP) * ch) / ((1 - vp) * img.height)); const dw = img.width * sc, dh = img.height * sc;
     cx.drawImage(img, (cw - dw) / 2, SCREEN_VP * ch - vp * dh, dw, dh);
+    // ワールドの 名前に 合わせて 色を かえる（雪・マグマ・夜）
+    const tn = o.themeName;
+    if (tn === 'snow') { cx.fillStyle = 'rgba(225,238,255,.3)'; cx.fillRect(0, 0, cw, ch); const gr = cx.createLinearGradient(0, SCREEN_VP * ch, 0, ch); gr.addColorStop(0, 'rgba(255,255,255,.5)'); gr.addColorStop(0.35, 'rgba(255,255,255,.12)'); gr.addColorStop(1, 'rgba(255,255,255,.3)'); cx.fillStyle = gr; cx.fillRect(0, SCREEN_VP * ch, cw, ch); cx.fillStyle = 'rgba(255,255,255,.9)'; cx.fillRect(0, SCREEN_VP * ch - 3, cw, 7); }
+    if (tn === 'castle') { cx.globalCompositeOperation = 'multiply'; cx.fillStyle = '#ff8a66'; cx.fillRect(0, 0, cw, ch); cx.globalCompositeOperation = 'screen'; const gr = cx.createLinearGradient(0, ch * 0.55, 0, ch); gr.addColorStop(0, 'rgba(255,90,20,0)'); gr.addColorStop(1, 'rgba(255,110,20,.55)'); cx.fillStyle = gr; cx.fillRect(0, ch * 0.55, cw, ch * 0.45); const g2 = cx.createLinearGradient(0, 0, 0, ch * 0.3); g2.addColorStop(0, 'rgba(255,60,10,.35)'); g2.addColorStop(1, 'rgba(255,60,10,0)'); cx.fillStyle = g2; cx.fillRect(0, 0, cw, ch * 0.3); cx.globalCompositeOperation = 'source-over'; }
+    if (tn === 'night' && idx > 0) { cx.globalCompositeOperation = 'multiply'; cx.fillStyle = '#7f86d8'; cx.fillRect(0, 0, cw, ch); cx.globalCompositeOperation = 'source-over'; cx.fillStyle = '#fff8d8'; cx.beginPath(); cx.arc(cw * 0.82, ch * 0.13, ch * 0.05, 0, TAU); cx.fill(); }
     const px = cx.getImageData(cw / 2 - 40, Math.round(SCREEN_VP * ch) + 6, 80, 8).data; let r = 0, g = 0, b = 0; for (let i = 0; i < px.length; i += 4) { r += px[i]; g += px[i + 1]; b += px[i + 2]; } const k = px.length / 4; if (scene.fog) scene.fog.color.setRGB(r / k / 255, g / k / 255, b / k / 255, THREE.SRGBColorSpace);
     if (bgT) bgT.dispose(); bgT = new THREE.CanvasTexture(cv); bgT.colorSpace = THREE.SRGBColorSpace; scene.background = bgT; };
   img = null; const im = new Image(); im.onload = () => { img = im; draw(); }; im.onerror = () => {}; im.src = `img/court/${o.themeName}${idx + 1}.jpg`;
   scene.fog.near = 70; scene.fog.far = 135;
+  scene.add(new THREE.AmbientLight(0xffffff, th.glow > 0.4 ? 1.5 : 0.35)); // 暗いコートでも 人が はっきり 見えるように
+  // 雪 と ひのこ
+  let pts = null; const PN = 260; const snowy = o.themeName === 'snow', lava = o.themeName === 'castle';
+  if (snowy || lava) { const pg = new THREE.BufferGeometry(); const pp = new Float32Array(PN * 3); for (let i = 0; i < PN; i++) { pp[i * 3] = (Math.random() - 0.5) * 30; pp[i * 3 + 1] = Math.random() * 12; pp[i * 3 + 2] = 3 - Math.random() * 34; } pg.setAttribute('position', new THREE.BufferAttribute(pp, 3)); const pm = new THREE.PointsMaterial({ color: snowy ? 0xffffff : 0xff8a2a, size: snowy ? 0.16 : 0.12, map: o.glow, transparent: true, depthWrite: false, fog: false, blending: lava ? THREE.AdditiveBlending : THREE.NormalBlending }); D.push(pg, pm); pts = new THREE.Points(pg, pm); pts.frustumCulled = false; scene.add(pts); }
+  const stepPts = (dt) => { if (!pts) return; const a = pts.geometry.attributes.position; const t = performance.now() / 1000; for (let i = 0; i < PN; i++) { let y = a.getY(i) + (snowy ? -1.5 : 1.3) * dt * (0.6 + (i % 5) * 0.2); if (y < 0) y += 12; if (y > 12) y -= 12; a.setY(i, y); a.setX(i, a.getX(i) + Math.sin(t * 0.8 + i) * dt * 0.4); } a.needsUpdate = true; };
   // 走っている かんじを 出す：レーンの 点線だけ うごかす
   const laneT = tex(256, 256, (g, w, h) => { g.clearRect(0, 0, w, h); g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 5; g.setLineDash([70, 58]); for (const f of [0.5 - (LW * 0.5) / (HW * 2), 0.5 + (LW * 0.5) / (HW * 2)]) { g.beginPath(); g.moveTo(f * w, 0); g.lineTo(f * w, h); g.stroke(); } g.setLineDash([]); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 6; for (const f of [0.012, 0.988]) { g.beginPath(); g.moveTo(f * w, 0); g.lineTo(f * w, h); g.stroke(); } }, [1, 20]); D.push(laneT);
   const lg = new THREE.PlaneGeometry(HW * 2, 200), lm = new THREE.MeshBasicMaterial({ map: laneT, transparent: true, depthWrite: false }); D.push(lg, lm); const lp = new THREE.Mesh(lg, lm); lp.rotation.x = -Math.PI / 2; lp.position.set(0, 0.01, -88); scene.add(lp);
-  return { update: (camZ) => { laneT.offset.y = (camZ / 10) % 1; }, setAspect: (a) => { if (a > 0 && Math.abs(a - aspect) > 0.01) { aspect = a; draw(); } }, bloom: th.bloom, theme: th, dispose: () => { if (bgT) bgT.dispose(); D.forEach((d) => { try { d.dispose(); } catch (e) { /* noop */ } }); } };
+  return { update: (camZ, dt) => { laneT.offset.y = (camZ / 10) % 1; stepPts(dt || 0.016); }, setAspect: (a) => { if (a > 0 && Math.abs(a - aspect) > 0.01) { aspect = a; draw(); } }, bloom: th.bloom, theme: th, dispose: () => { if (bgT) bgT.dispose(); D.forEach((d) => { try { d.dispose(); } catch (e) { /* noop */ } }); } };
 }
 // ステージの おくに 見える けしき（コートの絵の 上はんぶん）。空の写真と べつべつに えらぶので、ステージごとに 組み合わせが かわる
 const BG_COUNT = { village: 6, sunset: 4, night: 3, snow: 2, castle: 3, gym: 4 };

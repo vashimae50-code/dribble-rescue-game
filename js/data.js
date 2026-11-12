@@ -3,7 +3,7 @@
 // hand: R / L / cur(いまの手) / alt(持ちかえ) / hold(ボールを持つ) / side(動く方向の手)
 export const SKILLS = {
   // ランク1：かまえる・止まる
-  stance: { en: 'Ready stance', r: 1, n: 'かまえ', i: '🧍', c: '#9fb4ff', say: 'かまえ', hand: 'hold', low: 1, sp: 0.5, len: 4,
+  stance: { en: 'Power position', r: 1, n: 'パワーポジション', i: '🧍', c: '#9fb4ff', say: 'パワーポジション', hand: 'hold', low: 1, sp: 0.5, len: 4,
     tips: ['足を かたはばより 少し広く ひらこう', 'ひざを まげて、おしりを 少し下げる', 'ボールは おなかの よこ。顔は 前！'] },
   right: { en: 'Right hand', r: 1, n: 'みぎて', i: '👉', c: '#ff4d6d', say: 'みぎ', hand: 'R', len: 8,
     tips: ['ゆびを ひらいて、ゆびの はらで おす', 'ボールは 足の よこに つく', 'こしの 高さまで。顔は 前！'] },
