@@ -33,6 +33,13 @@ function roadTex(kind, laneFrac) {
     if (kind === 'dirt') { g.fillStyle = '#c99a5c'; g.fillRect(0, 0, w, h); speckle(g, w, h, 5000, ['#a67a42', '#e0b97a', '#8f6a3a'], 4, 0.5); g.strokeStyle = 'rgba(120,80,40,.35)'; g.lineWidth = 10; for (const x of [0.36, 0.64]) { g.beginPath(); for (let y = 0; y <= h; y += 16) g.lineTo(x * w + Math.sin(y * 0.05) * 6, y); g.stroke(); } }
     else if (kind === 'cobble') { g.fillStyle = '#3a3552'; g.fillRect(0, 0, w, h); const n = 12; const s = w / n; for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const ox = (j % 2) * s * 0.5; const c = 90 + rnd() * 70; g.fillStyle = `rgb(${c * 0.95},${c * 0.82},${c * 1.1})`; g.beginPath(); g.roundRect(i * s + ox + 3 - (i === n - 1 && j % 2 ? w : 0) * 0, j * s + 3, s - 6, s - 6, 9); g.fill(); if (j % 2 && i === n - 1) { g.beginPath(); g.roundRect(-s * 0.5 + 3, j * s + 3, s - 6, s - 6, 9); g.fill(); } } speckle(g, w, h, 1500, ['#000', '#fff'], 2, 0.15); }
     else if (kind === 'plank') { for (let j = 0; j < 8; j++) { const c = 150 + rnd() * 40; g.fillStyle = `rgb(${c},${c * 0.68},${c * 0.42})`; g.fillRect(0, j * h / 8, w, h / 8 - 3); g.fillStyle = 'rgba(60,30,10,.5)'; g.fillRect(0, (j + 1) * h / 8 - 3, w, 3); for (let k = 0; k < 4; k++) { g.fillStyle = 'rgba(40,20,5,.6)'; g.beginPath(); g.arc((k + 0.5 + (j % 2) * 0.3) * w / 4, j * h / 8 + 10, 3, 0, TAU); g.fill(); } } speckle(g, w, h, 2500, ['#5a3414', '#e8b880'], 6, 0.2); }
+    else if (kind === 'bluecourt' || kind === 'asphalt' || kind === 'darkcourt' || kind === 'neon') {
+      const P = { bluecourt: ['#2d5fb4', '#274f9a', '#f08a3c', '#ffffff'], asphalt: ['#3b3e47', '#2c2f37', '#e8742c', '#f2f2f2'], darkcourt: ['#3b3352', '#2c2640', '#f08a3c', '#ffd9c0'], neon: ['#1c1c52', '#15153c', '#3a2a8a', '#e8d0ff'] }[kind];
+      g.fillStyle = P[0]; g.fillRect(0, 0, w, h); if (kind === 'asphalt') speckle(g, w, h, 6000, ['#555a66', '#22242a', '#6a6f7a'], 3, 0.5); else { g.strokeStyle = P[1]; g.lineWidth = 2; for (let i = 0; i <= 8; i++) { g.beginPath(); g.moveTo(i * w / 8, 0); g.lineTo(i * w / 8, h); g.moveTo(0, i * h / 8); g.lineTo(w, i * h / 8); g.stroke(); } speckle(g, w, h, 1800, ['#ffffff', '#000000'], 3, 0.08); }
+      // コートの もよう：センターサークルと よこ線（くりかえすので 走ると ながれて見える）
+      g.fillStyle = P[2]; g.beginPath(); g.ellipse(w / 2, h / 2, w * 0.2, h * 0.3, 0, 0, TAU); g.fill(); g.strokeStyle = P[3]; g.lineWidth = 7; g.stroke(); g.beginPath(); g.moveTo(0, h / 2); g.lineTo(w, h / 2); g.stroke(); g.lineWidth = 5; g.strokeRect(6, -10, w - 12, h + 20);
+      if (kind === 'neon' || kind === 'darkcourt') { for (let i = 0; i < 14; i++) { const x = rnd() * w; const gr = g.createLinearGradient(0, 0, 0, h); const c = kind === 'neon' ? (i % 2 ? '200,80,255' : '60,200,255') : '255,170,90'; gr.addColorStop(0, `rgba(${c},0)`); gr.addColorStop(0.5, `rgba(${c},.22)`); gr.addColorStop(1, `rgba(${c},0)`); g.fillStyle = gr; g.fillRect(x, 0, 10 + rnd() * 26, h); } }
+    }
     else if (kind === 'court') { g.fillStyle = '#d9a25c'; g.fillRect(0, 0, w, h); for (let i = 0; i < 16; i++) { g.fillStyle = `rgba(${120 + rnd() * 60},${70 + rnd() * 30},20,${0.12 + rnd() * 0.12})`; g.fillRect(i * w / 16, 0, w / 16 - 1, h); } g.strokeStyle = 'rgba(90,50,10,.35)'; g.lineWidth = 2; for (let j = 0; j < 4; j++) { g.beginPath(); g.moveTo(0, j * h / 4 + rnd() * 30); g.lineTo(w, j * h / 4 + rnd() * 30); g.stroke(); } }
     else { g.fillStyle = '#8a8792'; g.fillRect(0, 0, w, h); const n = 6; const s = w / n; for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const c = 120 + rnd() * 50; g.fillStyle = `rgb(${c},${c * 0.97},${c * 1.03})`; g.fillRect(i * s + 2, j * s + 2, s - 4, s - 4); } speckle(g, w, h, 3000, ['#000', '#fff'], 3, 0.12); }
     // レーンの線（うすく）
@@ -70,6 +77,14 @@ function pickSkyPhoto(themeName, stageSeed) {
 }
 // ステージの おくに 見える けしき（コートの絵の 上はんぶん）。空の写真と べつべつに えらぶので、ステージごとに 組み合わせが かわる
 const BG_COUNT = { village: 6, sunset: 4, night: 3, snow: 2, castle: 3, gym: 4 };
+// けしきの絵ごとに、道（コートの床）と 道のわきに ならべる ものを そろえる
+const BG_STYLE = {
+  village: [['asphalt', 'street'], ['court', 'park'], ['bluecourt', 'street'], ['bluecourt', 'houses'], ['bluecourt', 'houses'], ['court', 'park']],
+  sunset: [['darkcourt', 'street'], ['darkcourt', 'overpass'], ['bluecourt', 'overpass'], ['bluecourt', 'overpass']],
+  night: [['neon', 'neon'], ['court', 'arena'], ['court', 'arena']],
+  snow: [['bluecourt', 'stadium'], ['bluecourt', 'stadium']],
+  castle: [['court', 'arena'], ['court', 'arena'], ['court', 'arena']],
+};
 function addBackdrop(scene, th, themeName, n, D) {
   const cnt = BG_COUNT[themeName]; if (!cnt) return; const img = new Image();
   img.onload = () => {
@@ -107,7 +122,9 @@ export function buildEnv(scene, o) {
   const sky = add(tex(16, 512, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, th.sky[0]); gr.addColorStop(0.45, th.sky[1]); gr.addColorStop(0.62, th.sky[2]); gr.addColorStop(1, th.sky[2]); g.fillStyle = gr; g.fillRect(0, 0, w, h); }));
   scene.background = sky; scene.fog = new THREE.Fog(C(th.fog), th.indoor ? 40 : 34, th.indoor ? 120 : 130);
   if (!th.indoor) { const seedStr = String(o.stageId || o.themeName || ''); let hs = 0; for (let i = 0; i < seedStr.length; i++) hs = (hs * 131 + seedStr.charCodeAt(i)) >>> 0; const photo = pickSkyPhoto(o.themeName, hs); if (photo) applySkyPhoto(scene, th, photo); }
-  { const ss = String(o.stageId || o.themeName || '') + 'bg'; let h2 = 7; for (let i = 0; i < ss.length; i++) h2 = (h2 * 31 + ss.charCodeAt(i)) >>> 0; addBackdrop(scene, th, o.themeName, h2 >>> 3, D); }
+  let bgN = 0;
+  { const ss = String(o.stageId || o.themeName || '') + 'bg'; let h2 = 7; for (let i = 0; i < ss.length; i++) h2 = (h2 * 31 + ss.charCodeAt(i)) >>> 0; { const mm = /-(\d+)$/.exec(String(o.stageId || '')); bgN = mm ? (+mm[1] - 1) : (h2 % 9973) % 997; } addBackdrop(scene, th, o.themeName, bgN, D); }
+  const sty = (BG_STYLE[o.themeName] || [])[bgN % (BG_COUNT[o.themeName] || 1)] || null; const roadKind = sty ? sty[0] : th.road; const kit = sty ? sty[1] : null;
   scene.add(new THREE.HemisphereLight(C(th.hemi[0]), C(th.hemi[1]), th.hemi[2]));
   const dl = new THREE.DirectionalLight(C(th.dir[0]), th.dir[1]); dl.position.set(-4, 9, 6); scene.add(dl);
   const glowT = o.glow;
@@ -122,7 +139,7 @@ export function buildEnv(scene, o) {
     if (th.hill) th.hill.forEach((col, k) => { const ht = add(tex(1024, 128, (g, w, h) => { g.fillStyle = col; g.beginPath(); g.moveTo(0, h); for (let x = 0; x <= w; x += 8) g.lineTo(x, h * 0.55 - Math.sin(x * 0.012 + k * 2) * 26 - Math.sin(x * 0.031 + k) * 12 - (k ? 0 : 18)); g.lineTo(w, h); g.fill(); if (o.themeName === 'castle' || o.themeName === 'night') { g.fillStyle = col; const cx = w * (0.5 + (k ? 0.18 : -0.02)); g.fillRect(cx - 40, 14, 80, 80); for (let i = 0; i < 5; i++) g.fillRect(cx - 40 + i * 18, 4, 10, 12); g.fillRect(cx - 62, 30, 22, 70); g.fillRect(cx + 40, 30, 22, 70); g.fillStyle = '#ffc94a'; for (let i = 0; i < 4; i++) g.fillRect(cx - 24 + i * 14, 40 + (i % 2) * 18, 6, 10); } })); const m = add(new THREE.MeshBasicMaterial({ map: ht, transparent: true, fog: false, depthWrite: false })); const pl = new THREE.Mesh(add(new THREE.PlaneGeometry(520, 50)), m); pl.position.set(0, 14 - k * 5, -160 + k * 12); pl.renderOrder = -1; far.add(pl); });
   }
   // 道と わき
-  const road = add(roadTex(th.road, [0.5 - (LW * 0.5) / (HW * 2), 0.5 + (LW * 0.5) / (HW * 2)]));
+  const road = add(roadTex(roadKind, [0.5 - (LW * 0.5) / (HW * 2), 0.5 + (LW * 0.5) / (HW * 2)]));
   const roadM = new THREE.Mesh(add(new THREE.PlaneGeometry(HW * 2, 200)), add(new THREE.MeshLambertMaterial({ map: road }))); roadM.rotation.x = -Math.PI / 2; roadM.position.z = -88; scene.add(roadM);
   const sideT = add(tex(256, 256, (g, w, h) => { g.fillStyle = th.side; g.fillRect(0, 0, w, h); speckle(g, w, h, 2600, [th.side2, '#ffffff', '#000000'], th.water ? 14 : 4, th.water ? 0.22 : 0.14); if (th.lava) { for (let i = 0; i < 12; i++) { g.strokeStyle = `rgba(255,${120 + rnd() * 80},20,.9)`; g.lineWidth = 3 + rnd() * 4; g.beginPath(); let x = rnd() * w, y = rnd() * h; g.moveTo(x, y); for (let k = 0; k < 5; k++) { x += (rnd() - 0.5) * 80; y += (rnd() - 0.5) * 80; g.lineTo(x, y); } g.stroke(); } } }, [26, 13]));
   const sideM = new THREE.Mesh(add(new THREE.PlaneGeometry(400, 200)), add(th.lava || th.water ? new THREE.MeshBasicMaterial({ map: sideT }) : new THREE.MeshLambertMaterial({ map: sideT }))); sideM.rotation.x = -Math.PI / 2; sideM.position.set(0, th.water ? -1.2 : -0.04, -88); scene.add(sideM);
@@ -135,7 +152,7 @@ export function buildEnv(scene, o) {
   const lam2 = (k, col, flat) => lam(k, () => (flat ? new THREE.MeshBasicMaterial({ color: C(col), side: THREE.DoubleSide }) : new THREE.MeshLambertMaterial({ color: C(col) })));
   const coneG = add(new THREE.ConeGeometry(1, 1, 4)); const cylG = add(new THREE.CylinderGeometry(1, 1, 1, 8)); const icoG = add(new THREE.IcosahedronGeometry(1, 1)); const pineG = add(new THREE.ConeGeometry(1, 1, 7));
   const mesh = (geo, mat, sx, sy, sz, x, y, z, ry = 0) => { const m = new THREE.Mesh(geo, mat); m.scale.set(sx, sy, sz); m.position.set(x, y, z); m.rotation.y = ry; return m; };
-  if (th.house) {
+  if (th.house && (!kit || kit === 'houses')) {
     const wallsT = th.walls.map((c) => add(wallTex(th.house, c, th.glow > 0.4))); const roofsT = th.roofs.map((c) => add(roofTex(c)));
     for (let i = 0; i < 22; i++) {
       const s = i % 2 ? 1 : -1; const gp = new THREE.Group(); const w = 5 + rnd() * 3, h = 4 + rnd() * 3.5, d = 5 + rnd() * 3; const vi = Math.floor(rnd() * wallsT.length);
@@ -146,6 +163,37 @@ export function buildEnv(scene, o) {
       else { gp.add(mesh(coneG, rm, w * 0.82, 2.4 + rnd() * 1.4, d * 0.82, 0, h + 1.3, 0, Math.PI / 4)); gp.add(mesh(boxG, lam('ch', () => new THREE.MeshLambertMaterial({ color: 0x7a4a3a })), 0.6, 1.6, 0.6, w * 0.22, h + 1.6, 0)); }
       gp.rotation.y = s * -0.12 + (rnd() - 0.5) * 0.2; put(gp, s * (HW + 5 + rnd() * 4 + w / 2), i * (SPAN / 22) + rnd() * 3);
     }
+  }
+  // コートの まわり（フェンス・らくがきの かべ・ベンチ・はた・かんきゃく席・高架）
+  if (kit) {
+    const plG = add(new THREE.PlaneGeometry(1, 1)); const night = th.glow > 0.4 || kit === 'neon' || kit === 'arena';
+    const chainT = add(tex(64, 64, (g, w, h) => { g.clearRect(0, 0, w, h); g.strokeStyle = night ? 'rgba(150,150,210,.9)' : 'rgba(70,80,95,.9)'; g.lineWidth = 2; for (let i = -64; i < 128; i += 16) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 64, 64); g.moveTo(i + 64, 0); g.lineTo(i, 64); g.stroke(); } }, [9, 3]));
+    const chainM = add(new THREE.MeshBasicMaterial({ map: chainT, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+    const graf = [0, 1, 2].map((k) => add(tex(512, 96, (g, w, h) => { g.fillStyle = night ? '#4a4660' : '#9a9aa2'; g.fillRect(0, 0, w, h); speckle(g, w, h, 900, ['#000', '#fff'], 4, 0.12); const cols = ['#ff4fa8', '#3dd6ff', '#ffd23f', '#8a5cff', '#ff7a2a', '#4dff88']; for (let i = 0; i < 9; i++) { g.fillStyle = cols[(i + k * 2) % 6]; g.strokeStyle = '#1a1420'; g.lineWidth = 5; g.beginPath(); let x = 20 + i * 54 + rnd() * 16, y = 20 + rnd() * 30; g.moveTo(x, y + 50); for (let j = 0; j < 5; j++) g.lineTo(x + j * 11 + rnd() * 8, y + (j % 2 ? 0 : 46) + rnd() * 10); g.lineTo(x + 50, y + 54); g.closePath(); g.fill(); g.stroke(); } })));
+    const grafM = graf.map((t) => add(night ? new THREE.MeshBasicMaterial({ map: t, color: 0xb0a8d0 }) : new THREE.MeshLambertMaterial({ map: t })));
+    const postM = lam2('kpost', night ? '#2a2a4a' : '#39424e'); const benchM = lam2('kbench', '#c98a3c'); const neonM = lam2('kneon', '#ff4fe8', true); const neonM2 = lam2('kneon2', '#3df5ff', true);
+    const fenceX = HW + 1.5; const SEG = SPAN / 22;
+    if (kit !== 'park' && kit !== 'arena' && kit !== 'stadium') for (let i = 0; i < 22; i++) for (const s of [-1, 1]) { const gp = new THREE.Group();
+      gp.add(mesh(boxG, grafM[(i + (s > 0 ? 1 : 0)) % 3], 0.25, 1.1, SEG, 0, 0.55, 0)); const ch = mesh(plG, chainM, SEG, 2.6, 1, 0, 2.4, 0, Math.PI / 2); gp.add(ch); gp.add(mesh(boxG, postM, 0.14, 3.7, 0.14, 0, 1.85, SEG / 2)); gp.add(mesh(boxG, postM, 0.1, 0.1, SEG, 0, 3.7, 0));
+      if (kit === 'neon') { gp.add(mesh(boxG, i % 2 ? neonM : neonM2, 0.08, 0.08, SEG, -s * 0.16, 1.15, 0)); }
+      put(gp, s * fenceX, i * SEG); }
+    // ベンチ と バスケの はた
+    const banT = add(tex(64, 128, (g, w, h) => { g.fillStyle = kit === 'neon' ? '#8a3cff' : o.themeName === 'sunset' ? '#f08a2c' : '#2f6fd9'; g.fillRect(0, 0, w, h); g.strokeStyle = '#fff'; g.lineWidth = 4; g.beginPath(); g.arc(32, 56, 20, 0, TAU); g.moveTo(12, 56); g.lineTo(52, 56); g.moveTo(32, 36); g.lineTo(32, 76); g.stroke(); g.beginPath(); g.arc(8, 56, 20, -0.9, 0.9); g.stroke(); g.beginPath(); g.arc(56, 56, 20, Math.PI - 0.9, Math.PI + 0.9); g.stroke(); }));
+    const banM = add(new THREE.MeshBasicMaterial({ map: banT, side: THREE.DoubleSide }));
+    for (let i = 0; i < 8; i++) { const s = i % 2 ? 1 : -1; const gp = new THREE.Group(); gp.add(mesh(boxG, benchM, 0.7, 0.1, 2.2, 0, 0.5, 0)); gp.add(mesh(boxG, benchM, 0.1, 0.5, 2.2, s * 0.32, 0.85, 0)); gp.add(mesh(boxG, postM, 0.5, 0.5, 0.1, 0, 0.25, 0.9)); gp.add(mesh(boxG, postM, 0.5, 0.5, 0.1, 0, 0.25, -0.9)); put(gp, s * (HW + 0.8), i * (SPAN / 8) + 6); }
+    if (kit !== 'arena') for (let i = 0; i < 8; i++) { const s = i % 2 ? 1 : -1; const gp = new THREE.Group(); gp.add(mesh(cylG, postM, 0.09, 5.6, 0.09, 0, 2.8, 0)); gp.add(mesh(boxG, postM, 0.9, 0.08, 0.08, -s * 0.45, 5.5, 0)); gp.add(mesh(plG, banM, 0.9, 1.8, 1, -s * 0.5, 4.5, 0)); gp.add(mesh(icoG, lam2('klamp', '#fff6c8', true), 0.22, 0.14, 0.22, -s * 0.9, 5.4, 0)); put(gp, s * (HW + 2.1), i * (SPAN / 8) + 18); }
+    // まわりの たてもの（街）
+    if (kit === 'street' || kit === 'neon') { const winT = [0, 1].map((k) => add(tex(128, 256, (g, w, h) => { g.fillStyle = night ? (k ? '#1a1a3c' : '#24204a') : (k ? '#c9d6e6' : '#e6dcc8'); g.fillRect(0, 0, w, h); for (let y = 0; y < 16; y++) for (let x = 0; x < 6; x++) { g.fillStyle = night ? (rnd() < 0.6 ? (rnd() < 0.5 ? '#ffe9a0' : '#7ad8ff') : '#0c0c24') : (rnd() < 0.5 ? '#6aa0d8' : '#8fbce8'); g.fillRect(8 + x * 20, 8 + y * 15.5, 13, 10); } if (kit === 'neon') { g.fillStyle = k ? '#ff4fe8' : '#3df5ff'; g.fillRect(0, 0, w, 6); } })));
+      for (let i = 0; i < 14; i++) { const s = i % 2 ? 1 : -1; const k = i % 3 ? 0 : 1; const w = 6 + rnd() * 4, h = (kit === 'neon' ? 16 : 9) + rnd() * 14, d = 6 + rnd() * 4; const wm = lam('kb' + k, () => (night ? new THREE.MeshBasicMaterial({ map: winT[k] }) : new THREE.MeshLambertMaterial({ map: winT[k] }))); const gp = new THREE.Group(); gp.add(mesh(boxG, wm, w, h, d, 0, h / 2, 0)); put(gp, s * (HW + 9 + rnd() * 7 + w / 2), i * (SPAN / 14) + rnd() * 4); } }
+    // 高架（はしらと はり）：下を くぐって 走る
+    if (kit === 'overpass') { const conc = lam2('kconc', o.themeName === 'sunset' && roadKind === 'darkcourt' ? '#7a6a80' : '#a8a8b0'); for (let i = 0; i < 6; i++) { const gp = new THREE.Group(); for (const s of [-1, 1]) { gp.add(mesh(boxG, conc, 2.2, 10, 2.2, s * (HW + 4.6), 5, 0)); gp.add(mesh(boxG, grafM[(i + (s > 0 ? 1 : 0)) % 3], 2.3, 2.6, 2.3, s * (HW + 4.6), 1.4, 0)); } gp.add(mesh(boxG, conc, (HW + 7) * 2, 1.5, 3, 0, 10.6, 0)); gp.add(mesh(boxG, conc, (HW + 7) * 2, 0.5, SPAN / 6 * 0.72, 0, 11.6, 0)); put(gp, 0, i * (SPAN / 6) + 12); } }
+    // かんきゃく席（スタジアム／アリーナ）
+    if (kit === 'stadium' || kit === 'arena') { const dark = kit === 'arena';
+      const crowdT = add(tex(256, 256, (g, w, h) => { g.fillStyle = dark ? '#14143a' : '#3a4f8a'; g.fillRect(0, 0, w, h); const cols = dark ? ['#ff6ad0', '#6ad0ff', '#ffe08a', '#b08aff', '#ffffff'] : ['#ffd9b0', '#e8b48a', '#c98f66', '#fff', '#ff6a6a', '#6ab0ff', '#ffe03d']; for (let y = 0; y < 12; y++) { g.fillStyle = dark ? '#0c0c28' : '#2c3c6c'; g.fillRect(0, y * 21 + 16, w, 5); for (let x = 0; x < 26; x++) { if (rnd() < 0.12) continue; g.fillStyle = cols[Math.floor(rnd() * cols.length)]; g.beginPath(); g.arc(x * 10 + 5 + rnd() * 2, y * 21 + 8, 4, 0, TAU); g.fill(); g.fillStyle = cols[Math.floor(rnd() * cols.length)]; g.fillRect(x * 10 + 1, y * 21 + 11, 8, 6); } } }, [1, 1]));
+      const crowdM = add(dark ? new THREE.MeshBasicMaterial({ map: crowdT, side: THREE.DoubleSide }) : new THREE.MeshLambertMaterial({ map: crowdT, side: THREE.DoubleSide }));
+      const ledT = add(tex(256, 32, (g, w, h) => { const cs = dark ? ['#ff3d6a', '#3d6aff', '#b03dff', '#ffffff'] : ['#f08a2c', '#2f6fd9', '#ffffff', '#4dc0ff']; for (let i = -2; i < 14; i++) { g.fillStyle = cs[(i + 4) % 4]; g.beginPath(); g.moveTo(i * 24, 0); g.lineTo(i * 24 + 24, 0); g.lineTo(i * 24 + 44, h); g.lineTo(i * 24 + 20, h); g.fill(); } })); const ledM = add(new THREE.MeshBasicMaterial({ map: ledT }));
+      for (let i = 0; i < 22; i++) for (const s of [-1, 1]) { const gp = new THREE.Group(); gp.add(mesh(boxG, ledM, 0.3, 1.1, SEG, 0, 0.55, 0)); const st = mesh(plG, crowdM, SEG, 11, 1, s * 4.6, 5.6, 0, Math.PI / 2); st.rotation.order = 'YXZ'; st.rotation.x = s * 0.75; gp.add(st); put(gp, s * (HW + 1.6), i * SEG); }
+      if (dark) for (let i = 0; i < 6; i++) { const gp = new THREE.Group(); for (const s of [-1, 1]) { const sp = new THREE.Sprite(add(new THREE.SpriteMaterial({ map: glowT, color: C(i % 2 ? '#ffd9a0' : '#a0c8ff'), transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending }))); sp.scale.set(5, 5, 1); sp.position.set(s * (HW + 7), 12, 0); gp.add(sp); } put(gp, 0, i * (SPAN / 6) + 9); } }
   }
   if (th.tree) {
     const leaf = th.tree.map((c, i) => lam('l' + i, () => new THREE.MeshLambertMaterial({ color: C(c), flatShading: true }))); const trunk = lam('tr', () => new THREE.MeshLambertMaterial({ color: C(th.trunk) })); const snow = lam('sn', () => new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }));
