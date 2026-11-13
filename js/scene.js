@@ -77,16 +77,18 @@ export function createScene(canvas, o) {
   disposables.push(hazTex, hazMat, G.box, G.plane, G.ring, chevTex);
   const labelCache = new Map(); const colMat = new Map();
   const cm = (c, op = 1) => { const k = c + op; if (!colMat.has(k)) { const m = new THREE.MeshBasicMaterial({ color: C(c), transparent: op < 1, opacity: op, depthWrite: op >= 1, side: THREE.DoubleSide }); colMat.set(k, m); disposables.push(m); } return colMat.get(k); };
+  // 文字を はばに おさめる（iPhone の Safari は fillText の はば指定が きかないので、自分で 小さくして まんなかに おく）
+  function fitText(g, text, cx, cy, maxW, px) { let size = px; g.font = `900 ${size}px "M PLUS Rounded 1c","Hiragino Maru Gothic ProN",sans-serif`; let wd = g.measureText(text).width; if (wd > maxW) { size = Math.floor(px * maxW / wd); g.font = `900 ${size}px "M PLUS Rounded 1c","Hiragino Maru Gothic ProN",sans-serif`; wd = g.measureText(text).width; } g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(text, cx - wd / 2, cy); }
   // 2だんの ふだ（よこへ うごく ゲート用：レーンの わくの 上に のせる）
   function label2(l1, l2, color) {
     const k = '2|' + l1 + '|' + l2 + color; if (labelCache.has(k)) return labelCache.get(k);
-    const t = canvasTex(512, 256, (g, w, h) => { g.fillStyle = 'rgba(4,8,30,.85)'; g.strokeStyle = color; g.lineWidth = 10; g.beginPath(); g.roundRect(8, 8, w - 16, h - 16, 34); g.fill(); g.stroke(); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = color;
-      g.font = '900 72px "M PLUS Rounded 1c","Hiragino Maru Gothic ProN",sans-serif'; g.fillText(l1, w / 2, h * 0.32, w - 44); g.font = '900 64px "M PLUS Rounded 1c","Hiragino Maru Gothic ProN",sans-serif'; g.fillText(l2, w / 2, h * 0.7, w - 44); });
+    const t = canvasTex(512, 256, (g, w, h) => { g.fillStyle = 'rgba(4,8,30,.85)'; g.strokeStyle = color; g.lineWidth = 10; g.beginPath(); g.roundRect(8, 8, w - 16, h - 16, 34); g.fill(); g.stroke(); g.fillStyle = color;
+      fitText(g, l1, w / 2, h * 0.32, w - 50, 72); fitText(g, l2, w / 2, h * 0.7, w - 50, 64); });
     const m = new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false }); labelCache.set(k, m); disposables.push(t, m); return m;
   }
   function label(text, color) {
     const k = text + color; if (labelCache.has(k)) return labelCache.get(k);
-    const t = canvasTex(768, 192, (g, w, h) => { g.fillStyle = 'rgba(4,8,30,.82)'; g.strokeStyle = color; g.lineWidth = 10; const r = 40; g.beginPath(); g.roundRect(8, 8, w - 16, h - 16, r); g.fill(); g.stroke(); g.font = '900 104px "M PLUS Rounded 1c","Hiragino Maru Gothic ProN",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = color; g.fillText(text, w / 2, h / 2 + 6, w - 60); });
+    const t = canvasTex(768, 192, (g, w, h) => { g.fillStyle = 'rgba(4,8,30,.82)'; g.strokeStyle = color; g.lineWidth = 10; const r = 40; g.beginPath(); g.roundRect(8, 8, w - 16, h - 16, r); g.fill(); g.stroke(); g.fillStyle = color; fitText(g, text, w / 2, h / 2 + 6, w - 70, 104); });
     const m = new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false }); labelCache.set(k, m); disposables.push(t, m); return m;
   }
   const gates = new Map();
