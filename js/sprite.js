@@ -7,6 +7,7 @@ export const SHEETS = ['htwo', 'hlowL', 'hlowR', 'hpower', 'hdribL', 'hdribR', '
 
 const R = 0.17;            // ボールの はんけい
 const DX = 0.56;           // ドリブルする ボールの よこの いち（手の 真下）
+const FZ = -0.26;          // ドリブルの ボールは 足の よこの 少し まえ（カメラから 見て おく）
 const TOP = 0.52;          // ドリブルの いちばん 上（手に ふれる 高さ）
 const HEAD = [0, 1.2], WAIST = 0.7, KNEE = 0.34, LEGX = 0.3;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -39,7 +40,7 @@ export function spritePose(st) {
   // ジャンプストップ
   if (cue && sk.jump) { out.sheet = 'hjstop'; out.f = cb < 1 ? Math.min(3, Math.floor(cb * 4)) : cb < 1.5 ? 4 : 5; if (cb < 1) out.lift = Math.sin(Math.PI * cb) * 0.3; out.ball = { x: 0.3, y: 0.62 + out.lift, z: -0.12 }; return out; }
   // よこへ うごく（サイドステップ・ドライブ など）
-  if (Math.abs(vx) > 0.9) { out.sheet = vx > 0 ? 'hside' : 'hsideL'; out.f = 1 + Math.floor(performance.now() / 100) % 4; if (!hold) out.ball = { x: (vx > 0 ? 1 : -1) * DX * 0.9, y: dribY, z: 0.02 }; else out.ball = { x: 0.32 * (vx > 0 ? 1 : -1), y: 0.62, z: -0.1 }; return out; }
+  if (Math.abs(vx) > 0.9) { out.sheet = vx > 0 ? 'hside' : 'hsideL'; out.f = 1 + Math.floor(performance.now() / 100) % 4; if (!hold) out.ball = { x: (vx > 0 ? 1 : -1) * DX * 0.9, y: dribY, z: FZ }; else out.ball = { x: 0.32 * (vx > 0 ? 1 : -1), y: 0.62, z: -0.1 }; return out; }
   // ハンドリング（ボールまわし）
   if (cue && sk.handle) {
     const th = cb * Math.PI; let r;
@@ -59,7 +60,7 @@ export function spritePose(st) {
     const t2 = clamp((b2.y - 0.13) / Math.max(0.12, mem.max2 - 0.13), 0, 1); const topT = sk.high ? 0.78 : sk.low ? 0.34 : TOP;
     const upR = t > 0.55, upL = t2 > 0.55; out.sheet = 'htwo'; out.f = upL && upR ? 0 : !upL && !upR ? 1 : upL ? 2 : 3;
     const sx = (x) => Math.sign(x || 1) * clamp(Math.abs(x) * (0.5 / 0.42), 0.26, 0.78);
-    out.ball = { x: sx(rx), y: R + t * (topT - R), z: 0.02 }; out.ball2 = { x: sx(b2.x), y: R + t2 * (topT - R), z: 0.02 }; return out;
+    out.ball = { x: sx(rx), y: R + t * (topT - R), z: FZ }; out.ball2 = { x: sx(b2.x), y: R + t2 * (topT - R), z: FZ }; return out;
   }
   if (cue && sk.hand === 'two') { out.sheet = 'hdribL'; out.f = t > 0.6 ? 2 : 0; const t2 = st.bp2 ? clamp((st.bp2.y - 0.13) / Math.max(0.12, mem.max - 0.13), 0, 1) : t; out.sheet = 'hpower'; out.f = 0; out.ball = { x: DX * 0.85, y: dribY, z: 0.02 }; out.ball2 = { x: -DX * 0.85, y: R + t2 * (top - R), z: 0.02 }; return out; }
   // ボールを もつ（パワーポジション・ピタッ など）
@@ -79,7 +80,7 @@ export function spritePose(st) {
   out.sheet = sk.low ? (side < 0 ? 'hlowL' : 'hlowR') : side < 0 ? 'hdribL' : 'hdribR';
   out.f = t > 0.72 ? 2 : t > 0.38 ? 4 : 0;
   // まんなかに ちかづくほど 体の まえ（むこうがわ）へ：フロントチェンジ・かたてフロントが うしろを とおらない
-  out.ball = { x: bxS, y: dribY, z: behindT ? 0.02 : 0.02 - 0.22 * clamp(1 - ax / 0.42, 0, 1) };
+  out.ball = { x: bxS, y: dribY, z: behindT ? 0.02 : FZ - 0.1 * clamp(1 - ax / 0.42, 0, 1) };
   out.strong = strong;
   return out;
 }
