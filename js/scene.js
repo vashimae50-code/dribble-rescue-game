@@ -5,6 +5,7 @@ import { ballCanvas } from './balls.js';
 import { makeHuman } from './character.js';
 import { buildEnv } from './env.js';
 import { spritePose, SHEETS } from './sprite.js';
+import { spritePose7, SHEETS7 } from './sprite7.js';
 import { EffectComposer } from '../vendor/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from '../vendor/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from '../vendor/addons/postprocessing/UnrealBloomPass.js';
@@ -44,9 +45,9 @@ export function createScene(canvas, o) {
   // 敵も バスケットマン：ディフェンス 2人、おいかけてくる 1人、ボス 1人（べつの チームの ユニフォーム）
   // プレイヤーを 絵（スプライト）で 出す：右手ドリブル と パワーポジション
   const GK = (o.grow && o.grow.k) || 1; // そだつ：からだの 大きさ
-  let pspr = null, psHit = false; const psMem = {}; const psT = {}; const PSN = SHEETS; const psPre = o.girl ? 'g_' : '';
+  let pspr = null, psHit = false; const psMem = {}; const psT = {}; const NEW7 = !o.girl; const PSN = NEW7 ? SHEETS7 : SHEETS; const psPre = o.girl ? 'g_' : 'n_'; const PSROWS = NEW7 ? 3 : 2; const PSS = NEW7 ? 2.2 : 1.65; // おとこのこは 7ばんの あたらしい 絵（3×3）
   const impact = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.75, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })); impact.rotation.x = -Math.PI / 2; impact.visible = false; scene.add(impact); disposables.push(impact.geometry, impact.material);
-  if (human && o.sprite !== false) { let n = 0; const ld = new THREE.TextureLoader(); for (const k of PSN) { const t = ld.load(`img/player/${psPre}${k}.webp`, () => { if (++n === PSN.length) { const m = new THREE.SpriteMaterial({ map: psT.hpower, transparent: true, alphaTest: 0.05 }); pspr = new THREE.Sprite(m); pspr.center.set(0.5, 0.01); pspr.scale.set(1.65 * GK, 1.65 * GK, 1); scene.add(pspr); human.setMainVisible(false); } }); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; psT[k] = t; } }
+  if (human && o.sprite !== false) { let n = 0; const ld = new THREE.TextureLoader(); for (const k of PSN) { const t = ld.load(`img/player/${psPre}${k}.webp`, () => { if (++n === PSN.length) { const m = new THREE.SpriteMaterial({ map: psT[PSN[0]], transparent: true, alphaTest: 0.05 }); pspr = new THREE.Sprite(m); pspr.center.set(0.5, NEW7 ? 5 / 512 : 0.01); pspr.scale.set(PSS * GK, PSS * GK, 1); scene.add(pspr); human.setMainVisible(false); } }); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; psT[k] = t; } }
   const faceAtlas = o.human ? new THREE.TextureLoader().load('img/faces.png') : null; if (faceAtlas) faceAtlas.colorSpace = THREE.SRGBColorSpace;
   const mkFoe = (c, num, trim) => { const h = makeHuman(o.human, c, { num, trim, guide: false, skin: '#c98f66', shoe: '#22222a' }); h.root.visible = false; scene.add(h.root); return h; };
   const defs = o.human ? [mkFoe('#d9263c', 23, '#ffe03d'), mkFoe('#d9263c', 11, '#ffe03d'), mkFoe('#2a3a7a', 15, '#ffe03d'), mkFoe('#2a3a7a', 8, '#ffe03d')] : [];
@@ -220,10 +221,10 @@ export function createScene(canvas, o) {
     let bx = laneX + (bp ? bp.x : 0.4), by = bp ? bp.y : 0.8, bz = bp ? bp.z : -0.3;
     let pose = null;
     if (pspr) { // 絵の コマえらび と ボールの いち（js/sprite.js）
-      pose = spritePose({ sk, cue, beat: abeat, vx, bp, bp2: human && human.ball2(), mem: psMem });
-      const T = psT[pose.sheet] || psT.hpower; const f = pose.f;
+      pose = (NEW7 ? spritePose7 : spritePose)({ sk, cue, beat: abeat, vx, bp, bp2: human && human.ball2(), mem: psMem });
+      const T = psT[pose.sheet] || psT[PSN[0]]; const f = pose.f;
       if (pspr.material.map !== T) { pspr.material.map = T; pspr.material.needsUpdate = true; }
-      T.repeat.set(1 / 3, 0.5); T.offset.set((f % 3) / 3, f < 3 ? 0.5 : 0); pspr.position.set(laneX, pose.lift * GK, 0.02);
+      T.repeat.set(1 / 3, 1 / PSROWS); T.offset.set((f % 3) / 3, (PSROWS - 1 - Math.floor(f / 3)) / PSROWS); pspr.position.set(laneX, pose.lift * GK, 0.02);
       if (pose.ball) { bx = laneX + pose.ball.x * GK; by = 0.17 + (pose.ball.y - 0.17) * GK; bz = pose.ball.z; }
     }
     // つよく ドリブル：ボールを 大きく、ゆかに つくたびに 大きな わ

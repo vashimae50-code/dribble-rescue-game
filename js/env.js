@@ -80,8 +80,9 @@ const COURT_VP = { village: [0.28, 0.315, 0.332, 0.345, 0.285, 0.311], sunset: [
 const courtN = (stageId) => { const ss = String(stageId || ''); let h2 = 7; for (let i = 0; i < ss.length; i++) h2 = (h2 * 31 + ss.charCodeAt(i)) >>> 0; const mm = /-(\d+)$/.exec(ss); return mm ? (+mm[1] - 1) : (h2 % 9973) % 997; };
 const IMGS = {}; const courtImg = (theme, idx) => { const src = `img/court/${theme}${idx + 1}.webp`; if (!IMGS[src]) { const im = new Image(); im.src = src; IMGS[src] = im; } return IMGS[src]; };
 // ステージの しょうかい画面の うちに、コートの絵と プレイヤーの絵を 先に 読みこんでおく
-export function preloadStage(theme, stageId, girl) { const v = COURT_VP[theme]; if (v) courtImg(theme, courtN(stageId) % v.length); for (const k of PLAYER_SHEETS) { const src = `img/player/${girl ? 'g_' : ''}${k}.webp`; if (!IMGS[src]) { const im = new Image(); im.src = src; IMGS[src] = im; } } }
+export function preloadStage(theme, stageId, girl) { const v = COURT_VP[theme]; if (v) courtImg(theme, courtN(stageId) % v.length); for (const k of (girl ? PLAYER_SHEETS : SHEETS7)) { const src = `img/player/${girl ? 'g_' : 'n_'}${k}.webp`; if (!IMGS[src]) { const im = new Image(); im.src = src; IMGS[src] = im; } } }
 import { SHEETS as PLAYER_SHEETS } from './sprite.js';
+import { SHEETS7 } from './sprite7.js';
 function buildCourtEnv(scene, o, th, D, n) {
   const vps = COURT_VP[o.themeName]; const idx = n % vps.length; const vp = vps[idx]; const HW = o.HW, LW = o.LW; const SCREEN_VP = 0.42; // 画面の中で 地平線が くる高さ
   let aspect = 16 / 9, img = null, bgT = null;
