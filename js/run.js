@@ -141,7 +141,7 @@ export function runStage(opts) {
   let loaded = false, waitT = 0;
   let phase = 'count'; let paused = false, dead = false, raf = 0;
   let score = 0, combo = 0, maxCombo = 0, hearts = 3, chaser = 0.3, chaserShow = 0.3;
-  let cuesOk = 0, cuesAll = 0, orbsGot = 0, dribbles = 0, leftReps = 0, rightReps = 0;
+  let cuesOk = 0, cuesAll = 0, orbsGot = 0, dribbles = 0, leftReps = 0, rightReps = 0, speedMax = 0;
   const counts = {}; const okCounts = {}; const failCounts = {};
   let shake = 0, flash = 0, flashCol = '#fff', redFlash = 0, slow = 1;
   let curCue = cues[0], spokenFor = null, countShown = null, curLane = 0;
@@ -185,6 +185,7 @@ export function runStage(opts) {
     if (c.hand === 'L') leftReps += cam ? 0 : 1; else if (c.hand === 'R') rightReps += cam ? 0 : 1;
     if (!cam || c.ballMode === 'none') { cuesOk++; if (c.boss) bossShot(); return; }
     const s = c.st; const sk = SKILLS[c.skill]; const len = c.b1 - c.b0; const secs = len / bps; const seen = s.tr / Math.max(1, s.f) > 0.5; let ok;
+    if ((c.skill === 'fast' || c.rush) && secs > 0.5) speedMax = Math.max(speedMax, s.n / secs); // はやさ（1びょうの かいすう）
     if (c.hand === 'R') ok = s.R >= 2 && s.R > s.L; else if (c.hand === 'L') ok = s.L >= 2 && s.L > s.R;
     else if (c.hand === 'alt') ok = s.sw >= Math.max(1, Math.floor(len / 4) * (sk.quick || 1)); else if (c.hand === 'combo') ok = s.n >= 3 && s.sw >= 1; else if (c.hand === 'two') ok = s.R >= 2 && s.L >= 2; else if (c.hand === 'alt1') ok = s.sw >= 1; else ok = s.late === 0;
     if (ok && sk.low) ok = s.lowF / Math.max(1, s.f) > 0.45;
@@ -424,7 +425,7 @@ export function runStage(opts) {
     if (video) { if (recorder) recorder.mr.stop(); window.__videoRecorded = true; dead = true; cancelAnimationFrame(raf); clearTimeout(safeTimer); return; }
     const par = orbs.length * 10; const hit = cuesAll ? cuesOk / cuesAll : 1; let stars;
     if (cam) stars = hit >= 0.85 && hearts === 3 ? 3 : hit >= 0.55 ? 2 : 1; else stars = score >= par * 1.12 ? 3 : score >= par * 0.85 ? 2 : 1;
-    const res = { mode, score, stars, cam, hit, maxCombo, hearts, dribbles, orbsGot, counts, okCounts, failCounts, leftReps, rightReps, tiers: tiers.slice(0, 3), tracked: allF ? trackedF / allF : 0, tipIdx, hardest: hardest() };
+    const res = { mode, score, stars, cam, hit, maxCombo, hearts, dribbles, orbsGot, speed: speedMax, counts, okCounts, failCounts, leftReps, rightReps, tiers: tiers.slice(0, 3), tracked: allF ? trackedF / allF : 0, tipIdx, hardest: hardest() };
     stop(); onEnd(res);
   }
   function stop() {

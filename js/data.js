@@ -270,22 +270,77 @@ export const canTest = (p) => { if (p.rank >= 5) return false; const ks = rankSk
 
 // ---------- きょうのミッション ----------
 function seeded(seed) { let s = seed; return () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648; }; }
+const worldOpen = (p, w) => S.settings.openAll || lvTotal(p, curLv(p)) >= w.need;
 export function dayState(p) {
   const t = today();
   if (!p.day || p.day.date !== t || p.day.missions.some((m) => m.skill && !SKILLS[m.skill])) {
     const rnd = seeded(t.split('-').reduce((a, b) => a * 31 + +b, 7) + p.id.length);
     const pool = poolFor(p.rank); const weakest = pool.slice().sort((a, b) => mastery(p, a) - mastery(p, b));
     const sk = weakest[Math.floor(rnd() * Math.min(3, weakest.length))];
-    p.day = { date: t, cues: {}, dojo: 0, clears: 0, claimed: [],
-      missions: [
-        { id: 'skill', skill: sk, n: 12, text: `「${SKILLS[sk].n}」を 12回 こなす` },
-        { id: 'dojo', n: 1, text: 'トレーニングルームで 1ワザ れんしゅう' },
-        { id: 'clear', n: 2, text: 'ステージを 2回 クリア' },
-      ] };
+    // 2こめ・3こめは まいにち かわる（あいている ワールドの なかから）
+    const open = MAIN_STAGES.filter((x) => worldOpen(p, x.world)); const ls = lvStars(p, curLv(p));
+    const bossOpen = open.filter((x) => MISSIONS[x.mission].boss);
+    const target = (open.filter((x) => (ls[x.id] || 0) < 3).sort(() => rnd() - 0.5)[0]) || open[Math.floor(rnd() * open.length)];
+    const cand = [
+      { id: 'dojo', n: 1, text: 'トレーニングルームで 1ワザ れんしゅう' },
+      { id: 'clear', n: 2, text: 'ステージを 2回 クリア' },
+      { id: 'star3', n: 1, text: 'どこかの ステージで ★3を とる' },
+      ...(bossOpen.length ? [{ id: 'boss', n: 1, text: 'ボスステージを クリア' }] : []),
+      ...(target ? [{ id: 'stage', n: 1, stage: target.id, text: `${sl(target)}「${MISSIONS[target.mission].n}」を クリア` }] : []),
+      { id: 'plays', n: 3, text: 'ステージか れんしゅうを 3回 あそぶ' },
+    ];
+    const pick = []; while (pick.length < 2 && cand.length) pick.push(cand.splice(Math.floor(rnd() * cand.length), 1)[0]);
+    p.day = { date: t, cues: {}, dojo: 0, clears: 0, star3: 0, boss: 0, plays: 0, st: [], claimed: [],
+      missions: [{ id: 'skill', skill: sk, n: 12, text: `「${SKILLS[sk].n}」を 12回 こなす` }, ...pick] };
   }
   return p.day;
 }
-export function missionProgress(p, m) { const d = dayState(p); return m.id === 'skill' ? (d.cues[m.skill] || 0) : m.id === 'dojo' ? d.dojo : d.clears; }
+export function missionProgress(p, m) { const d = dayState(p);
+  switch (m.id) { case 'skill': return d.cues[m.skill] || 0; case 'dojo': return d.dojo; case 'star3': return d.star3 || 0; case 'boss': return d.boss || 0;
+    case 'stage': return (d.st || []).includes(m.stage) ? 1 : 0; case 'plays': return d.plays || 0; default: return d.clears; } }
+export const MISSION_COIN = 20, MISSION_ALL = 30;
+export const missionAllDone = (p) => { const d = dayState(p); return d.missions.every((m) => d.claimed.includes(m.id)); };
 // 遊んだ日のスタンプ（とぎれても消えない）
-export function stamp(p) { const t = today(); if (p.lastDay === t) return false; p.lastDay = t; p.stamps++; if (p.stamps % 7 === 0) p.tickets++; return true; }
+// れんぞく日数：3日め 🪙30、5日め カプセルけん、7日め 🪙100（7日ごとに くりかえし）
+export const STREAK_RW = { 3: { coins: 30, t: '🪙30' }, 5: { ticket: 1, t: '🎟️ カプセルけん' }, 0: { coins: 100, t: '🪙100' } };
+const yday = () => { const d = new Date(); d.setDate(d.getDate() - 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+export const streakNow = (p) => (p.lastDay === today() || p.lastDay === yday() ? p.streak || 0 : 0);
+export function stamp(p) { const t = today(); if (p.lastDay === t) return false;
+  p.streak = p.lastDay === yday() ? (p.streak || 0) + 1 : 1; p.streakBest = Math.max(p.streakBest || 0, p.streak);
+  p.lastDay = t; p.stamps++; if (p.stamps % 7 === 0) p.tickets++;
+  const rw = STREAK_RW[p.streak % 7]; const hit = p.streak >= 3 && rw ? rw : null; if (hit) { p.coins += hit.coins || 0; p.tickets += hit.ticket || 0; }
+  return { streak: p.streak, rw: hit }; }
+
+// ---------- そだつ（プレイかいすう） ----------
+export const GROW = [{ n: 'ミニバス', at: 0, k: 1, aura: 0.25 }, { n: 'ちゅうがくせい', at: 30, k: 1.06, aura: 0.38 }, { n: 'こうこうせい', at: 100, k: 1.12, aura: 0.52 }, { n: 'プロ', at: 250, k: 1.18, aura: 0.7, gold: true }];
+export const growOf = (p) => { let g = 0; GROW.forEach((x, i) => { if ((p.plays || 0) >= x.at) g = i; }); return g; };
+export const BUD_LV = [0, 5, 15, 40]; // いっしょに あそんだ かいすうで Lv1〜4
+export const budLv = (p, id) => { const n = (p.bud || {})[id] || 0; let l = 1; BUD_LV.forEach((x, i) => { if (n >= x) l = i + 1; }); return l; };
+
+// ---------- しょうごう ----------
+const cnt3 = (p) => Object.values(p.stars || {}).filter((x) => x >= 3).length;
+const bossN = (p) => Object.keys(p.bossDone || {}).length;
+export const TITLES = [
+  { id: 'first', i: '👟', n: 'はじめの一歩', d: 'ステージを はじめて クリア', ok: (p) => Object.keys(p.best || {}).length >= 1 },
+  { id: 'star3', i: '🌟', n: 'パーフェクト', d: '★3を 5つ とる', ok: (p) => cnt3(p) >= 5 },
+  { id: 'stars', i: '✨', n: 'スターハンター', d: '★を ぜんぶで 50こ あつめる', ok: (p) => totalStars(p) >= 50 },
+  { id: 'boss1', i: '🛡️', n: 'ボスたおし', d: 'ボスを はじめて たおす', ok: (p) => bossN(p) >= 1 },
+  { id: 'boss5', i: '⚔️', n: 'ボスハンター', d: 'ボスを 5たい ぜんぶ たおす', ok: (p) => bossN(p) >= 5 },
+  { id: 'streak3', i: '🔥', n: 'みっかぼうず そつぎょう', d: '3日 れんぞくで あそぶ', ok: (p) => (p.streakBest || 0) >= 3 },
+  { id: 'streak7', i: '👹', n: 'れんしゅうの鬼', d: '7日 れんぞくで あそぶ', ok: (p) => (p.streakBest || 0) >= 7 },
+  { id: 'days30', i: '📅', n: 'まいにちドリブラー', d: 'あそんだ日が 30日', ok: (p) => (p.stamps || 0) >= 30 },
+  { id: 'dojo20', i: '🥋', n: 'トレーニングの たつじん', d: 'トレーニングを 20回', ok: (p) => (p.dojoN || 0) >= 20 },
+  { id: 'ball10', i: '🏀', n: 'コレクター', d: 'ボールを 10しゅるい あつめる', ok: (p) => (p.balls || []).length >= 10 },
+  { id: 'friend10', i: '🐾', n: 'なかまが いっぱい', d: 'なかまを 10人 あつめる', ok: (p) => (p.friends || []).length >= 10 },
+  { id: 'plays50', i: '💪', n: 'ドリブルずき', d: '50回 あそぶ', ok: (p) => (p.plays || 0) >= 50 },
+  { id: 'plays200', i: '👑', n: 'ドリブルマスター', d: '200回 あそぶ', ok: (p) => (p.plays || 0) >= 200 },
+  { id: 'cam', i: '📷', n: 'カメラデビュー', d: 'カメラで 1回 あそぶ', ok: (p) => (p.rec?.camPlays || 0) >= 1 },
+  { id: 'combo30', i: '⚡', n: 'コンボキング', d: 'カメラで 30コンボ', ok: (p) => (p.rec?.combo || 0) >= 30 },
+  { id: 'r3', i: '🥈', n: 'ちゅうきゅう ドリブラー', d: 'R3に とうたつ', ok: (p) => (p.rank || 1) >= 3 },
+  { id: 'rmax', i: '🏆', n: 'レジェンド', d: 'さいごの レベルに とうたつ', ok: (p) => (p.rank || 1) >= MAX_LV },
+];
+// あたらしく とれた しょうごうを かえす（p.titles に きろく）
+export function checkTitles(p) { p.titles = p.titles || []; const got = TITLES.filter((t) => !p.titles.includes(t.id) && t.ok(p)); got.forEach((t) => p.titles.push(t.id)); if (!p.title && got.length) p.title = got[0].id; return got; }
+export const titleOf = (p) => TITLES.find((t) => t.id === p.title);
+
 export const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

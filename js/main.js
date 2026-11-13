@@ -1,6 +1,6 @@
 // ドリブルレスキュー！ メニュー・成長・ごほうび
 import { SKILLS, SKILL_IDS, RANKS, TIERS, tierOf, rankSkills, poolFor, WORLDS, MISSIONS, STAGES, sl, FRIENDS, BOSS_FRIENDS, ALL_FRIENDS, BALLS, SUITS, CAPSULE_COST, AVATARS,
-  S, save, avHTML, MAX_LV, LEVEL_GOAL, LEVEL_SPEED, MAIN_STAGES, curLv, lvStars, lvTotal, lvCleared, lvDone, addPlayer, renamePlayer, player, totalStars, mastery, canTest, dayState, missionProgress, stamp, esc } from './data.js';
+  S, save, avHTML, MAX_LV, LEVEL_GOAL, LEVEL_SPEED, MAIN_STAGES, curLv, lvStars, lvTotal, lvCleared, lvDone, addPlayer, renamePlayer, player, totalStars, mastery, canTest, dayState, missionProgress, stamp, esc, MISSION_COIN, MISSION_ALL, missionAllDone, STREAK_RW, streakNow, GROW, growOf, budLv, BUD_LV, TITLES, checkTitles, titleOf } from './data.js';
 import { runStage } from './run.js';
 import { preloadStage } from './env.js';
 import { ballIcon } from './balls.js';
@@ -21,7 +21,7 @@ function show(html, t, bare) {
 }
 function topbar() {
   const p = player(); const L = curLv(p); const r = RANKS[L];
-  return `<div class="topbar"><button class="who" data-act="who">${avHTML(p.avatar)}<span>${esc(p.name)}</span></button>
+  return `<div class="topbar"><button class="who" data-act="who">${avHTML(p.avatar)}<span>${esc(p.name)}${titleOf(p) ? `<small class="ttl">${titleOf(p).i} ${titleOf(p).n}</small>` : ''}</span></button>
     <span class="rank" style="--c:${r.c}">R${L} ${r.n}</span>
     <span class="cur">⭐ ${lvTotal(p, L)}</span><span class="cur coin">🪙 ${p.coins}</span></div>`;
 }
@@ -32,7 +32,9 @@ function home() {
   const p = player(); const d = dayState(p); const r = RANKS[p.rank];
   const ms = d.missions.map((m) => { const v = Math.min(m.n, missionProgress(p, m)); const done = v >= m.n; const got = d.claimed.includes(m.id);
     return `<div class="ms ${done ? 'done' : ''}"><div><b>${m.text}</b><span class="mbar"><i style="width:${(v / m.n) * 100}%"></i></span><small>${v}/${m.n}</small></div>
-      ${got ? '<span class="got">✔</span>' : done ? `<button class="claim" data-act="claim" data-id="${m.id}">🪙20 もらう</button>` : '<span class="rw">🪙20</span>'}</div>`; }).join('');
+      ${got ? '<span class="got">✔</span>' : done ? `<button class="claim" data-act="claim" data-id="${m.id}">🪙${MISSION_COIN} もらう</button>` : `<span class="rw">🪙${MISSION_COIN}</span>`}</div>`; }).join('')
+    + (d.allGot ? '<div class="ms done allb"><b>🎁 ぜんぶ クリア ボーナス</b><span class="got">✔</span></div>' : missionAllDone(p) ? `<div class="ms done allb"><b>🎁 ぜんぶ クリア ボーナス！</b><button class="claim" data-act="claim" data-id="all">🪙${MISSION_ALL} もらう</button></div>` : `<div class="ms allb"><b>🎁 3つ ぜんぶで ボーナス</b><span class="rw">🪙${MISSION_ALL}</span></div>`);
+  const sk7 = streakNow(p); let nxt = sk7 + 1; while (nxt < 3 || !STREAK_RW[nxt % 7]) nxt++; const nrw = STREAK_RW[nxt % 7];
   const st = p.stamps % 7;
   const weak = poolFor(curLv(p)).slice().sort((a, b) => mastery(p, a) - mastery(p, b))[0];
   show(`
@@ -44,6 +46,7 @@ function home() {
     <div class="card"><h2>📅 きょうの ミッション</h2>${ms}</div>
     <div class="card stampcard"><h2>🗓️ スタンプカード <small>あそんだ日に 1こ。7こで カプセルけん 🎟️（とぎれても きえない）</small></h2>
       <div class="stamps">${Array.from({ length: 7 }, (_, i) => `<i class="${i < st || (st === 0 && p.stamps > 0 && p.lastDay === d.date && i < 7) ? 'on' : ''}">${i === 6 ? '🎟️' : '⭐'}</i>`).join('')}</div>
+      <div class="streak"><b>🔥 れんぞく ${sk7}日</b><small>${p.lastDay === d.date ? 'きょうも あそんだね！' : 'きょう あそぶと れんぞく ' + (sk7 + 1) + '日'}　つぎは ${nxt}日めで ${nrw.t}（3日 🪙30・5日 🎟️・7日 🪙100）</small></div>
       <small>カプセルけん：${p.tickets}まい</small></div>
     <button class="banner" data-act="dojo" data-id="${weak}"><b>💡 おすすめ れんしゅう：${SKILLS[weak].i} ${SKILLS[weak].n}</b><small>トレーニングルームで ゆっくり れんしゅうしよう</small></button>
     <div class="row2"><button class="mini" data-act="record">📒 きろく</button><button class="mini" data-act="how">❓ あそびかた</button><button class="mini" data-act="settings">⚙️ せってい（おうちの人）</button></div>
@@ -123,7 +126,7 @@ async function start(o) {
   app.hidden = true; nav.hidden = true; gameEl.hidden = false; video.hidden = !pose; awake(true);
   const noCam = st.camera && !pose;
   let human = null; try { if (msg) msg.textContent = 'キャラクターを よみこみちゅう…'; human = await (await import('./character.js')).loadHuman(); } catch (e) { human = null; }
-  const look = { human, girl: !!p.girl, suit: SUITS.find((x) => x.id === p.suit)?.c, ball: BALLS.find((x) => x.id === p.ball), buddy: p.buddy ? friend(p.buddy)?.e : null };
+  const look = { human, girl: !!p.girl, suit: SUITS.find((x) => x.id === p.suit)?.c, ball: BALLS.find((x) => x.id === p.ball), buddy: p.buddy ? friend(p.buddy)?.e : null, buddyLv: p.buddy ? budLv(p, p.buddy) : 1, grow: GROW[growOf(p)] };
   try {
     const qVid = new URLSearchParams(location.search).get('video');
     const vid = qVid || (st.videoRec && o.mode === 'stage' && o.stage ? o.stage.id : null); videoMode = !!vid;
@@ -138,25 +141,40 @@ async function start(o) {
 function applyPractice(p, r, mult = 1) {
   const ups = []; const d = dayState(p);
   for (const k of Object.keys(r.counts)) { if (!SKILLS[k] || k === 'rest') continue; const before = mastery(p, k); const add = Math.round((r.counts[k] + (r.okCounts[k] || 0)) * mult); p.m[k] = before + add; d.cues[k] = (d.cues[k] || 0) + r.counts[k]; ups.push({ k, add, from: tierOf(before), to: tierOf(p.m[k]) }); }
-  p.leftReps = (p.leftReps || 0) + r.leftReps; p.rightReps = (p.rightReps || 0) + r.rightReps; p.tipIdx = r.tipIdx; p.plays++;
-  const stamped = stamp(p); return { ups, stamped };
+  const g0 = growOf(p); const b0 = p.buddy ? budLv(p, p.buddy) : 0;
+  p.leftReps = (p.leftReps || 0) + r.leftReps; p.rightReps = (p.rightReps || 0) + r.rightReps; p.tipIdx = r.tipIdx; p.plays++; d.plays = (d.plays || 0) + 1;
+  if (p.buddy) { p.bud = p.bud || {}; p.bud[p.buddy] = (p.bud[p.buddy] || 0) + 1; }
+  const recs = []; if (r.cam) { const rc = p.rec = p.rec || {}; rc.camPlays = (rc.camPlays || 0) + 1; // カメラの じこベスト
+    for (const [k, v, n, u] of [['combo', r.maxCombo, 'さいだい コンボ', 'コンボ'], ['dribbles', r.dribbles, '1回の ドリブル', '回'], ['speed', Math.round((r.speed || 0) * 10) / 10, 'はやい ドリブル', '回/びょう']]) { if (v > 0 && v > (rc[k] || 0)) { if (rc[k]) recs.push({ n, from: rc[k], to: v, u }); rc[k] = v; } } }
+  const stamped = stamp(p); return { ups, stamped, g0, b0, recs };
 }
 const upsHtml = (ups) => `<div class="ups">${ups.sort((a, b) => (b.to - b.from) - (a.to - a.from) || b.add - a.add).slice(0, 8).map((u) => `<div class="up ${u.to > u.from ? 'lvl' : ''}" style="--c:${SKILLS[u.k].c}"><b>${SKILLS[u.k].i} ${SKILLS[u.k].n}</b><span>+${u.add}</span>${u.to > u.from ? `<em>${TIERS[u.to].i} ${TIERS[u.to].n}に アップ！</em>` : `<small>${TIERS[u.to].n}</small>`}</div>`).join('')}</div>`;
+// あそんだ あとの ごほうび：れんぞく・そだつ・しょうごう・じこベスト
+function extrasHtml(p, pr) {
+  const out = []; const g = growOf(p); const row = (e, t, sub, cls = '') => `<div class="gift ${cls}"><span>${e}</span><div><b>${t}</b>${sub ? `<small>${sub}</small>` : ''}</div></div>`;
+  if (g > pr.g0) out.push(row('🌱', `${GROW[g].n}に せいちょう！`, 'からだが すこし 大きく なって、オーラが つよく なったよ', 'rare'));
+  for (const rc of pr.recs || []) out.push(row('🏆', `${rc.n} きろく こうしん！ ${rc.from} → ${rc.to} ${rc.u}`, '', 'rec'));
+  if (pr.stamped && pr.stamped.rw) out.push(row('🔥', `${pr.stamped.streak}日 れんぞく！ ${pr.stamped.rw.t} ゲット`, ''));
+  if (p.buddy && pr.b0 && budLv(p, p.buddy) > pr.b0) { const f = friend(p.buddy); out.push(row(f.e, `${f.n}が Lv${budLv(p, p.buddy)}に なった！`, 'ステージで すこし 大きく なるよ')); }
+  for (const t of checkTitles(p)) out.push(row(t.i, `しょうごう「${t.n}」 ゲット！`, `${t.d}（ずかんで つけかえられる）`, 'rare'));
+  return out.length ? `<div class="gifts">${out.join('')}</div>` : '';
+}
 function result(o, r, noCam) {
   const p = player();
   if (o.mode === 'dojo') return dojoResult(o, r);
   if (o.mode === 'test') return testResult(o, r);
   const s = o.stage; const m = MISSIONS[s.mission]; const d = dayState(p);
-  const { ups, stamped } = applyPractice(p, r); d.clears++; addLog(p, { t: 'stage', id: s.id, stars: r.stars, score: r.score });
-  const isBest = r.score > (p.best[s.id] || 0); if (isBest) p.best[s.id] = r.score; p.stars[s.id] = Math.max(p.stars[s.id] || 0, r.stars); let lvUp = 0; if (!s.sp) { const L = o.level || curLv(p); const ls = lvStars(p, L); ls[s.id] = Math.max(ls[s.id] || 0, r.stars); if (L === p.rank && p.rank < MAX_LV && lvDone(p, L)) { p.rank++; p.lv = p.rank; p.day = null; lvUp = p.rank; } }
+  const pr = applyPractice(p, r); const { ups, stamped } = pr; d.clears++; d.st = d.st || []; if (!d.st.includes(s.id)) d.st.push(s.id); if (r.stars >= 3) d.star3 = (d.star3 || 0) + 1; if (m.boss) d.boss = (d.boss || 0) + 1; addLog(p, { t: 'stage', id: s.id, stars: r.stars, score: r.score });
+  const prevBest = p.best[s.id] || 0; const isBest = r.score > prevBest; if (isBest) p.best[s.id] = r.score; p.stars[s.id] = Math.max(p.stars[s.id] || 0, r.stars); let lvUp = 0; if (!s.sp) { const L = o.level || curLv(p); const ls = lvStars(p, L); ls[s.id] = Math.max(ls[s.id] || 0, r.stars); if (L === p.rank && p.rank < MAX_LV && lvDone(p, L)) { p.rank++; p.lv = p.rank; p.day = null; lvUp = p.rank; } }
   let coins = 20 + (m.boss ? 10 : 0); let got = null;
   if (m.boss && !p.bossDone[s.world.id]) { p.bossDone[s.world.id] = true; const bf = BOSS_FRIENDS[s.wi]; if (!p.friends.includes(bf.id)) { p.friends.push(bf.id); got = bf; } }
-  p.coins += coins; save();
+  p.coins += coins; const extra = extrasHtml(p, pr); save();
   const next = STAGES[STAGES.indexOf(s) + 1]; const hk = r.hardest;
   show(`<div class="card result" style="--a:${s.world.pal.a};--b:${s.world.pal.b}">
       <div class="res-h">${sl(s)} ${m.n}　クリア！</div>
       <div class="res-stars">${[1, 2, 3].map((n) => `<i class="${n <= r.stars ? 'on' : ''}" style="animation-delay:${n * 0.3}s">★</i>`).join('')}</div>
-      <div class="res-score">⚡ ${r.score}${isBest ? ' <em>じこベスト！</em>' : ''}　<span class="coinup">🪙 +${coins}</span></div>
+      <div class="res-score">⚡ ${r.score}　<span class="coinup">🪙 +${coins}</span></div>
+      ${isBest && prevBest ? `<div class="recup big">🏆 さいこうきろく こうしん！ <b>${prevBest} → ${r.score}</b></div>` : ''}${extra}
       ${got ? `<div class="rescue rare"><div class="rays"></div><span>${got.e}</span><b>${got.n} が なかまに なった！</b><small>✨ ボスの なかま ✨</small></div>` : ''}
       <h3>れんしゅう ポイント</h3>${upsHtml(ups)}
       <div class="res-lines">${r.cam ? `<span>せいこう ${Math.round(r.hit * 100)}%</span><span>さいだい ${r.maxCombo} コンボ</span><span>ドリブル ${r.dribbles}回</span>` : `<span>ルート：${r.tiers.map((x) => ['あんぜん', 'ふつう', 'ちかみち'][x]).join(' → ')}</span>`}${stamped ? '<span>🗓️ スタンプ +1</span>' : ''}</div>
@@ -169,11 +187,11 @@ function result(o, r, noCam) {
 }
 function dojoResult(o, r) {
   const p = player(); const d = dayState(p); const sk = SKILLS[o.skill];
-  const { ups, stamped } = applyPractice(p, r, 0.5); d.dojo++; addLog(p, { t: 'dojo', id: o.skill }); const coins = d.dojo <= 3 ? 15 : 0; p.coins += coins; save();
+  const pr = applyPractice(p, r, 0.5); const { ups, stamped } = pr; d.dojo++; p.dojoN = (p.dojoN || 0) + 1; addLog(p, { t: 'dojo', id: o.skill }); const coins = d.dojo <= 3 ? 15 : 0; p.coins += coins; const extra = extrasHtml(p, pr); save();
   const tip = sk.tips[(p.tipIdx[o.skill] || 0) % sk.tips.length];
   show(`<div class="card result" style="--a:${sk.c};--b:#7dffb0"><div class="res-h">${sk.i} ${sk.n}　れんしゅう おわり！</div>
       <div class="res-score">${coins ? `<span class="coinup">🪙 +${coins}</span>` : '<small>きょうの コインは もう もらったよ（れんしゅうポイントは たまる）</small>'}</div>
-      ${upsHtml(ups)}${stamped ? '<div class="res-lines"><span>🗓️ スタンプ +1</span></div>' : ''}
+      ${extra}${upsHtml(ups)}${stamped ? '<div class="res-lines"><span>🗓️ スタンプ +1</span></div>' : ''}
       ${r.cam ? `<div class="res-lines"><span>カメラで かくにん：${Math.round(r.hit * 100)}% せいこう</span></div>` : ''}
       <h3>どうだった？</h3>
       <div class="btns"><button class="big" data-act="tab" data-tab="training">😆 できた！</button><button class="big alt" id="tipbtn">💡 コツを きく</button><button class="big ghost" data-act="dojo" data-id="${o.skill}">🔁 もういちど</button></div>
@@ -219,10 +237,21 @@ function testResult(o, r) {
 }
 
 // ---------- なかま ----------
+let zTab = 'friends';
 function friends() {
-  const p = player();
-  show(`<div class="card"><h2>👥 なかま ${p.friends.length}/${ALL_FRIENDS.length}</h2><p class="hint">タップすると バディに なって、ステージで いっしょに 走るよ。</p>
-    <div class="zukan">${ALL_FRIENDS.map((f) => (p.friends.includes(f.id) ? `<button class="z on ${f.rare ? 'rare' : ''} ${p.buddy === f.id ? 'sel' : ''}" data-act="buddy" data-id="${f.id}"><span>${f.e}</span><b>${f.n}</b><small>${p.buddy === f.id ? 'バディ' : f.rare ? 'ボスの なかま' : ''}</small></button>` : `<div class="z"><span>？</span><b>？？？</b><small>${f.rare ? 'ボスを たおすと…' : 'カプセルで 出る'}</small></div>`)).join('')}</div></div>`, 'friends');
+  const p = player(); checkTitles(p);
+  const tabs = [['friends', `🐾 なかま ${p.friends.length}/${ALL_FRIENDS.length}`], ['balls', `🏀 ボール ${p.balls.length}/${BALLS.length}`], ['boss', `🛡️ ボス ${Object.keys(p.bossDone).length}/${WORLDS.length}`], ['titles', `🏅 しょうごう ${(p.titles || []).length}/${TITLES.length}`]];
+  const seg = `<div class="seg ztabs">${tabs.map(([k, t]) => `<button class="${zTab === k ? 'on' : ''}" data-act="ztab" data-id="${k}">${t}</button>`).join('')}</div>`;
+  let body = '';
+  if (zTab === 'friends') body = `<p class="hint">タップすると バディに なって、ステージで いっしょに 走るよ。いっしょに あそぶほど レベルが あがって 大きく なる！（Lv2：${BUD_LV[1]}回・Lv3：${BUD_LV[2]}回・Lv4：${BUD_LV[3]}回）</p>
+    <div class="zukan">${ALL_FRIENDS.map((f) => { const lv = budLv(p, f.id); return p.friends.includes(f.id) ? `<button class="z on ${f.rare ? 'rare' : ''} ${p.buddy === f.id ? 'sel' : ''} lv${lv}" data-act="buddy" data-id="${f.id}"><span>${f.e}</span><b>${f.n}</b><small>Lv${lv}${'⭐'.repeat(lv - 1)}${p.buddy === f.id ? ' バディ' : ''}</small></button>` : `<div class="z"><span>？</span><b>？？？</b><small>${f.rare ? 'ボスを たおすと…' : 'カプセルで 出る'}</small></div>`; }).join('')}</div>`;
+  else if (zTab === 'balls') body = `<p class="hint">ショップで かえるよ。あつめた ボールは ショップで えらんで つかえる。</p>
+    <div class="zukan">${BALLS.map((b) => p.balls.includes(b.id) ? `<div class="z on"><img class="zb" src="${ballIcon(b)}" alt=""><b>${b.n}</b><small>${p.ball === b.id ? 'つかっている' : ''}</small></div>` : `<div class="z"><img class="zb dim" src="${ballIcon(b)}" alt=""><b>？？？</b><small>🪙 ${b.cost}</small></div>`).join('')}</div>`;
+  else if (zTab === 'boss') body = `<p class="hint">ワールドの さいごの ボスを たおすと のるよ。</p>
+    <div class="zukan">${WORLDS.map((w, i) => p.bossDone[w.id] ? `<div class="z on rare" style="--a:${w.pal.a}"><span>${BOSS_FRIENDS[i].e}</span><b>${w.boss}</b><small>WORLD ${i + 1}　たおした！</small></div>` : `<div class="z"><span>？</span><b>？？？</b><small>WORLD ${i + 1} の ボス</small></div>`).join('')}</div>`;
+  else body = `<p class="hint">とった しょうごうを タップすると、なまえの よこに つくよ。</p>
+    <div class="titles">${TITLES.map((t) => { const has = (p.titles || []).includes(t.id); return has ? `<button class="tt on ${p.title === t.id ? 'sel' : ''}" data-act="title" data-id="${t.id}"><span>${t.i}</span><b>${t.n}</b><small>${t.d}</small></button>` : `<div class="tt"><span>🔒</span><b>？？？</b><small>${t.d}</small></div>`; }).join('')}</div>`;
+  show(`<div class="card"><h2>📖 ずかん</h2>${seg}${body}</div>`, 'friends');
 }
 
 // ---------- ショップ ----------
@@ -294,6 +323,8 @@ function record() {
   const p = player(); const tiers = [0, 0, 0, 0, 0]; SKILL_IDS.forEach((k) => { tiers[tierOf(mastery(p, k))]++; });
   show(`<div class="card"><h2>📒 ${avHTML(p.avatar)} ${esc(p.name)} の きろく</h2>
       <div class="stats"><div><b>R${p.rank}</b><small>${RANKS[p.rank].n}${p.verified[p.rank - 1] ? ' ✅' : ''}</small></div><div><b>${cleared(p)}/${MAIN_STAGES.length}</b><small>R${curLv(p)} クリアした ステージ</small></div><div><b>⭐${lvTotal(p, curLv(p))}</b><small>/${MAIN_STAGES.length * 3}</small></div><div><b>${p.stamps || 0}日</b><small>あそんだ日</small></div><div><b>${p.plays || 0}回</b><small>プレイ</small></div><div><b>${p.friends.length}</b><small>なかま</small></div></div></div>
+    <div class="card"><h2>🌱 せいちょう</h2>${(() => { const g = growOf(p); const nx = GROW[g + 1]; return `<div class="res-lines"><span>いま：<b>${GROW[g].n}</b></span><span>${nx ? `${nx.n}まで あと ${nx.at - p.plays}回` : 'さいこうの すがた！'}</span><span>🔥 さいこう れんぞく ${p.streakBest || 0}日</span></div>`; })()}
+      ${p.rec && p.rec.camPlays ? `<div class="res-lines"><span>📷 カメラで ${p.rec.camPlays}回</span><span>さいだい ${p.rec.combo || 0} コンボ</span><span>1回で ドリブル ${p.rec.dribbles || 0}回</span><span>いちばん はやい ${p.rec.speed || 0}回/びょう</span></div>` : '<p class="hint">📷 カメラで あそぶと、コンボや ドリブルの はやさの きろくが のこるよ。</p>'}</div>
     <div class="card"><h2>🗺️ ステージ</h2>${WORLDS.map((w, wi) => `<div class="recrow"><b style="color:${w.pal.a}">${wi + 1} ${w.name}</b><span>${STAGES.filter((x) => x.wi === wi && !x.sp).map((x) => { const v = lvStars(p, curLv(p))[x.id] || 0; return `<i class="${v ? 'on' : ''}" title="${sl(x)}">${v ? '★'.repeat(v) : '・'}</i>`; }).join('')}</span></div>`).join('')}</div>
     <div class="card"><h2>🥋 れんしゅうランク</h2><div class="res-lines">${TIERS.map((t, i) => `<span style="color:${t.c}">${t.i} ${t.n} ${tiers[i]}</span>`).join('')}</div>
       <div class="ups">${SKILL_IDS.filter((k) => mastery(p, k) > 0).sort((a, b) => mastery(p, b) - mastery(p, a)).map((k) => `<div class="up" style="--c:${SKILLS[k].c}"><b>${SKILLS[k].i} ${SKILLS[k].n}</b><span>${mastery(p, k)}</span><small>${TIERS[tierOf(mastery(p, k))].n}</small></div>`).join('') || '<p class="hint">まだ ありません</p>'}</div>
@@ -320,7 +351,11 @@ const acts = {
   pick: (d) => { S.current = d.id; save(); home(); },
   lv: (d) => { const p = player(); if (+d.lv <= p.rank) { p.lv = +d.lv; save(); } stages(); },
   stage: (d) => stageIntro(d.id), dojo: (d) => dojoIntro(d.id), dojoGo: (d) => start({ mode: 'dojo', skill: d.id }),
-  claim: (d) => { const p = player(); const day = dayState(p); if (!day.claimed.includes(d.id)) { day.claimed.push(d.id); p.coins += 20; save(); beep([12, 19]); } home(); },
+  claim: (d) => { const p = player(); const day = dayState(p);
+    if (d.id === 'all') { if (missionAllDone(p) && !day.allGot) { day.allGot = true; p.coins += MISSION_ALL; save(); beep([12, 16, 19, 24]); } }
+    else if (!day.claimed.includes(d.id) && missionProgress(p, day.missions.find((m) => m.id === d.id) || { id: d.id }) >= (day.missions.find((m) => m.id === d.id)?.n ?? 99)) { day.claimed.push(d.id); p.coins += MISSION_COIN; save(); beep([12, 19]); } home(); },
+  ztab: (d) => { zTab = d.id; friends(); },
+  title: (d) => { const p = player(); if ((p.titles || []).includes(d.id)) { p.title = d.id; save(); } friends(); },
   buddy: (d) => { const p = player(); p.buddy = p.buddy === d.id ? null : d.id; save(); friends(); },
   capsule: (d) => { const p = player(); const left = FRIENDS.filter((f) => !p.friends.includes(f.id)); if (!left.length) return;
     if (d.pay === 'ticket') { if (p.tickets < 1) return; p.tickets--; } else { if (p.coins < CAPSULE_COST) return; p.coins -= CAPSULE_COST; }

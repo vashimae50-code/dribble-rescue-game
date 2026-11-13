@@ -43,9 +43,10 @@ export function createScene(canvas, o) {
   const human = o.human ? makeHuman(o.human, suit, { num: 7, bigHead: 1.65 }) : null;
   // 敵も バスケットマン：ディフェンス 2人、おいかけてくる 1人、ボス 1人（べつの チームの ユニフォーム）
   // プレイヤーを 絵（スプライト）で 出す：右手ドリブル と パワーポジション
+  const GK = (o.grow && o.grow.k) || 1; // そだつ：からだの 大きさ
   let pspr = null, psHit = false; const psMem = {}; const psT = {}; const PSN = SHEETS; const psPre = o.girl ? 'g_' : '';
   const impact = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.75, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })); impact.rotation.x = -Math.PI / 2; impact.visible = false; scene.add(impact); disposables.push(impact.geometry, impact.material);
-  if (human && o.sprite !== false) { let n = 0; const ld = new THREE.TextureLoader(); for (const k of PSN) { const t = ld.load(`img/player/${psPre}${k}.webp`, () => { if (++n === PSN.length) { const m = new THREE.SpriteMaterial({ map: psT.hpower, transparent: true, alphaTest: 0.05 }); pspr = new THREE.Sprite(m); pspr.center.set(0.5, 0.01); pspr.scale.set(1.65, 1.65, 1); scene.add(pspr); human.setMainVisible(false); } }); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; psT[k] = t; } }
+  if (human && o.sprite !== false) { let n = 0; const ld = new THREE.TextureLoader(); for (const k of PSN) { const t = ld.load(`img/player/${psPre}${k}.webp`, () => { if (++n === PSN.length) { const m = new THREE.SpriteMaterial({ map: psT.hpower, transparent: true, alphaTest: 0.05 }); pspr = new THREE.Sprite(m); pspr.center.set(0.5, 0.01); pspr.scale.set(1.65 * GK, 1.65 * GK, 1); scene.add(pspr); human.setMainVisible(false); } }); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; psT[k] = t; } }
   const faceAtlas = o.human ? new THREE.TextureLoader().load('img/faces.png') : null; if (faceAtlas) faceAtlas.colorSpace = THREE.SRGBColorSpace;
   const mkFoe = (c, num, trim) => { const h = makeHuman(o.human, c, { num, trim, guide: false, skin: '#c98f66', shoe: '#22222a' }); h.root.visible = false; scene.add(h.root); return h; };
   const defs = o.human ? [mkFoe('#d9263c', 23, '#ffe03d'), mkFoe('#d9263c', 11, '#ffe03d'), mkFoe('#2a3a7a', 15, '#ffe03d'), mkFoe('#2a3a7a', 8, '#ffe03d')] : [];
@@ -54,7 +55,7 @@ export function createScene(canvas, o) {
   const midH = o.human ? mkFoe('#d9263c', 5, '#ffe03d') : null; if (midH) midH.root.visible = false; // ちゅうボス（大きな ディフェンス）
   const P = human ? human.root : new THREE.Group(); scene.add(P);
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.55, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.5 })); shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.012; scene.add(shadow); disposables.push(shadow.geometry, shadow.material);
-  const footGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: shared.glow, color: C(suit), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.25 })); footGlow.scale.set(2.0, 0.8, 1); scene.add(footGlow); disposables.push(footGlow.material);
+  const aura = (o.grow && o.grow.aura) || 0.25; const footGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: shared.glow, color: o.grow && o.grow.gold ? 0xffd23d : C(suit), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: aura })); footGlow.scale.set(2.0 * (1 + (aura - 0.25)), 0.8 * (1 + (aura - 0.25)), 1); scene.add(footGlow); disposables.push(footGlow.material);
   // ボール
   const b = o.ball || { id: 'std', pat: 'solid', c1: '#ff9a3d', c2: '#c4520a' };
   const ballTex = new THREE.CanvasTexture(ballCanvas(b.pat ? b : { id: 'std', pat: 'solid', c1: b.c1, c2: b.c2 })); ballTex.colorSpace = THREE.SRGBColorSpace; ballTex.anisotropy = 4;
@@ -67,7 +68,8 @@ export function createScene(canvas, o) {
   const trMat = new THREE.PointsMaterial({ size: 0.17, vertexColors: true, map: shared.glow, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }); const trail = new THREE.Points(trGeo, trMat); trail.frustumCulled = false; trail.layers.enable(1); scene.add(trail); disposables.push(trGeo, trMat);
   // バディ
   let buddy = null;
-  if (o.buddy) { const t = canvasTex(128, 128, (g) => { g.font = '100px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(o.buddy, 64, 70); }); buddy = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true })); buddy.scale.set(0.7, 0.7, 1); scene.add(buddy); disposables.push(t, buddy.material); }
+  if (o.buddy) { const t = canvasTex(128, 128, (g) => { g.font = '100px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(o.buddy, 64, 70); }); buddy = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true })); const bs = 0.7 * (1 + 0.15 * ((o.buddyLv || 1) - 1)); buddy.scale.set(bs, bs, 1);
+    if ((o.buddyLv || 1) >= 3) { const bg = new THREE.Sprite(new THREE.SpriteMaterial({ map: shared.glow, color: o.buddyLv >= 4 ? 0xffe03d : 0x7dffb0, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.55 })); bg.scale.set(1.6, 1.6, 1); bg.position.z = -0.01; buddy.add(bg); disposables.push(bg.material); } scene.add(buddy); disposables.push(t, buddy.material); }
 
   // ---- ゲート・バリア・ラベル ----
   const hazTex = canvasTex(128, 128, (g, w, h) => { g.fillStyle = 'rgba(255,30,70,.55)'; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(255,220,230,.9)'; g.lineWidth = 12; for (let i = -h; i < w + h; i += 40) { g.beginPath(); g.moveTo(i, h); g.lineTo(i + h, 0); g.stroke(); } g.strokeStyle = '#ff2d55'; g.lineWidth = 10; g.strokeRect(5, 5, w - 10, h - 10); });
@@ -221,8 +223,8 @@ export function createScene(canvas, o) {
       pose = spritePose({ sk, cue, beat: abeat, vx, bp, bp2: human && human.ball2(), mem: psMem });
       const T = psT[pose.sheet] || psT.hpower; const f = pose.f;
       if (pspr.material.map !== T) { pspr.material.map = T; pspr.material.needsUpdate = true; }
-      T.repeat.set(1 / 3, 0.5); T.offset.set((f % 3) / 3, f < 3 ? 0.5 : 0); pspr.position.set(laneX, pose.lift, 0.02);
-      if (pose.ball) { bx = laneX + pose.ball.x; by = pose.ball.y; bz = pose.ball.z; }
+      T.repeat.set(1 / 3, 0.5); T.offset.set((f % 3) / 3, f < 3 ? 0.5 : 0); pspr.position.set(laneX, pose.lift * GK, 0.02);
+      if (pose.ball) { bx = laneX + pose.ball.x * GK; by = 0.17 + (pose.ball.y - 0.17) * GK; bz = pose.ball.z; }
     }
     // つよく ドリブル：ボールを 大きく、ゆかに つくたびに 大きな わ
     { const big = pose && pose.strong ? 1.3 : 1; ball.scale.setScalar(lerp(ball.scale.x, big, 0.2));
@@ -231,7 +233,7 @@ export function createScene(canvas, o) {
     shadow.position.set(laneX, 0.012, 0); footGlow.position.set(laneX, 0.06, 0.1);
     ball.visible = ballGlow.visible = ballShadow.visible = !noBall;
     ball.position.set(bx, by, bz); ball.rotation.x -= dt * 8; ballGlow.position.copy(ball.position); ballGlow.material.color.set(sk.c); ballLight.position.copy(ball.position); ballLight.color.set(sk.c);
-    { const b2 = human && human.ball2(); ball2.visible = !!b2 && !noBall; if (b2) { if (pose && pose.ball2) ball2.position.set(laneX + pose.ball2.x, pose.ball2.y, pose.ball2.z); else ball2.position.set(laneX + b2.x, b2.y, b2.z); ball2.rotation.x -= dt * 8; } }
+    { const b2 = human && human.ball2(); ball2.visible = !!b2 && !noBall; if (b2) { if (pose && pose.ball2) ball2.position.set(laneX + pose.ball2.x * GK, 0.17 + (pose.ball2.y - 0.17) * GK, pose.ball2.z); else ball2.position.set(laneX + b2.x, b2.y, b2.z); ball2.rotation.x -= dt * 8; } }
     ballShadow.position.set(bx, 0.014, bz); ballShadow.scale.setScalar(0.25 + (1 - Math.min(1, by / 1.2)) * 0.2);
     // ボールの あと（スワイプのような ひかりの線）
     for (let i = TR - 1; i > 0; i--) { trPos[i * 3] = trPos[i * 3 - 3] ; trPos[i * 3 + 1] = trPos[i * 3 - 2]; trPos[i * 3 + 2] = trPos[i * 3 - 1] + (st.speed || 0) * dt * 2.2; }
