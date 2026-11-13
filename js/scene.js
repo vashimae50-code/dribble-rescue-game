@@ -115,7 +115,7 @@ export function createScene(canvas, o) {
     } else {
       bar(-HW + 0.3, CEIL / 2 - 0.3, 0, 0.14, CEIL - 0.6, 0.14, cm(col)); bar(HW - 0.3, CEIL / 2 - 0.3, 0, 0.14, CEIL - 0.6, 0.14, cm(col)); bar(0, CEIL - 0.6, 0, HW * 2 - 0.6, 0.14, 0.14, cm(col));
       const veil = new THREE.Mesh(G.plane, cm(col, 0.1)); veil.position.set(0, CEIL / 2 - 0.3, 0); veil.scale.set(HW * 2 - 0.6, CEIL - 0.6, 1); gp.add(veil);
-      if (cue.skill === 'low') { const hz = new THREE.Mesh(G.plane, bannerMat); hz.position.set(0, 2.55, 0.05); hz.scale.set(HW * 2 - 0.7, 1.9, 1); gp.add(hz); }
+      if (cue.skill === 'low') { const hz = new THREE.Mesh(G.plane, bannerMat); hz.position.set(0, 1.62, 0.05); hz.scale.set(HW * 2 - 0.7, 1.3, 1); gp.add(hz); } // ひくく：ひくい バーの 下を とおる（ふだに かさならない 高さ）
       if (cue.skill === 'freeze' || cue.skill === 'jstop') { const hz = new THREE.Mesh(G.plane, cm('#ff2d55', 0.28)); hz.position.set(0, CEIL / 2 - 0.3, 0.05); hz.scale.set(HW * 2 - 0.7, CEIL - 0.7, 1); gp.add(hz); gp.userData.scan = hz; }
       if (sk.sp > 1.2) for (let i = 0; i < 5; i++) { const ch = new THREE.Mesh(G.plane, new THREE.MeshBasicMaterial({ map: chevTex, color: C(col), transparent: true, depthWrite: false })); ch.rotation.x = -Math.PI / 2; ch.position.set(cue.lane1 * LW, 0.04, -2 - i * 4); ch.scale.set(1.6, 1.6, 1); gp.add(ch); (gp.userData.mats = gp.userData.mats || []).push(ch.material); }
       if (sk.hand === 'alt') { const rg = new THREE.Mesh(G.ring, cm(col)); rg.position.set(cue.lane1 * LW, 1.5, 0); rg.scale.setScalar(1.15); gp.add(rg); gp.userData.spin = rg; }
@@ -124,7 +124,7 @@ export function createScene(canvas, o) {
     let sp;
     if (laneMove) { const dir = txt.match(/(みぎへ|ひだりへ)/); const l1 = `${sk.i} ${dir ? dir[1] : ''}`.trim(); const l2 = txt.replace(sk.i, '').replace(/(みぎへ|ひだりへ)\s*/, '').trim(); sp = new THREE.Sprite(label2(l1, l2, col)); sp.scale.set(2.3, 1.15, 1); sp.position.set(lx, 3.42, 0.1); }
     else { sp = new THREE.Sprite(label(txt, col)); sp.scale.set(4.6, 1.15, 1); sp.position.set(0, CEIL - 1.25, 0.1); }
-    gp.add(sp);
+    sp.renderOrder = 6; gp.add(sp); // ふだは いつも いちばん 手前に
     scene.add(gp); return gp;
   }
   const robotMat = new THREE.MeshStandardMaterial({ color: 0x3a3f58, roughness: 0.35, metalness: 0.7 }); const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff2d55 });
