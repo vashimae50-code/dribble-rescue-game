@@ -254,8 +254,8 @@ export function createScene(canvas, o) {
     // オーブ
     let n = 0;
     for (const ob of st.orbs) { if (n >= ORB) break; const d = ob.z - st.camZ; if (d < 0.3 || d > 80) continue;
-      dummy.position.set(ob.x, ob.y + Math.sin(st.mbeat * TAU + ob.z) * 0.06, -d); dummy.scale.setScalar(1); dummy.updateMatrix(); orbs.setMatrixAt(n, dummy.matrix); tmpC.set(ob.c).lerp(new THREE.Color(0xffffff), 0.35); orbs.setColorAt(n, tmpC);
-      dummy.scale.setScalar(1.5 + pulse * 0.3); dummy.updateMatrix(); halo.setMatrixAt(n, dummy.matrix); halo.setColorAt(n, tmpC.set(ob.c)); n++; }
+      dummy.position.set(ob.x, ob.y + Math.sin(st.mbeat * TAU + ob.z) * 0.06, -d); const os = ob.big ? 2 : 1; dummy.scale.setScalar(os); dummy.updateMatrix(); orbs.setMatrixAt(n, dummy.matrix); tmpC.set(ob.c).lerp(new THREE.Color(0xffffff), 0.35); orbs.setColorAt(n, tmpC);
+      dummy.scale.setScalar(os * (1.5 + pulse * 0.3)); dummy.updateMatrix(); halo.setMatrixAt(n, dummy.matrix); halo.setColorAt(n, tmpC.set(ob.c)); n++; }
     orbs.count = halo.count = n; orbs.instanceMatrix.needsUpdate = halo.instanceMatrix.needsUpdate = true; if (orbs.instanceColor) orbs.instanceColor.needsUpdate = true; if (halo.instanceColor) halo.instanceColor.needsUpdate = true;
     // ボス
     // ちゅうボス：プレイヤーの まえに 大きな ディフェンス。たおれたら ちぢんで きえる

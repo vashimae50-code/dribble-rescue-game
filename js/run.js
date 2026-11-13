@@ -74,7 +74,7 @@ export function runStage(opts) {
         if (hold && !sk.lane && b % 2) continue;
         const k = Math.round(b / step); const lx = (c.lane0 + (c.lane1 - c.lane0) * clamp(b / 1.5, 0, 1)) * LW;
         let hx = 0; if (c.hand === 'combo') hx = Math.sign(comboState(sk, c.hand0, b).x || 1) * 0.5; else if (c.hand === 'two') hx = k % 2 ? 0.5 : -0.5; else if (c.hand === 'R') hx = 0.5; else if (c.hand === 'L') hx = -0.5; else if (c.hand === 'alt') hx = (k % 2 ? -1 : 1) * (c.hand0 === 'L' ? -0.5 : 0.5); else if (c.hand === 'alt1') hx = c.hand0 === 'L' ? 0.5 : -0.5;
-        orbs.push({ z: c.z0 + b * V * Math.max(sp, 0.05), x: lx + hx, y: sk.low ? 0.45 : hold ? 1.1 : 0.85, c: sk.c, cue: c, got: false, missed: false });
+        orbs.push({ z: c.z0 + b * V * Math.max(sp, 0.05), x: lx + hx, y: sk.low ? 0.45 : hold ? 1.1 : 0.85, c: sk.c, cue: c, got: false, missed: false, big: c.skill === 'pound' }); // つよく ドリブルは ●を 2ばいに
       }
     }
     return c;
