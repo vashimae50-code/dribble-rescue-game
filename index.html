@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#070b24">
+<meta name="theme-color" content="#1b5fd0">
 <title>ドリブルレスキュー！</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=M+PLUS+Rounded+1c:wght@500;800;900&display=swap">
@@ -133,6 +133,34 @@
   .toast { position: absolute; top: 22%; background: #000c; border: 2px solid var(--yl); border-radius: 12px; padding: 8px 16px; font-size: .85em; }
   @media (max-height: 480px) { .safe-btns button span { font-size: 1.5em; } .safe { padding: 10px; } }
   @media (prefers-reduced-motion: reduce) { .play, .bob, .rays, .claim, .banner.test { animation: none; } }
+
+  /* ---- スポーツっぽい あかるい みため（プレイ中の コートに あわせる） ---- */
+  :root { --bg: #0f3f9e; --card: #1c52b8; --card2: #17459e; --line: #6f9cf0; --ink: #ffffff; --sub: #dce8ff; --cy: #5ff2ff; }
+  html, body { background: #2a74d8; }
+  body { background: none; }
+  body::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; -webkit-mask-image: none; mask-image: none;
+    background: linear-gradient(180deg, rgba(40,120,230,.15) 0%, rgba(20,70,170,.35) 45%, rgba(12,45,120,.62) 100%), url(img/court/village1.webp) center 30% / cover no-repeat; }
+  .topbar { background: linear-gradient(rgba(18,70,170,.92) 70%, transparent); }
+  .who { background: #ffffffee; color: #0d2f72; border-color: #fff; } .who .ttl { color: #e05a00; }
+  .cur { background: #0b2f78cc; border-color: #ffffff88; }
+  .card { background: linear-gradient(160deg, rgba(30,86,196,.88), rgba(16,58,150,.9)); border: 2px solid rgba(255,255,255,.55); box-shadow: 0 6px 18px rgba(4,20,60,.35); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  .card h2 { color: #fff; text-shadow: 0 2px 0 rgba(0,20,70,.5); }
+  .ms { border-top-color: rgba(255,255,255,.2); }
+  .banner { background: linear-gradient(100deg, #ff8a1a, #ff5a2a); border-color: #ffe0b0; box-shadow: 0 5px 0 #a8360a; } .banner small { color: #fff4e0; }
+  .logo { font-family: 'M PLUS Rounded 1c', sans-serif; font-style: italic; }
+  .logo span { color: #fff; font-weight: 900; text-shadow: 0 3px 0 #0b3fa8, 0 0 14px rgba(255,255,255,.6); letter-spacing: .1em; }
+  .logo b { color: #ff8a1a; font-weight: 900; -webkit-text-stroke: 3px #fff; paint-order: stroke fill; text-shadow: 5px 6px 0 #0b3fa8, 0 0 24px rgba(255,170,60,.7); }
+  .big.ghost { background: #ffffffee; color: #0d2f72; box-shadow: 0 6px 0 #6f8fc8; border-color: #fff; }
+  .world { background: linear-gradient(180deg, rgba(10,30,90,.25), rgba(8,24,70,.78) 70%), var(--img) center 35% / cover; border-width: 3px; box-shadow: 0 6px 18px rgba(4,20,60,.4); }
+  .world h2 { font-family: 'M PLUS Rounded 1c', sans-serif; font-weight: 900; font-style: italic; color: #fff; text-shadow: 0 2px 0 #000a, 0 0 10px var(--a); }
+  .stage { background: rgba(255,255,255,.9); color: #0d2f72; border-color: var(--a); box-shadow: 0 4px 0 rgba(0,20,60,.5); } .stage small { color: #4a6aa8; } .stage.boss { background: linear-gradient(#fff3d6, #ffd08a); }
+  .stage .s-st i { color: #c9d4ea; } .stage .s-st i.on { color: #ffb800; text-shadow: 0 1px 0 #a35a00; }
+  .z, .item, .tt { background: rgba(10,40,110,.55); border-color: rgba(255,255,255,.35); }
+  .seg button { background: rgba(10,40,110,.6); border-color: rgba(255,255,255,.4); } .seg button.on { color: #201400; }
+  #nav { background: linear-gradient(rgba(16,64,160,.96), #0b2f78); border-top: 2px solid rgba(255,255,255,.5); } #nav button { color: #cfe0ff; } #nav button.on { background: rgba(255,255,255,.16); }
+  .whocard { background: linear-gradient(160deg, color-mix(in srgb, var(--c, #5ff2ff) 30%, #1c52b8), #143f9a); box-shadow: 0 6px 0 rgba(4,20,60,.6); } .whocard.add { background: rgba(16,58,150,.55); border-color: rgba(255,255,255,.6); }
+  .gift { background: rgba(10,40,110,.7); } .gift.rare { background: linear-gradient(90deg, #7a5a08cc, rgba(10,40,110,.7)); }
+  .streak { background: linear-gradient(90deg, #ff6a2acc, #ffa53d99); border-color: #ffd7a8; } .streak b { color: #fff; } .streak small { color: #fff3e3; }
 </style>
 </head>
 <body>

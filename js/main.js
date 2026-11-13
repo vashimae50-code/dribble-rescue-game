@@ -65,7 +65,7 @@ function stages() {
     <p class="hint">${L < MAX_LV ? (L < p.rank ? `R${L} は クリアずみ！ ⭐${ts}/${n * 3}` : `R${L + 1} が ひらく じょうけん：<b>ぜんぶの ステージで ★1いじょう（${cl}/${n}）</b> ＋ <b>⭐ ごうけい ${goal}こ（いま ${ts}こ）</b>　めざせ ぜんぶ ★2！`) : `さいごの レベル！ ⭐${ts}/${n * 3}`}</p></section>`;
   show(tabs + WORLDS.map((w, wi) => {
     const locked = !S.settings.openAll && ts < w.need;
-    return `<section class="world ${locked ? 'locked' : ''}" style="--a:${w.pal.a};--b:${w.pal.b};--bg:${w.pal.bg}">
+    return `<section class="world ${locked ? 'locked' : ''}" style="--a:${w.pal.a};--b:${w.pal.b};--bg:${w.pal.bg};--img:url(img/court/${w.theme}1.webp)">
       <h2>WORLD ${wi + 1}　${w.name} ${locked ? `<small>🔒 ⭐${w.need}こで ひらく</small>` : ''}</h2>
       <div class="sgrid">${STAGES.filter((s) => s.wi === wi && !s.sp).map((s) => { const m = MISSIONS[s.mission]; const st = ls[s.id] || 0;
         return `<button class="stage ${m.boss ? 'boss' : ''}" ${locked ? 'disabled' : ''} data-act="stage" data-id="${s.id}" title="${wi + 1}-${s.mi + 1}"><span class="s-i">${m.i}</span><b>${m.n}</b><small>${wi + 1}-${s.mi + 1}</small><span class="s-st">${[1, 2, 3].map((n) => `<i class="${n <= st ? 'on' : ''}">★</i>`).join('')}</span></button>`; }).join('')}</div>
