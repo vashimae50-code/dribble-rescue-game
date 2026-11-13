@@ -226,7 +226,7 @@ export const SUITS = [
 export const CAPSULE_COST = 60;
 // '@hero1'〜 は イラストの かお（img/avatar/）。それいがいは 絵文字
 export const avHTML = (a) => { if (a === '🦸') a = '@hero1'; return a && a[0] === '@' ? `<img class="avimg" src="img/avatar/${a.slice(1)}.jpg" alt="">` : a; };
-export const AVATARS = ['@hero1', '@hero3', '@hero2', '@hero4', '@hero5', '@hero6', '🥷', '🧑‍🚀', '🐺', '🦈', '🐬', '🦋', '⚡', '🔥', '🌟', '🏀', '👟'];
+export const AVATARS = ['@f1', '@f2', '@f3', '@f4', '@f5', '@f6', '@f7', '@f8', '@f9', '@f10']; // かお（img/avatar/f1〜10）。むかしの '@hero〜' や 絵文字も そのまま 表示できる
 
 // ---------- レベル（R1〜R6）：レベルごとに ステージと ★を もつ ----------
 // つぎの レベルが ひらく じょうけん：ぜんぶの ステージ（30）で ★1いじょう ＋ ★の ごうけいが LEVEL_GOAL いじょう（★2×30＝60 が めやす）
@@ -259,7 +259,7 @@ export function addPlayer(name, avatar, rank) { S.players = S.players.filter((x)
 export function renamePlayer(p, name) { const n = (name || '').trim().slice(0, 10); if (!n) return false; p.name = n; delete p.guest; save(); return true; }
 export function player() {
   let p = S.players.find((x) => x.id === S.current) || S.players[0];
-  if (!p) { p = newPlayer('プレイヤー', '🏀'); p.guest = true; S.players.push(p); }
+  if (!p) { p = newPlayer('プレイヤー', '@f1'); p.guest = true; S.players.push(p); }
   if (S.current !== p.id) { S.current = p.id; save(); }
   return p;
 }
