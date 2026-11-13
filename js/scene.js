@@ -228,7 +228,7 @@ export function createScene(canvas, o) {
       if (pose.ball) { bx = laneX + pose.ball.x * GK; by = 0.17 + (pose.ball.y - 0.17) * GK; bz = pose.ball.z; }
     }
     // つよく ドリブル：ボールを 大きく、ゆかに つくたびに 大きな わ
-    { const big = pose && pose.strong ? 1.3 : 1; ball.scale.setScalar(lerp(ball.scale.x, big, 0.2));
+    { ball.scale.setScalar(1); // つよい ドリブルでも ボールの 大きさは かえない（大きく するのは 流れてくる ●）
       if (pose && pose.strong) { if (by < 0.26 && !psHit) { psHit = true; impact.position.set(bx, 0.02, bz); impact.scale.setScalar(0.3); impact.material.opacity = 0.95; impact.material.color.set(sk.c); camShake = Math.max(camShake, 0.35); } if (by > 0.4) psHit = false; }
       if (impact.material.opacity > 0) { impact.scale.multiplyScalar(1 + dt * 7); impact.material.opacity = Math.max(0, impact.material.opacity - dt * 2.6); } impact.visible = impact.material.opacity > 0.01; }
     shadow.position.set(laneX, 0.012, 0); footGlow.position.set(laneX, 0.06, 0.1);
