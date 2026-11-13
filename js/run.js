@@ -386,7 +386,7 @@ export function runStage(opts) {
           if (c.bossIntro) { boss.on = true; addText(`⚠️ ${test ? 'しけんかん' : world.boss} があらわれた！`, '#ff4d6d', 1.2); audio.sfx('warn'); sayBoth('ボスだ！', 'Boss incoming!'); }
           if (c.finale) { phase = 'finale'; boss.finale = true; rushT.length = 0; addText(`いまだ！ ${SKILLS[c.skill].n}で れんだ！！`, '#3df5ff', 1.4, 0.34, 1.8); sayBoth('いまだ！はやく つよく！', 'Now! Fast and hard!'); }
           if (c.rushMore) { addText('まだまだ！ もっと はやく つよく！', '#ff8da1', 1.2); sayBoth('まだまだ！', 'Keep going!'); }
-          if (c.midIntro) { mid.on = true; mid.hp = 1; mid.dead = false; mid.gone = false; addText('🛡️ ちゅうボス！ はやい ドリブルで ぬけ！', '#ff8a28', 1.15, 0.34, 1.6); audio.sfx('warn'); sayBoth('ちゅうボスだ！はやく ドリブル！', 'Mini boss! Dribble fast!'); }
+          if (c.midIntro) { mid.on = true; mid.hp = 1; mid.dead = false; mid.gone = false; texts.length = 0; addText('🛡️ ちゅうボス！ はやい ドリブルで ぬけ！', '#ff8a28', 1.15, 0.34, 1.6); audio.sfx('warn'); sayBoth('ちゅうボスだ！はやく ドリブル！', 'Mini boss! Dribble fast!'); }
           if (c.mid) rushT.length = 0;
         }
         const next = cues[cues.indexOf(curCue) + 1];

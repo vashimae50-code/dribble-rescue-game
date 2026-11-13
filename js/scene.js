@@ -77,6 +77,13 @@ export function createScene(canvas, o) {
   disposables.push(hazTex, hazMat, G.box, G.plane, G.ring, chevTex);
   const labelCache = new Map(); const colMat = new Map();
   const cm = (c, op = 1) => { const k = c + op; if (!colMat.has(k)) { const m = new THREE.MeshBasicMaterial({ color: C(c), transparent: op < 1, opacity: op, depthWrite: op >= 1, side: THREE.DoubleSide }); colMat.set(k, m); disposables.push(m); } return colMat.get(k); };
+  // 2だんの ふだ（よこへ うごく ゲート用：レーンの わくの 上に のせる）
+  function label2(l1, l2, color) {
+    const k = '2|' + l1 + '|' + l2 + color; if (labelCache.has(k)) return labelCache.get(k);
+    const t = canvasTex(512, 256, (g, w, h) => { g.fillStyle = 'rgba(4,8,30,.85)'; g.strokeStyle = color; g.lineWidth = 10; g.beginPath(); g.roundRect(8, 8, w - 16, h - 16, 34); g.fill(); g.stroke(); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = color;
+      g.font = '900 72px "M PLUS Rounded 1c","Hiragino Maru Gothic ProN",sans-serif'; g.fillText(l1, w / 2, h * 0.32, w - 44); g.font = '900 64px "M PLUS Rounded 1c","Hiragino Maru Gothic ProN",sans-serif'; g.fillText(l2, w / 2, h * 0.7, w - 44); });
+    const m = new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false }); labelCache.set(k, m); disposables.push(t, m); return m;
+  }
   function label(text, color) {
     const k = text + color; if (labelCache.has(k)) return labelCache.get(k);
     const t = canvasTex(768, 192, (g, w, h) => { g.fillStyle = 'rgba(4,8,30,.82)'; g.strokeStyle = color; g.lineWidth = 10; const r = 40; g.beginPath(); g.roundRect(8, 8, w - 16, h - 16, r); g.fill(); g.stroke(); g.font = '900 104px "M PLUS Rounded 1c","Hiragino Maru Gothic ProN",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = color; g.fillText(text, w / 2, h / 2 + 6, w - 60); });
@@ -101,7 +108,8 @@ export function createScene(canvas, o) {
         addDefender(gp, cue, l * LW, false);
       }
       if (cue.guard) addDefender(gp, cue, cue.lane0 * LW, true);
-      bar(lx - LW * 0.48, 1.4, 0, 0.1, 2.8, 0.1, cm(col)); bar(lx + LW * 0.48, 1.4, 0, 0.1, 2.8, 0.1, cm(col)); bar(lx, 2.8, 0, LW, 0.1, 0.1, cm(col));
+      bar(lx - LW * 0.48, 1.4, 0, 0.1, 2.8, 0.1, cm(col)); bar(lx + LW * 0.48, 1.4, 0, 0.1, 2.8, 0.1, cm(col));
+      { const SW = 2.4; bar(lx, 2.8, 0, SW, 0.1, 0.1, cm(col)); bar(lx, 4.05, 0, SW, 0.1, 0.1, cm(col)); bar(lx - SW / 2, 3.42, 0, 0.1, 1.35, 0.1, cm(col)); bar(lx + SW / 2, 3.42, 0, 0.1, 1.35, 0.1, cm(col)); } // ふだの わく
       const pad = new THREE.Mesh(G.plane, cm(col, 0.35)); pad.rotation.x = -Math.PI / 2; pad.position.set(lx, 0.03, 1.5); pad.scale.set(LW * 0.9, 4, 1); gp.add(pad);
       const ar = new THREE.Mesh(G.plane, new THREE.MeshBasicMaterial({ map: chevTex, color: C(col), transparent: true, depthWrite: false })); ar.rotation.x = -Math.PI / 2; ar.rotation.z = cue.lane1 > cue.lane0 ? -Math.PI / 2 : Math.PI / 2; ar.position.set((cue.lane0 + cue.lane1) / 2 * LW, 0.05, 3.2); ar.scale.set(1.3, 1.3, 1); gp.add(ar); gp.userData.mats = [ar.material];
     } else {
@@ -113,7 +121,10 @@ export function createScene(canvas, o) {
       if (sk.hand === 'alt') { const rg = new THREE.Mesh(G.ring, cm(col)); rg.position.set(cue.lane1 * LW, 1.5, 0); rg.scale.setScalar(1.15); gp.add(rg); gp.userData.spin = rg; }
     }
     const txt = `${sk.i} ${cue.skill === 'step' || cue.skill === 'slide' || cue.skill === 'xstep' || cue.skill === 'drive' ? (cue.lane1 > cue.lane0 ? 'みぎへ ' : 'ひだりへ ') : ''}${cue.hand === 'L' && sk.hand === 'cur' ? 'ひだりで ' : cue.hand === 'R' && sk.hand === 'cur' ? 'みぎで ' : ''}${sk.n}`;
-    const sp = new THREE.Sprite(label(txt, col)); sp.scale.set(4.6, 1.15, 1); sp.position.set(laneMove ? lx * 0.6 : 0, laneMove ? 3.5 : CEIL - 1.25, 0.1); gp.add(sp);
+    let sp;
+    if (laneMove) { const dir = txt.match(/(みぎへ|ひだりへ)/); const l1 = `${sk.i} ${dir ? dir[1] : ''}`.trim(); const l2 = txt.replace(sk.i, '').replace(/(みぎへ|ひだりへ)\s*/, '').trim(); sp = new THREE.Sprite(label2(l1, l2, col)); sp.scale.set(2.3, 1.15, 1); sp.position.set(lx, 3.42, 0.1); }
+    else { sp = new THREE.Sprite(label(txt, col)); sp.scale.set(4.6, 1.15, 1); sp.position.set(0, CEIL - 1.25, 0.1); }
+    gp.add(sp);
     scene.add(gp); return gp;
   }
   const robotMat = new THREE.MeshStandardMaterial({ color: 0x3a3f58, roughness: 0.35, metalness: 0.7 }); const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff2d55 });
