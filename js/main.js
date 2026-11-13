@@ -1,6 +1,6 @@
 // ドリブルレスキュー！ メニュー・成長・ごほうび
 import { SKILLS, SKILL_IDS, RANKS, TIERS, tierOf, rankSkills, poolFor, WORLDS, MISSIONS, STAGES, sl, FRIENDS, BOSS_FRIENDS, ALL_FRIENDS, BALLS, SUITS, CAPSULE_COST, AVATARS,
-  S, save, avHTML, addPlayer, renamePlayer, player, totalStars, mastery, canTest, dayState, missionProgress, stamp, esc } from './data.js';
+  S, save, avHTML, MAX_LV, LEVEL_GOAL, LEVEL_SPEED, MAIN_STAGES, curLv, lvStars, lvTotal, lvCleared, lvDone, addPlayer, renamePlayer, player, totalStars, mastery, canTest, dayState, missionProgress, stamp, esc } from './data.js';
 import { runStage } from './run.js';
 import { preloadStage } from './env.js';
 
@@ -19,10 +19,10 @@ function show(html, t, bare) {
   nav.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
 }
 function topbar() {
-  const p = player(); const r = RANKS[p.rank];
+  const p = player(); const L = curLv(p); const r = RANKS[L];
   return `<div class="topbar"><button class="who" data-act="who">${avHTML(p.avatar)}<span>${esc(p.name)}</span></button>
-    <span class="rank" style="--c:${r.c}">R${p.rank} ${r.n}${p.verified[p.rank - 1] ? ' ✅' : ''}</span>
-    <span class="cur">⭐ ${totalStars(p)}</span><span class="cur coin">🪙 ${p.coins}</span></div>`;
+    <span class="rank" style="--c:${r.c}">R${L} ${r.n}</span>
+    <span class="cur">⭐ ${lvTotal(p, L)}</span><span class="cur coin">🪙 ${p.coins}</span></div>`;
 }
 const badge = (pts) => { const t = TIERS[tierOf(pts)]; const nx = TIERS[tierOf(pts) + 1]; const pr = nx ? (pts - t.at) / (nx.at - t.at) : 1; return `<span class="badge" style="--c:${t.c}">${t.i} ${t.n}</span><span class="mbar"><i style="width:${Math.round(pr * 100)}%;background:${nx ? nx.c : t.c}"></i></span>`; };
 
@@ -32,14 +32,14 @@ function home() {
   const ms = d.missions.map((m) => { const v = Math.min(m.n, missionProgress(p, m)); const done = v >= m.n; const got = d.claimed.includes(m.id);
     return `<div class="ms ${done ? 'done' : ''}"><div><b>${m.text}</b><span class="mbar"><i style="width:${(v / m.n) * 100}%"></i></span><small>${v}/${m.n}</small></div>
       ${got ? '<span class="got">✔</span>' : done ? `<button class="claim" data-act="claim" data-id="${m.id}">🪙20 もらう</button>` : '<span class="rw">🪙20</span>'}</div>`; }).join('');
-  const st = p.stamps % 7; const testReady = canTest(p);
-  const weak = poolFor(p.rank).slice().sort((a, b) => mastery(p, a) - mastery(p, b))[0];
+  const st = p.stamps % 7;
+  const weak = poolFor(curLv(p)).slice().sort((a, b) => mastery(p, a) - mastery(p, b))[0];
   show(`
     <div class="hero">
       <div class="logo"><span>ドリブル</span><b>レスキュー！</b></div>
-      ${(() => { const nx = STAGES.find((x) => !(p.stars[x.id] > 0)); return nx ? `<button class="play" data-act="stage" data-id="${nx.id}">▶ つづきから<small>${sl(nx)} ${MISSIONS[nx.mission].n}</small></button>` : '<button class="play" data-act="tab" data-tab="stages">▶ ステージへ</button>'; })()}
+      ${(() => { const L = curLv(p); const ls = lvStars(p, L); const nx = MAIN_STAGES.find((x) => !(ls[x.id] > 0)); return nx ? `<button class="play" data-act="stage" data-id="${nx.id}">▶ つづきから<small>${sl(nx)} ${MISSIONS[nx.mission].n}</small></button>` : '<button class="play" data-act="tab" data-tab="stages">▶ ステージへ</button>'; })()}
     </div>
-    ${testReady ? `<button class="banner test" data-act="testIntro"><b>🎓 しょうきゅうテストに ちょうせんできる！</b><small>R${p.rank} ${r.n} → R${p.rank + 1} ${RANKS[p.rank + 1].n}</small></button>` : ''}
+    ${lvBanner(p)}
     <div class="card"><h2>📅 きょうの ミッション</h2>${ms}</div>
     <div class="card stampcard"><h2>🗓️ スタンプカード <small>あそんだ日に 1こ。7こで カプセルけん 🎟️（とぎれても きえない）</small></h2>
       <div class="stamps">${Array.from({ length: 7 }, (_, i) => `<i class="${i < st || (st === 0 && p.stamps > 0 && p.lastDay === d.date && i < 7) ? 'on' : ''}">${i === 6 ? '🎟️' : '⭐'}</i>`).join('')}</div>
@@ -50,28 +50,35 @@ function home() {
 }
 
 // ---------- ステージ ----------
+function lvBanner(p) {
+  const L = curLv(p); const tot = lvTotal(p, L), cl = lvCleared(p, L), goal = LEVEL_GOAL[L]; const n = MAIN_STAGES.length;
+  if (L < p.rank || L >= MAX_LV) return `<button class="banner" data-act="tab" data-tab="stages"><b>🏅 R${L} ${RANKS[L].n}　⭐${tot}/${n * 3}</b><small>${L < p.rank ? 'クリアずみの レベル' : 'さいごの レベル'}</small></button>`;
+  return `<button class="banner" data-act="tab" data-tab="stages"><b>🏅 R${L} ${RANKS[L].n} → R${L + 1} ${RANKS[L + 1].n} まで</b><small>ステージ ★1いじょう ${cl}/${n}　・　⭐ ${tot}/${goal}</small><span class="mbar"><i style="width:${Math.min(100, (Math.min(cl / n, tot / goal)) * 100)}%"></i></span></button>`;
+}
 function stages() {
-  const p = player(); const ts = totalStars(p);
-  show(WORLDS.map((w, wi) => {
+  const p = player(); const L = curLv(p); const ls = lvStars(p, L); const ts = lvTotal(p, L); const goal = LEVEL_GOAL[L]; const cl = lvCleared(p, L); const n = MAIN_STAGES.length;
+  const tabs = `<section class="card lvcard"><div class="seg lvtabs">${Array.from({ length: MAX_LV }, (_, i) => i + 1).map((r) => `<button class="${r === L ? 'on' : ''}" ${r > p.rank ? 'disabled' : ''} data-act="lv" data-lv="${r}">${r > p.rank ? '🔒' : lvDone(p, r) ? '🏅' : ''}R${r} ${RANKS[r].n}</button>`).join('')}</div>
+    <p class="hint">${L < MAX_LV ? (L < p.rank ? `R${L} は クリアずみ！ ⭐${ts}/${n * 3}` : `R${L + 1} が ひらく じょうけん：<b>ぜんぶの ステージで ★1いじょう（${cl}/${n}）</b> ＋ <b>⭐ ごうけい ${goal}こ（いま ${ts}こ）</b>　めざせ ぜんぶ ★2！`) : `さいごの レベル！ ⭐${ts}/${n * 3}`}</p></section>`;
+  show(tabs + WORLDS.map((w, wi) => {
     const locked = !S.settings.openAll && ts < w.need;
     return `<section class="world ${locked ? 'locked' : ''}" style="--a:${w.pal.a};--b:${w.pal.b};--bg:${w.pal.bg}">
       <h2>WORLD ${wi + 1}　${w.name} ${locked ? `<small>🔒 ⭐${w.need}こで ひらく</small>` : ''}</h2>
-      <div class="sgrid">${STAGES.filter((s) => s.wi === wi && !s.sp).map((s) => { const m = MISSIONS[s.mission]; const st = p.stars[s.id] || 0;
+      <div class="sgrid">${STAGES.filter((s) => s.wi === wi && !s.sp).map((s) => { const m = MISSIONS[s.mission]; const st = ls[s.id] || 0;
         return `<button class="stage ${m.boss ? 'boss' : ''}" ${locked ? 'disabled' : ''} data-act="stage" data-id="${s.id}" title="${wi + 1}-${s.mi + 1}"><span class="s-i">${m.i}</span><b>${m.n}</b><small>${wi + 1}-${s.mi + 1}</small><span class="s-st">${[1, 2, 3].map((n) => `<i class="${n <= st ? 'on' : ''}">★</i>`).join('')}</span></button>`; }).join('')}</div>
     </section>`; }).join('') + `<section class="world" style="--a:#ffb86b;--b:#ff7a1a;--bg:#2a1608"><h2>スペシャル</h2><div class="sgrid">${STAGES.filter((x) => x.sp).map((x) => `<button class="stage" data-act="stage" data-id="${x.id}"><span class="s-i">${MISSIONS[x.mission].i}</span><b>${x.sp}</b><small>${MISSIONS[x.mission].n}</small><span class="s-st">${[1, 2, 3].map((n) => `<i class="${n <= (p.stars[x.id] || 0) ? 'on' : ''}">★</i>`).join('')}</span></button>`).join('')}</div><p class="hint">SP は ボールが 2つ いるよ。L1・L2・L3 は ワザを ステップで おぼえる ステージ。H1 は うごかずに ハンドリングだけ れんしゅう。</p></section>`, 'stages');
 }
 function stageIntro(id) {
   { const st0 = STAGES.find((x) => x.id === id); if (st0) preloadStage(st0.world.theme, st0.id, !!player().girl); }
-  const s = STAGES.find((x) => x.id === id); const p = player(); const m = MISSIONS[s.mission]; const pool = poolFor(p.rank);
+  const s = STAGES.find((x) => x.id === id); const p = player(); const m = MISSIONS[s.mission]; const LV = s.sp ? p.rank : curLv(p); const pool = poolFor(LV);
   const feat = pool.filter((k) => (m.w[k] || 0) > 1).slice(0, 6); const list = (m.pool && m.pool.length > 8 ? m.pool.slice(0, 8) : m.pool) || (m.plan ? [...new Set(m.plan.flat().map((x) => x[0]))].filter((k) => SKILLS[k].combo || k === m.learn) : feat.length ? feat : pool.slice(-6));
   show(`<div class="card intro" style="--a:${s.world.pal.a};--b:${s.world.pal.b}">
-      <div class="intro-h"><span class="bob">${m.i}</span><div><b>${s.world.name} ${sl(s)}</b><h1>${m.n}</h1><small>${m.d}</small></div></div>
+      <div class="intro-h"><span class="bob">${m.i}</span><div><b>${s.sp ? '' : `R${LV} ・ `}${s.world.name} ${sl(s)}</b><h1>${m.n}</h1><small>${m.d}</small></div></div>
       <p class="hint">${m.plan ? m.steps.join('<br>') : m.pool && m.pool.some((k) => SKILLS[k].hand === 'two') ? 'ボールを 2つ よういしよう。' : m.pool ? 'うごかないで、ハンドリングの ワザだけ 出るよ。' : `きみの ランク（R${p.rank} ${RANKS[p.rank].n}）に 合わせた ワザが 出るよ。`}</p>
       <div class="legend">${list.map((k) => `<div class="tile" style="--c:${SKILLS[k].c}"><b>${SKILLS[k].i} ${SKILLS[k].n}</b><span>${SKILLS[k].tips[0]}</span></div>`).join('')}</div>
       <p class="hint">${S.settings.camera ? '📷 カメラはんてい ON：全身が うつる ばしょに 立とう' : '📺 がめんの お手本に 合わせて うごこう。まわりに ぶつかる物が ないか たしかめてね'}</p>
       <button class="big" id="go">▶ スタート</button><p class="hint" id="msg"></p>
       <button class="mini" data-act="tab" data-tab="stages">← もどる</button></div>`, 'stages');
-  $('#go').addEventListener('click', () => start({ mode: 'stage', stage: s }));
+  $('#go').addEventListener('click', () => start({ mode: 'stage', stage: s, level: LV, speedK: s.sp ? 1 : LEVEL_SPEED(LV) }));
 }
 
 // ---------- トレーニングルーム ----------
@@ -140,7 +147,7 @@ function result(o, r, noCam) {
   if (o.mode === 'test') return testResult(o, r);
   const s = o.stage; const m = MISSIONS[s.mission]; const d = dayState(p);
   const { ups, stamped } = applyPractice(p, r); d.clears++; addLog(p, { t: 'stage', id: s.id, stars: r.stars, score: r.score });
-  const isBest = r.score > (p.best[s.id] || 0); if (isBest) p.best[s.id] = r.score; p.stars[s.id] = Math.max(p.stars[s.id] || 0, r.stars);
+  const isBest = r.score > (p.best[s.id] || 0); if (isBest) p.best[s.id] = r.score; p.stars[s.id] = Math.max(p.stars[s.id] || 0, r.stars); let lvUp = 0; if (!s.sp) { const L = o.level || curLv(p); const ls = lvStars(p, L); ls[s.id] = Math.max(ls[s.id] || 0, r.stars); if (L === p.rank && p.rank < MAX_LV && lvDone(p, L)) { p.rank++; p.lv = p.rank; p.day = null; lvUp = p.rank; } }
   let coins = 20 + (m.boss ? 10 : 0); let got = null;
   if (m.boss && !p.bossDone[s.world.id]) { p.bossDone[s.world.id] = true; const bf = BOSS_FRIENDS[s.wi]; if (!p.friends.includes(bf.id)) { p.friends.push(bf.id); got = bf; } }
   p.coins += coins; save();
@@ -155,7 +162,7 @@ function result(o, r, noCam) {
       ${noCam ? '<p class="hint">📷 この がめんでは カメラが つかえなかったので、カメラなしで あそびました。</p>' : ''}
       ${r.cam && r.tracked < 0.5 ? '<p class="hint">📷 からだが あまり うつって いなかったよ。もうすこし はなれて 全身を うつしてね。</p>' : ''}
       ${hk ? `<button class="banner" data-act="dojo" data-id="${hk}"><b>💡 ${SKILLS[hk].i} ${SKILLS[hk].n} を れんしゅうする？</b><small>コツ：${SKILLS[hk].tips[0]}</small></button>` : ''}
-      ${canTest(p) ? '<button class="banner test" data-act="testIntro"><b>🎓 しょうきゅうテストに ちょうせんできる！</b></button>' : ''}
+      ${lvUp ? `<div class="rescue rare"><div class="rays"></div><span>🏅</span><b>レベルアップ！ R${lvUp} ${RANKS[lvUp].n} が ひらいた！</b><small>あたらしい ワザ：${rankSkills(lvUp).map((k) => SKILLS[k].n).join('・')}</small></div>` : ''}
       <div class="btns"><button class="big" data-act="stage" data-id="${s.id}">もういちど</button>${next ? `<button class="big alt" data-act="stage" data-id="${next.id}">つぎへ ▶</button>` : ''}<button class="big ghost" data-act="tab" data-tab="home">ホーム</button></div></div>`, 'stages');
   beep([0, 4, 7, 12, 16, 12, 19]);
 }
@@ -249,8 +256,8 @@ function settings() {
     <h3>🔊 おとの テスト</h3><p class="hint">音が 出ないときに、どの方式なら 聞こえるかを たしかめます。1つずつ おして、聞こえたものを 教えてください。</p>
     <div class="btns"><button class="big ghost" id="ta">① 合成音</button><button class="big ghost" id="tb">② 音声ファイル</button><button class="big ghost" id="tc">③ こえ → 合成音</button></div><p class="hint" id="tout"></p>
     <h3>プレイヤーと ランク</h3><p class="hint">いまの じつりょくに 合わせて、スタートの ランクを えらんでください。ランクが 上がるほど むずかしい ワザが 出ます。</p>
-    ${S.players.map((p) => `<div class="prow"><b>${avHTML(p.avatar)}</b><input class="pname-edit" maxlength="10" value="${esc(p.name)}" data-pid="${p.id}" style="width:6em"><div class="seg">${[1, 2, 3, 4, 5].map((r) => `<button class="${p.rank === r ? 'on' : ''}" data-rank="${r}" data-pid="${p.id}">R${r}</button>`).join('')}</div><button class="mini" data-girl="${p.id}" title="おとこのこ／おんなのこ">${p.girl ? '👧 おんなのこ' : '👦 おとこのこ'}</button><button class="mini danger" data-del="${p.id}">けす</button></div>`).join('')}
-    <p class="hint">${[1, 2, 3, 4, 5].map((r) => `R${r} ${RANKS[r].n}：${rankSkills(r).map((k) => SKILLS[k].n).join('・')}`).join('<br>')}</p>
+    ${S.players.map((p) => `<div class="prow"><b>${avHTML(p.avatar)}</b><input class="pname-edit" maxlength="10" value="${esc(p.name)}" data-pid="${p.id}" style="width:6em"><div class="seg">${[1, 2, 3, 4, 5, 6].map((r) => `<button class="${p.rank === r ? 'on' : ''}" data-rank="${r}" data-pid="${p.id}">R${r}</button>`).join('')}</div><button class="mini" data-girl="${p.id}" title="おとこのこ／おんなのこ">${p.girl ? '👧 おんなのこ' : '👦 おとこのこ'}</button><button class="mini danger" data-del="${p.id}">けす</button></div>`).join('')}
+    <p class="hint">${[1, 2, 3, 4, 5, 6].map((r) => `R${r} ${RANKS[r].n}：${rankSkills(r).map((k) => SKILLS[k].n).join('・')}`).join('<br>')}</p>
     <p class="hint">きろくは この たんまつの ブラウザの 中だけに ほぞんされます。</p></div>`, 'home');
   app.querySelectorAll('[data-set]').forEach((i) => i.addEventListener('change', () => { st[i.dataset.set] = i.checked; save(); }));
   const tout = $('#tout'); const say = (t) => { tout.textContent = t; };
@@ -262,13 +269,13 @@ function settings() {
   app.querySelectorAll('[data-vol]').forEach((i) => { i.addEventListener('input', () => { i.nextElementSibling.textContent = i.value; }); i.addEventListener('change', () => { st[i.dataset.vol] = (+i.value) / 100; save(); if (st.sound) beep([0, 7]); }); });
   app.querySelectorAll('[data-ms]').forEach((b) => b.addEventListener('click', () => { st.musicStyle = b.dataset.ms; save(); settings(); }));
   app.querySelectorAll('[data-voice]').forEach((b) => b.addEventListener('click', () => { st.voice = b.dataset.voice || false; save(); settings(); }));
-  app.querySelectorAll('[data-rank]').forEach((b) => b.addEventListener('click', () => { const p = S.players.find((x) => x.id === b.dataset.pid); p.rank = +b.dataset.rank; p.day = null; save(); settings(); }));
+  app.querySelectorAll('[data-rank]').forEach((b) => b.addEventListener('click', () => { const p = S.players.find((x) => x.id === b.dataset.pid); p.rank = +b.dataset.rank; p.lv = p.rank; p.day = null; save(); settings(); }));
   app.querySelectorAll('[data-girl]').forEach((b) => b.addEventListener('click', () => { const p = S.players.find((x) => x.id === b.dataset.girl); if (p) { p.girl = !p.girl; save(); preloadStage(null, null, p.girl); } settings(); }));
   app.querySelectorAll('.pname-edit').forEach((i) => i.addEventListener('change', () => { const p = S.players.find((x) => x.id === i.dataset.pid); if (p) renamePlayer(p, i.value); settings(); }));
   app.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => { if (b.dataset.sure) { S.players = S.players.filter((x) => x.id !== b.dataset.del); if (S.current === b.dataset.del) S.current = null; save(); settings(); } else { b.dataset.sure = '1'; b.textContent = 'ほんとうに けす'; } }));
 }
 function addLog(p, e) { const d = new Date(); p.log = p.log || []; p.log.unshift({ ...e, d: `${d.getMonth() + 1}/${d.getDate()}`, h: `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}` }); p.log = p.log.slice(0, 40); p.lastPlay = Date.now(); }
-const cleared = (p) => STAGES.filter((x) => p.stars[x.id] > 0).length;
+const cleared = (p) => lvCleared(p, curLv(p));
 const ago = (ts) => { if (!ts) return 'まだ あそんでいない'; const dd = Math.floor((Date.now() - ts) / 86400000); return dd <= 0 ? 'きょう あそんだ' : dd === 1 ? 'きのう あそんだ' : `${dd}日まえに あそんだ`; };
 // ---------- だれが あそぶ？ ----------
 function who() {
@@ -276,17 +283,17 @@ function who() {
   if (!ps.length) return players(true);
   show(`<div class="hero"><div class="logo"><span>ドリブル</span><b>レスキュー！</b></div></div>
     <h2 class="whoq">だれが あそぶ？</h2>
-    <div class="wholist">${ps.map((x) => { const nx = STAGES.find((y) => !(x.stars[y.id] > 0)); return `<button class="whocard" data-act="pick" data-id="${x.id}" style="--c:${RANKS[x.rank].c}">
+    <div class="wholist">${ps.map((x) => { const nx = MAIN_STAGES.find((y) => !(lvStars(x, curLv(x))[y.id] > 0)); return `<button class="whocard" data-act="pick" data-id="${x.id}" style="--c:${RANKS[x.rank].c}">
       <span class="wav">${avHTML(x.avatar)}</span><span class="wbody"><b>${esc(x.name)}</b><span class="rank" style="--c:${RANKS[x.rank].c}">R${x.rank} ${RANKS[x.rank].n}</span>
-      <small>⭐ ${totalStars(x)}　ステージ ${cleared(x)}/${STAGES.length}　🪙 ${x.coins}</small><small>${nx ? `つぎは ${sl(nx)}` : 'ぜんぶ クリア！'}・${ago(x.lastPlay)}</small></span></button>`; }).join('')}
+      <small>R${curLv(x)}　⭐ ${lvTotal(x, curLv(x))}　ステージ ${cleared(x)}/${MAIN_STAGES.length}　🪙 ${x.coins}</small><small>${nx ? `つぎは ${sl(nx)}` : 'ぜんぶ クリア！'}・${ago(x.lastPlay)}</small></span></button>`; }).join('')}
       <button class="whocard add" data-act="players"><span class="wav">＋</span><span class="wbody"><b>あたらしい プレイヤー</b><small>なまえと ランクを えらぶ</small></span></button></div>`, 'home', true);
 }
 // ---------- きろく ----------
 function record() {
   const p = player(); const tiers = [0, 0, 0, 0, 0]; SKILL_IDS.forEach((k) => { tiers[tierOf(mastery(p, k))]++; });
   show(`<div class="card"><h2>📒 ${avHTML(p.avatar)} ${esc(p.name)} の きろく</h2>
-      <div class="stats"><div><b>R${p.rank}</b><small>${RANKS[p.rank].n}${p.verified[p.rank - 1] ? ' ✅' : ''}</small></div><div><b>${cleared(p)}/${STAGES.length}</b><small>クリアした ステージ</small></div><div><b>⭐${totalStars(p)}</b><small>/${STAGES.length * 3}</small></div><div><b>${p.stamps || 0}日</b><small>あそんだ日</small></div><div><b>${p.plays || 0}回</b><small>プレイ</small></div><div><b>${p.friends.length}</b><small>なかま</small></div></div></div>
-    <div class="card"><h2>🗺️ ステージ</h2>${WORLDS.map((w, wi) => `<div class="recrow"><b style="color:${w.pal.a}">${wi + 1} ${w.name}</b><span>${STAGES.filter((x) => x.wi === wi && !x.sp).map((x) => `<i class="${p.stars[x.id] ? 'on' : ''}" title="${sl(x)}">${p.stars[x.id] ? '★'.repeat(p.stars[x.id]) : '・'}</i>`).join('')}</span></div>`).join('')}</div>
+      <div class="stats"><div><b>R${p.rank}</b><small>${RANKS[p.rank].n}${p.verified[p.rank - 1] ? ' ✅' : ''}</small></div><div><b>${cleared(p)}/${MAIN_STAGES.length}</b><small>R${curLv(p)} クリアした ステージ</small></div><div><b>⭐${lvTotal(p, curLv(p))}</b><small>/${MAIN_STAGES.length * 3}</small></div><div><b>${p.stamps || 0}日</b><small>あそんだ日</small></div><div><b>${p.plays || 0}回</b><small>プレイ</small></div><div><b>${p.friends.length}</b><small>なかま</small></div></div></div>
+    <div class="card"><h2>🗺️ ステージ</h2>${WORLDS.map((w, wi) => `<div class="recrow"><b style="color:${w.pal.a}">${wi + 1} ${w.name}</b><span>${STAGES.filter((x) => x.wi === wi && !x.sp).map((x) => { const v = lvStars(p, curLv(p))[x.id] || 0; return `<i class="${v ? 'on' : ''}" title="${sl(x)}">${v ? '★'.repeat(v) : '・'}</i>`; }).join('')}</span></div>`).join('')}</div>
     <div class="card"><h2>🥋 れんしゅうランク</h2><div class="res-lines">${TIERS.map((t, i) => `<span style="color:${t.c}">${t.i} ${t.n} ${tiers[i]}</span>`).join('')}</div>
       <div class="ups">${SKILL_IDS.filter((k) => mastery(p, k) > 0).sort((a, b) => mastery(p, b) - mastery(p, a)).map((k) => `<div class="up" style="--c:${SKILLS[k].c}"><b>${SKILLS[k].i} ${SKILLS[k].n}</b><span>${mastery(p, k)}</span><small>${TIERS[tierOf(mastery(p, k))].n}</small></div>`).join('') || '<p class="hint">まだ ありません</p>'}</div>
       <p class="hint">ひだりて ${p.leftReps || 0}回 ／ みぎて ${p.rightReps || 0}回</p></div>
@@ -298,7 +305,7 @@ function players(first) {
   show(`${first === true ? '<div class="hero"><div class="logo"><span>ドリブル</span><b>レスキュー！</b></div></div>' : ''}<div class="card"><h2>${first === true ? 'はじめに プレイヤーを つくろう' : 'あたらしい プレイヤー'}</h2>
     <h3>なまえ</h3><input id="pname" maxlength="8" placeholder="なまえ" autocomplete="off">
     <div class="avatars">${AVATARS.map((a) => `<button class="av ${a === av ? 'on' : ''}" data-av="${a}">${avHTML(a)}</button>`).join('')}</div>
-    <p class="hint">スタートの ランク（あとで せっていから かえられます）</p><div class="seg" id="rk">${[1, 2, 3, 4, 5].map((r) => `<button class="${r === 1 ? 'on' : ''}" data-r="${r}">R${r} ${RANKS[r].n}</button>`).join('')}</div>
+    <p class="hint">スタートの レベル（ここから はじまります。つぎの レベルは ステージを クリアして ひらく）</p><div class="seg" id="rk">${[1, 2, 3, 4, 5, 6].map((r) => `<button class="${r === 1 ? 'on' : ''}" data-r="${r}">R${r} ${RANKS[r].n}</button>`).join('')}</div>
     <button class="big" id="psave">つくる</button>${first === true ? '' : '<button class="mini" data-act="who">← もどる</button>'}</div>`, 'home', true);
   app.querySelectorAll('.av').forEach((b) => b.addEventListener('click', () => { av = b.dataset.av; app.querySelectorAll('.av').forEach((x) => x.classList.toggle('on', x === b)); }));
   app.querySelectorAll('#rk button').forEach((b) => b.addEventListener('click', () => { rank = +b.dataset.r; app.querySelectorAll('#rk button').forEach((x) => x.classList.toggle('on', x === b)); }));
@@ -310,6 +317,7 @@ const tabs = { home, stages, training, friends, shop };
 const acts = {
   tab: (d) => tabs[d.tab](), how, settings, players: () => players(), who, record, testIntro,
   pick: (d) => { S.current = d.id; save(); home(); },
+  lv: (d) => { const p = player(); if (+d.lv <= p.rank) { p.lv = +d.lv; save(); } stages(); },
   stage: (d) => stageIntro(d.id), dojo: (d) => dojoIntro(d.id), dojoGo: (d) => start({ mode: 'dojo', skill: d.id }),
   claim: (d) => { const p = player(); const day = dayState(p); if (!day.claimed.includes(d.id)) { day.claimed.push(d.id); p.coins += 20; save(); beep([12, 19]); } home(); },
   buddy: (d) => { const p = player(); p.buddy = p.buddy === d.id ? null : d.id; save(); friends(); },

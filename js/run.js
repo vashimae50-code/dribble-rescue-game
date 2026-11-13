@@ -25,7 +25,8 @@ export function runStage(opts) {
   // ドリブルの音：ワールド（ゆか）ごとに かえる
   audio.loadBounce(`sound/bounce_${{ village: 'd', night: 'b', sunset: 'c', snow: 'a', castle: 'e', gym: 'e' }[dojo ? 'gym' : world.theme] || 'd'}.wav`);
   const useSong = !dojo && !video && stage && stage.song && SONGS[stage.song]; // 曲ファイルの BGM（ゲームの 拍は 曲に あわせる）
-  if (useSong) { audio.loadBgm(SONGS[stage.song], stage.rate || 1, stage.half || 1); bps = (SONGS[stage.song].bpm * (stage.rate || 1) / (stage.half || 1)) / 60; }
+  const sRate = (stage && stage.rate || 1) * (opts.speedK || 1); if (!useSong && opts.speedK) bps *= opts.speedK;
+  if (useSong) { audio.loadBgm(SONGS[stage.song], sRate, stage.half || 1); bps = (SONGS[stage.song].bpm * sRate / (stage.half || 1)) / 60; }
   let W = 0, H = 0, DPR = 1;
   function resize() { const r = hud.getBoundingClientRect(); DPR = Math.min(window.devicePixelRatio || 1, 2); hud.width = Math.round(r.width * DPR); hud.height = Math.round(r.height * DPR); W = hud.width; H = hud.height; scene.resize(); }
   resize(); window.addEventListener('resize', resize);
@@ -43,7 +44,8 @@ export function runStage(opts) {
   const cues = []; const orbs = []; const safes = [];
   let endBeat = 0, zEnd = 0, lane = 0, curHand = 'R', lastSkill = null, bossStart = 1e9, finaleBeat = 1e9;
   let tier = 1; const tiers = [];
-  const pool = dojo ? [opts.skill] : test ? [...new Set([...rankSkills(pl.rank), 'right', 'left'])] : mission.pool || (mission.plan ? [...new Set(mission.plan.flat().map((x) => x[0]))] : poolFor(pl.rank));
+  const RK = opts.level || pl.rank; // あそぶ レベル
+  const pool = dojo ? [opts.skill] : test ? [...new Set([...rankSkills(pl.rank), 'right', 'left'])] : mission.pool || (mission.plan ? [...new Set(mission.plan.flat().map((x) => x[0]))] : poolFor(RK));
   const has = (k) => pool.includes(k);
   const leftBias = mission.leftBias ?? ((pl.leftReps || 0) <= (pl.rightReps || 0) ? 0.6 : 0.45);
 
@@ -80,7 +82,7 @@ export function runStage(opts) {
   function weightOf(k) {
     let w = mission.w[k] ?? 1; const sk = SKILLS[k];
     if (tierOf(pl.m[k] || 0) < 2) w *= 1.4;
-    if (sk.r === pl.rank && pl.rank > 1) w *= tier === 0 ? 0.5 : tier === 2 ? 1.6 : 1;
+    if (sk.r === RK && RK > 1) w *= tier === 0 ? 0.5 : tier === 2 ? 1.6 : 1;
     if (sk.handle && !test) w = 0;               // ハンドリングは ドリブルの あいだに はさむ
     if (k === 'jab') w = 0;                      // ジャブは ドライブと セット
     if (k === 'drive' && tier === 0) w *= 0.5;
@@ -128,7 +130,7 @@ export function runStage(opts) {
     addCue('rest', { len: 2, noGate: true });
   } else {
     addCue('rest', { len: 4 });
-    addCue(mission.pool ? mission.pool[0] : pl.rank === 1 && !test ? 'stance' : 'right', { len: 4 }); lastSkill = mission.pool ? mission.pool[0] : 'right';
+    addCue(mission.pool ? mission.pool[0] : RK === 1 && !test ? 'stance' : 'right', { len: 4 }); lastSkill = mission.pool ? mission.pool[0] : 'right';
     addSection(36); safes.push(endBeat);
   }
   const cueAt = (b) => { for (let i = cues.length - 1; i >= 0; i--) if (b >= cues[i].b0) return cues[i]; return cues[0]; };

@@ -129,11 +129,11 @@ export const poolFor = (rank) => SKILL_IDS.filter((k) => SKILLS[k].r <= rank);
 
 // ---------- ワールドとステージ ----------
 export const WORLDS = [
-  { id: 'w1', name: 'ひだまりの むら', theme: 'village', pal: { a: '#3df5ff', b: '#ff3df0', bg: '#0a0e2c', floor: '#101a4a' }, base: 45, bpm: 100, boss: 'キャプテン・ウォール', need: 0 },
-  { id: 'w2', name: 'つきよの まち', theme: 'night', pal: { a: '#4dff88', b: '#3df5ff', bg: '#04181a', floor: '#0a3030' }, base: 43, bpm: 104, boss: 'ナイトスティーラー', need: 8 },
-  { id: 'w3', name: 'ゆうやけ ブリッジ', theme: 'sunset', pal: { a: '#ffb13d', b: '#c77dff', bg: '#1d0f3d', floor: '#2c1a55' }, base: 47, bpm: 108, boss: 'スカイブロッカー', need: 20, open: true },
-  { id: 'w4', name: 'ゆきの さと', theme: 'snow', pal: { a: '#ffe03d', b: '#3d8bff', bg: '#0b1024', floor: '#182252' }, base: 41, bpm: 112, boss: 'アイスガード', need: 34 },
-  { id: 'w5', name: 'マグマの しろ', theme: 'castle', pal: { a: '#ff4d4d', b: '#ffb13d', bg: '#200808', floor: '#3a1010' }, base: 44, bpm: 118, boss: 'キング・マグマ', need: 50, open: true },
+  { id: 'w1', name: 'あおぞら パーク', theme: 'village', pal: { a: '#3df5ff', b: '#ff3df0', bg: '#0a0e2c', floor: '#101a4a' }, base: 45, bpm: 100, boss: 'キャプテン・ウォール', need: 0 },
+  { id: 'w2', name: 'ネオン ストリート', theme: 'night', pal: { a: '#4dff88', b: '#3df5ff', bg: '#04181a', floor: '#0a3030' }, base: 43, bpm: 104, boss: 'ナイトスティーラー', need: 8 },
+  { id: 'w3', name: 'ゆうやけ ストリート', theme: 'sunset', pal: { a: '#ffb13d', b: '#c77dff', bg: '#1d0f3d', floor: '#2c1a55' }, base: 47, bpm: 108, boss: 'スカイブロッカー', need: 20, open: true },
+  { id: 'w4', name: 'サンシャイン スタジアム', theme: 'snow', pal: { a: '#ffe03d', b: '#3d8bff', bg: '#0b1024', floor: '#182252' }, base: 41, bpm: 112, boss: 'スタジアム・タワー', need: 34 },
+  { id: 'w5', name: 'ファイナル アリーナ', theme: 'castle', pal: { a: '#ff4d4d', b: '#ffb13d', bg: '#200808', floor: '#3a1010' }, base: 44, bpm: 118, boss: 'キング・ディフェンダー', need: 50, open: true },
 ];
 // ミッションの型
 export const MISSIONS = {
@@ -209,11 +209,24 @@ export const CAPSULE_COST = 60;
 export const avHTML = (a) => { if (a === '🦸') a = '@hero1'; return a && a[0] === '@' ? `<img class="avimg" src="img/avatar/${a.slice(1)}.jpg" alt="">` : a; };
 export const AVATARS = ['@hero1', '@hero3', '@hero2', '@hero4', '@hero5', '@hero6', '🥷', '🧑‍🚀', '🐺', '🦈', '🐬', '🦋', '⚡', '🔥', '🌟', '🏀', '👟'];
 
+// ---------- レベル（R1〜R6）：レベルごとに ステージと ★を もつ ----------
+// つぎの レベルが ひらく じょうけん：ぜんぶの ステージ（30）で ★1いじょう ＋ ★の ごうけいが LEVEL_GOAL いじょう（★2×30＝60 が めやす）
+export const MAX_LV = 6;
+export const LEVEL_GOAL = { 1: 45, 2: 50, 3: 55, 4: 60, 5: 60, 6: 60 };
+export const LEVEL_SPEED = (L) => 1 + 0.02 * (L - 1); // レベルが 上がるほど 少し はやく
+export const MAIN_STAGES = STAGES.filter((s) => !s.sp);
+function migrateLv(p) { if (!p.ls) { p.ls = {}; const m = {}; MAIN_STAGES.forEach((s) => { if (p.stars && p.stars[s.id]) m[s.id] = p.stars[s.id]; }); p.ls[p.rank || 1] = m; } if (!p.lv) p.lv = p.rank || 1; }
+export const curLv = (p) => Math.max(1, Math.min(p.rank || 1, p.lv || p.rank || 1));
+export function lvStars(p, L) { if (!p.ls) migrateLv(p); if (!p.ls[L]) p.ls[L] = {}; return p.ls[L]; }
+export const lvTotal = (p, L) => { const m = lvStars(p, L); return MAIN_STAGES.reduce((a, s) => a + (m[s.id] || 0), 0); };
+export const lvCleared = (p, L) => { const m = lvStars(p, L); return MAIN_STAGES.filter((s) => (m[s.id] || 0) > 0).length; };
+export const lvDone = (p, L) => lvCleared(p, L) === MAIN_STAGES.length && lvTotal(p, L) >= LEVEL_GOAL[L];
+
 // ---------- 保存 ----------
 const KEY = 'dribble-rescue-v2';
 const def = () => ({ players: [], current: null, settings: { voice: 'en', sound: true, music: true, camera: false, sens: 'normal', swap: false, openAll: true, bloom: true, videoRec: false, volMusic: 0.5, volBall: 1, volVoice: 1, v: 4 } });
 export const S = (() => {
-  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.players)) { const old = s.settings || {}; s.settings = { ...def().settings, ...old }; if (old.v !== 4) { s.settings.voice = 'en'; s.settings.v = 4; } return s; } } catch (e) { /* noop */ }
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.players)) { s.players.forEach(migrateLv); const old = s.settings || {}; s.settings = { ...def().settings, ...old }; if (old.v !== 4) { s.settings.voice = 'en'; s.settings.v = 4; } return s; } } catch (e) { /* noop */ }
   return def();
 })();
 export function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* noop */ } }
@@ -221,7 +234,7 @@ export const today = () => { const d = new Date(); return `${d.getFullYear()}-${
 
 function newPlayer(name, avatar, rank = 1) {
   return { id: 'p' + Date.now().toString(36) + Math.floor(Math.random() * 1e4), name, avatar, rank, m: {}, coins: 0, friends: [], buddy: null,
-    balls: ['std'], ball: 'std', suits: ['cy'], suit: 'cy', stars: {}, best: {}, verified: {}, bossDone: {}, plays: 0, stamps: 0, tickets: 0, lastDay: '', day: null, tipIdx: {}, leftReps: 0, rightReps: 0 };
+    balls: ['std'], ball: 'std', suits: ['cy'], suit: 'cy', stars: {}, best: {}, verified: {}, bossDone: {}, plays: 0, stamps: 0, tickets: 0, lastDay: '', day: null, tipIdx: {}, leftReps: 0, rightReps: 0, ls: {}, lv: rank };
 }
 export function addPlayer(name, avatar, rank) { S.players = S.players.filter((x) => !(x.guest && x.plays === 0)); const p = newPlayer(name, avatar, rank); S.players.push(p); S.current = p.id; save(); return p; }
 export function renamePlayer(p, name) { const n = (name || '').trim().slice(0, 10); if (!n) return false; p.name = n; delete p.guest; save(); return true; }
