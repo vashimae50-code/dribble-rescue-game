@@ -3,6 +3,7 @@ import { SKILLS, SKILL_IDS, RANKS, TIERS, tierOf, rankSkills, poolFor, WORLDS, M
   S, save, avHTML, MAX_LV, LEVEL_GOAL, LEVEL_SPEED, MAIN_STAGES, curLv, lvStars, lvTotal, lvCleared, lvDone, addPlayer, renamePlayer, player, totalStars, mastery, canTest, dayState, missionProgress, stamp, esc } from './data.js';
 import { runStage } from './run.js';
 import { preloadStage } from './env.js';
+import { ballIcon } from './balls.js';
 
 const app = document.getElementById('app'); const nav = document.getElementById('nav'); const gameEl = document.getElementById('game');
 const gl = document.getElementById('gl'); const hud = document.getElementById('hud'); const overlay = document.getElementById('overlay'); const video = document.getElementById('pip');
@@ -227,7 +228,7 @@ function friends() {
 // ---------- ショップ ----------
 function shop(msg = '') {
   const p = player(); const left = FRIENDS.filter((f) => !p.friends.includes(f.id));
-  const item = (kind, it, owned, sel) => `<button class="item ${sel ? 'sel' : ''}" data-act="buy" data-kind="${kind}" data-id="${it.id}"><span class="sw" style="background:${it.c || `linear-gradient(${it.c1},${it.c2})`}"></span><b>${it.n}</b><small>${sel ? 'つかっている' : owned ? 'もっている' : `🪙 ${it.cost}`}</small></button>`;
+  const item = (kind, it, owned, sel) => `<button class="item ${sel ? 'sel' : ''}" data-act="buy" data-kind="${kind}" data-id="${it.id}">${kind === 'ball' ? `<img class="sw ball" src="${ballIcon(it)}" alt="">` : `<span class="sw" style="background:${it.c}"></span>`}<b>${it.n}</b><small>${sel ? 'つかっている' : owned ? 'もっている' : `🪙 ${it.cost}`}</small></button>`;
   show(`${msg}<div class="card capsule"><h2>🎁 なかまカプセル</h2><p class="hint">まだ いない なかまが かならず 1人 出るよ（かぶりなし）。のこり ${left.length}人</p>
       <div class="btns"><button class="big" data-act="capsule" data-pay="coin" ${left.length && p.coins >= CAPSULE_COST ? '' : 'disabled'}>🪙 ${CAPSULE_COST} で まわす</button><button class="big alt" data-act="capsule" data-pay="ticket" ${left.length && p.tickets > 0 ? '' : 'disabled'}>🎟️ けんで まわす（${p.tickets}）</button></div></div>
     <div class="card"><h2>🏀 ボール</h2><div class="items">${BALLS.map((b) => item('ball', b, p.balls.includes(b.id), p.ball === b.id)).join('')}</div></div>

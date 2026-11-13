@@ -195,10 +195,29 @@ export const sl = (s) => s.sp || `${s.wi + 1}-${s.mi + 1}`;
 export const FRIENDS = ['🐶', '🐱', '🐰', '🐸', '🐼', '🦊', '🐵', '🐧', '🐯', '🦁', '🐻', '🐨', '🐹', '🦉', '🐢', '🐙', '🦖', '🦄', '🐲', '🦅'].map((e, i) => ({ id: 'f' + i, e, n: ['ポチボ', 'ニャット', 'ピョンタ', 'ケロスケ', 'パンダム', 'コンピー', 'モンキチ', 'ペンタ', 'トラジロー', 'レオン', 'クマード', 'コアラン', 'ハムタ', 'ホーさん', 'カメキチ', 'タコリン', 'レックス', 'ユニコ', 'ミニドラ', 'イーグルX'][i] }));
 export const BOSS_FRIENDS = WORLDS.map((w, i) => ({ id: 'b' + i, e: ['🤖', '👾', '🛸', '🦂', '👑'][i], n: ['ガードロボ(なかま)', 'メトロン', 'UFOくん', 'スコピー', 'キングコア'][i], rare: true }));
 export const ALL_FRIENDS = [...FRIENDS, ...BOSS_FRIENDS];
+// pat：もようの しゅるい（balls.js で かく）。じっさいに ある いろ・がらを さんこうに した オリジナル（ロゴなし）
 export const BALLS = [
-  { id: 'std', n: 'ノーマル', cost: 0, c1: '#ff9a3d', c2: '#c44d00' }, { id: 'ice', n: 'アイス', cost: 100, c1: '#b8f1ff', c2: '#2a8dd6' },
-  { id: 'lime', n: 'ライム', cost: 100, c1: '#d6ff6b', c2: '#3fa60a' }, { id: 'pink', n: 'ピーチ', cost: 150, c1: '#ffc2e3', c2: '#e83f8f' },
-  { id: 'gold', n: 'ゴールド', cost: 250, c1: '#fff3a6', c2: '#d99a00' }, { id: 'dark', n: 'シャドー', cost: 250, c1: '#8d7bff', c2: '#1b1247' },
+  { id: 'std', n: 'ノーマル', cost: 0, pat: 'solid', c1: '#ff9a3d', c2: '#c4520a' },
+  { id: 'brown', n: 'クラシック', cost: 60, pat: 'solid', c1: '#d9773a', c2: '#7a3a14' },
+  { id: 'ice', n: 'アイス', cost: 100, pat: 'solid', c1: '#c4f3ff', c2: '#2a8dd6' },
+  { id: 'lime', n: 'ライム', cost: 100, pat: 'solid', c1: '#d6ff6b', c2: '#3fa60a' },
+  { id: 'pink', n: 'ピーチ', cost: 150, pat: 'solid', c1: '#ffc2e3', c2: '#e83f8f' },
+  { id: 'rw', n: 'ストリート', cost: 150, pat: 'panels', cols: ['#e8352b', '#f4f1ea'], seam: '#151515' },
+  { id: 'aba', n: 'トリコロール', cost: 180, pat: 'stripes', cols: ['#d8242c', '#f6f6f6', '#1f4fb8', '#d8242c', '#f6f6f6', '#1f4fb8'], seam: '#141414' },
+  { id: 'by', n: 'イエロー×ブルー', cost: 180, pat: 'panels', cols: ['#ffd21f', '#1d5fd0'], seam: '#10183a' },
+  { id: 'half', n: 'ハーフ＆ハーフ', cost: 200, pat: 'half', cols: ['#ff7a1a', '#232633'], seam: '#0c0c0c' },
+  { id: 'dots', n: 'みずたま', cost: 200, pat: 'dots', c1: '#3dc7ff', c2: '#1f6fd6', dot: '#ffffff', seam: '#0b2a55' },
+  { id: 'camo', n: 'めいさい', cost: 220, pat: 'camo', cols: ['#6d7a45', '#3e4a2a', '#a69a6a', '#23281a'], seam: '#151a10' },
+  { id: 'gold', n: 'ゴールド', cost: 250, pat: 'metal', cols: ['#fff2a8', '#e0a91c', '#9a6a05'], seam: '#3a2600' },
+  { id: 'dark', n: 'シャドー', cost: 250, pat: 'solid', c1: '#8d7bff', c2: '#1b1247', seam: '#07041a' },
+  { id: 'bkgd', n: 'ブラック×ゴールド', cost: 280, pat: 'solid', c1: '#2b2b30', c2: '#0b0b0d', seam: '#e8b62a' },
+  { id: 'silver', n: 'シルバー', cost: 280, pat: 'metal', cols: ['#ffffff', '#b9c2cc', '#6c7783'], seam: '#22282e' },
+  { id: 'star', n: 'スター', cost: 300, pat: 'stars', c1: '#2b4fd8', c2: '#0f1f6e', dot: '#ffe14a', seam: '#ffe14a' },
+  { id: 'fire', n: 'ファイヤー', cost: 320, pat: 'flame', c1: '#3a0d05', c2: '#120402', seam: '#0a0200' },
+  { id: 'tie', n: 'タイダイ', cost: 350, pat: 'swirl', cols: ['#ff3d8b', '#ffb13d', '#ffe94d', '#4dff88', '#3db8ff', '#9b5cff'], seam: '#1a1030' },
+  { id: 'rainbow', n: 'レインボー', cost: 380, pat: 'prism', cols: ['#ff4d4d', '#ffb13d', '#ffe94d', '#4dff88', '#3db8ff', '#9b5cff', '#ff4d4d'], seam: '#1a1a1a' },
+  { id: 'neon', n: 'ネオン', cost: 420, pat: 'neon', cols: ['#3df5ff', '#ff3df0', '#b6ff3d'] },
+  { id: 'galaxy', n: 'ギャラクシー', cost: 500, pat: 'galaxy', cols: ['#1b0f4a', '#0a0620', '#2a0f55'], seam: '#000000' },
 ];
 export const SUITS = [
   { id: 'cy', n: 'シアン', cost: 0, c: '#3df5ff' }, { id: 'mg', n: 'マゼンタ', cost: 100, c: '#ff3df0' }, { id: 'gr', n: 'グリーン', cost: 100, c: '#4dff88' },

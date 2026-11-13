@@ -1,6 +1,7 @@
 // ドリブルレスキュー！ 3Dの世界（three.js）
 import * as THREE from '../vendor/three.module.min.js';
 import { SKILLS } from './data.js';
+import { ballCanvas } from './balls.js';
 import { makeHuman } from './character.js';
 import { buildEnv } from './env.js';
 import { spritePose, SHEETS } from './sprite.js';
@@ -55,9 +56,9 @@ export function createScene(canvas, o) {
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.55, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.5 })); shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.012; scene.add(shadow); disposables.push(shadow.geometry, shadow.material);
   const footGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: shared.glow, color: C(suit), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.25 })); footGlow.scale.set(2.0, 0.8, 1); scene.add(footGlow); disposables.push(footGlow.material);
   // ボール
-  const b = o.ball || { c1: '#ff9a3d', c2: '#c44d00' };
-  const ballTex = canvasTex(128, 64, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, b.c1); gr.addColorStop(1, b.c2); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(0,0,0,.75)'; g.lineWidth = 3; g.beginPath(); g.moveTo(0, h / 2); g.lineTo(w, h / 2); g.moveTo(w / 4, 0); g.lineTo(w / 4, h); g.moveTo(w * 0.75, 0); g.lineTo(w * 0.75, h); g.stroke(); });
-  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.17, 20, 14), new THREE.MeshStandardMaterial({ map: ballTex, roughness: 0.6 })); scene.add(ball);
+  const b = o.ball || { id: 'std', pat: 'solid', c1: '#ff9a3d', c2: '#c4520a' };
+  const ballTex = new THREE.CanvasTexture(ballCanvas(b.pat ? b : { id: 'std', pat: 'solid', c1: b.c1, c2: b.c2 })); ballTex.colorSpace = THREE.SRGBColorSpace; ballTex.anisotropy = 4;
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.17, 32, 22), new THREE.MeshStandardMaterial({ map: ballTex, roughness: 0.62, metalness: b.pat === 'metal' ? 0.35 : 0, emissive: b.pat === 'neon' ? 0xffffff : 0x000000, emissiveMap: b.pat === 'neon' ? ballTex : null, emissiveIntensity: b.pat === 'neon' ? 0.55 : 0 })); scene.add(ball);
   const ballGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: shared.glow, color: 0xffffff, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.3 })); ballGlow.scale.set(0.7, 0.7, 1); scene.add(ballGlow); ball.layers.enable(1);
   const ball2 = ball.clone(); ball2.visible = false; ball2.layers.enable(1); scene.add(ball2);
   const ballShadow = shadow.clone(); ballShadow.scale.setScalar(0.4); scene.add(ballShadow);
