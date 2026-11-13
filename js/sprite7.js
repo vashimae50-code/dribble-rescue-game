@@ -78,8 +78,10 @@ export function spritePose7(st) {
   if (CROSS[k]) { sh = 'cross'; f = side > 0 ? (t > 0.5 ? 1 : 2) : (t > 0.5 ? 8 : 7); }
   else if (k === 'inout') { sh = side > 0 ? 'inoutR' : 'inoutL'; f = t > 0.66 ? 5 : t > 0.33 ? 1 : 2; }
   else { // ふつうの ドリブル：中くらいの 構え。絵に ボールが かいてない コマ（クロスオーバーの 左右の コマ）を つかい、ボールは 体の まえ（むこうがわ）
-    sh = 'cross'; f = side > 0 ? (t > 0.55 ? 1 : 2) : (t > 0.55 ? 8 : 7); out.sheet = sh; out.f = f; // 手を 足より 外に 出して つく
-    out.ball = { x: side * 0.76, y: dribY, z: -0.18 }; return out; // ボールは 足の よこの すこし 前（足に かくれない）
+    // ボールが 上に あって 手に ふれている あいだ：手を ボールの 上に のせた コマ。ボールが はなれて 下に いる あいだ：手を すこし ひいた コマ
+    sh = 'cross'; f = t > 0.6 ? (side > 0 ? 1 : 8) : 0; out.sheet = sh; out.f = f;
+    const hx = Math.abs(hand(sh, side > 0 ? 1 : 8, side)[0]);
+    out.ball = { x: side * (hx + 0.04), y: R + t * (0.44 - R), z: -0.18 }; return out; // ボールは 足の よこの すこし 前（足に かくれない）
   }
   const h = hand(sh, f, side); out.sheet = sh; out.f = f;
   out.ball = { x: side * clamp(Math.abs(h[0]), 0.45, 0.8), y: dribY, z: behindT ? 0.02 : FZ - 0.1 * clamp(1 - ax / 0.42, 0, 1) };
