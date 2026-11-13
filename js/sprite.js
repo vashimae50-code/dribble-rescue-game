@@ -7,6 +7,7 @@ export const SHEETS = ['htwo', 'hlowL', 'hlowR', 'hpower', 'hdribL', 'hdribR', '
 
 const R = 0.17;            // ボールの はんけい
 const DX = 0.56;           // ドリブルする ボールの よこの いち（手の 真下）
+const HZ = -0.3;           // もっている ボールは おなかの まえ（よこから 少し 見える）
 const FZ = -0.26;          // ドリブルの ボールは 足の よこの 少し まえ（カメラから 見て おく）
 const TOP = 0.52;          // ドリブルの いちばん 上（手に ふれる 高さ）
 const HEAD = [0, 1.2], WAIST = 0.7, KNEE = 0.34, LEGX = 0.3;
@@ -38,9 +39,9 @@ export function spritePose(st) {
   // スピン（その場で 1回転）
   if (cue && sk.spin) { const u = clamp(cb / 1.6, 0, 1); let f = Math.min(5, Math.floor(u * u * (3 - 2 * u) * 6)); if ((cue.dir || 1) < 0) f = (6 - f) % 6; out.sheet = 'hspin'; out.f = f; out.ball = { x: 0.3 * Math.cos(u * TAU) * ((cue.dir || 1)), y: dribY, z: -0.25 * Math.sin(u * TAU) }; return out; }
   // ジャンプストップ
-  if (cue && sk.jump) { out.sheet = 'hjstop'; out.f = cb < 1 ? Math.min(3, Math.floor(cb * 4)) : cb < 1.5 ? 4 : 5; if (cb < 1) out.lift = Math.sin(Math.PI * cb) * 0.3; out.ball = { x: 0.3, y: 0.62 + out.lift, z: -0.12 }; return out; }
+  if (cue && sk.jump) { out.sheet = 'hjstop'; out.f = cb < 1 ? Math.min(3, Math.floor(cb * 4)) : cb < 1.5 ? 4 : 5; if (cb < 1) out.lift = Math.sin(Math.PI * cb) * 0.3; out.ball = { x: 0.3, y: 0.62 + out.lift, z: HZ }; return out; }
   // よこへ うごく（サイドステップ・ドライブ など）
-  if (Math.abs(vx) > 0.9) { out.sheet = vx > 0 ? 'hside' : 'hsideL'; out.f = 1 + Math.floor(performance.now() / 100) % 4; if (!hold) out.ball = { x: (vx > 0 ? 1 : -1) * DX * 0.9, y: dribY, z: FZ }; else out.ball = { x: 0.32 * (vx > 0 ? 1 : -1), y: 0.62, z: -0.1 }; return out; }
+  if (Math.abs(vx) > 0.9) { out.sheet = vx > 0 ? 'hside' : 'hsideL'; out.f = 1 + Math.floor(performance.now() / 100) % 4; if (!hold) out.ball = { x: (vx > 0 ? 1 : -1) * DX * 0.9, y: dribY, z: FZ }; else out.ball = { x: 0.32 * (vx > 0 ? 1 : -1), y: 0.62, z: HZ }; return out; }
   // ハンドリング（ボールまわし）
   if (cue && sk.handle) {
     const th = cb * Math.PI; let r;
@@ -53,7 +54,7 @@ export function spritePose(st) {
     out.f = r.f; out.ball = r.ball; return out;
   }
   // ピボット・ロールターン
-  if (cue && (sk.turn || sk.combo === 'roll')) { const p = sk.turn ? 4 : 2; out.sheet = 'hroll'; out.f = Math.min(5, Math.floor((cb % p) / p * 6)); out.ball = { x: 0.3, y: sk.turn ? 0.62 : dribY, z: -0.15 }; return out; }
+  if (cue && (sk.turn || sk.combo === 'roll')) { const p = sk.turn ? 4 : 2; out.sheet = 'hroll'; out.f = Math.min(5, Math.floor((cb % p) / p * 6)); out.ball = { x: 0.3, y: sk.turn ? 0.62 : dribY, z: sk.turn ? HZ : FZ }; return out; }
   // 2ボール：右の ボール＝右手、左の ボール＝左手。手の 上げ下げを ボールの 高さに 合わせる（V字は ボールが よこに うごく）
   if (cue && sk.hand === 'two') {
     const b2 = st.bp2 || bp; if (mem.cue2 !== cue) { mem.cue2 = cue; mem.max2 = 0.3; } mem.max2 = Math.max(mem.max2 * 0.997, b2.y, 0.3);
@@ -64,8 +65,8 @@ export function spritePose(st) {
   }
   if (cue && sk.hand === 'two') { out.sheet = 'hdribL'; out.f = t > 0.6 ? 2 : 0; const t2 = st.bp2 ? clamp((st.bp2.y - 0.13) / Math.max(0.12, mem.max - 0.13), 0, 1) : t; out.sheet = 'hpower'; out.f = 0; out.ball = { x: DX * 0.85, y: dribY, z: 0.02 }; out.ball2 = { x: -DX * 0.85, y: R + t2 * (top - R), z: 0.02 }; return out; }
   // ボールを もつ（パワーポジション・ピタッ など）
-  if (cue && cue.skill === 'jab') { const j = Math.sin(Math.min(1, (cb % 1) * 1.7) * Math.PI); out.sheet = (cue.dir || 1) > 0 ? 'hside' : 'hsideL'; out.f = j > 0.3 ? 1 : 0; out.ball = { x: 0.36 * ((cue.dir || 1) > 0 ? -1 : 1), y: 0.62, z: 0.05 }; return out; }
-  if (hold) { out.sheet = 'hpower'; out.f = Math.floor(Math.max(0, beat) / 2) % 2 ? 5 : 0; out.ball = { x: 0.38, y: 0.62, z: 0.05 }; return out; }
+  if (cue && cue.skill === 'jab') { const j = Math.sin(Math.min(1, (cb % 1) * 1.7) * Math.PI); out.sheet = (cue.dir || 1) > 0 ? 'hside' : 'hsideL'; out.f = j > 0.3 ? 1 : 0; out.ball = { x: 0.36 * ((cue.dir || 1) > 0 ? -1 : 1), y: 0.62, z: HZ }; return out; }
+  if (hold) { out.sheet = 'hpower'; out.f = Math.floor(Math.max(0, beat) / 2) % 2 ? 5 : 0; out.ball = { x: 0.34, y: 0.6, z: HZ }; return out; }
 
   // ドリブル：ボールの ある がわの 手の シート。まんなかを とおる ときは ワザごとの コマ
   const side = rx < 0 ? -1 : 1; const ax = Math.abs(rx); const bxS = clamp(rx / 0.42, -1, 1) * DX;
