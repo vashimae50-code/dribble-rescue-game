@@ -1,4 +1,4 @@
-// ドリブルレスキュー！ メニュー・成長・ごほうび
+// ドリバト！（めざせ！ドリブルキング） メニュー・成長・ごほうび
 import { SKILLS, SKILL_IDS, RANKS, TIERS, tierOf, rankSkills, poolFor, WORLDS, MISSIONS, STAGES, sl, FRIENDS, BOSS_FRIENDS, ALL_FRIENDS, BALLS, SUITS, CAPSULE_COST, AVATARS,
   S, save, avHTML, MAX_LV, LEVEL_GOAL, LEVEL_SPEED, MAIN_STAGES, curLv, lvStars, lvTotal, lvCleared, lvDone, addPlayer, renamePlayer, player, totalStars, mastery, canTest, dayState, missionProgress, stamp, esc, MISSION_COIN, MISSION_ALL, missionAllDone, STREAK_RW, streakNow, GROW, growOf, budLv, BUD_LV, TITLES, checkTitles, titleOf } from './data.js';
 import { runStage } from './run.js';
@@ -39,7 +39,7 @@ function home() {
   const weak = poolFor(curLv(p)).slice().sort((a, b) => mastery(p, a) - mastery(p, b))[0];
   show(`
     <div class="hero">
-      <div class="logo"><span>ドリブル</span><b>レスキュー！</b></div>
+      <div class="logo"><span>めざせ！ドリブルキング</span><b>ドリバト！</b></div>
       ${(() => { const L = curLv(p); const ls = lvStars(p, L); const nx = MAIN_STAGES.find((x) => !(ls[x.id] > 0)); return nx ? `<button class="play" data-act="stage" data-id="${nx.id}">▶ つづきから<small>${sl(nx)} ${MISSIONS[nx.mission].n}</small></button>` : '<button class="play" data-act="tab" data-tab="stages">▶ ステージへ</button>'; })()}
     </div>
     ${lvBanner(p)}
@@ -311,7 +311,7 @@ const ago = (ts) => { if (!ts) return 'まだ あそんでいない'; const dd =
 function who() {
   const ps = S.players.filter((x) => !x.guest || x.plays > 0);
   if (!ps.length) return players(true);
-  show(`<div class="hero"><div class="logo"><span>ドリブル</span><b>レスキュー！</b></div></div>
+  show(`<div class="hero"><div class="logo"><span>めざせ！ドリブルキング</span><b>ドリバト！</b></div></div>
     <h2 class="whoq">だれが あそぶ？</h2>
     <div class="wholist">${ps.map((x) => { const nx = MAIN_STAGES.find((y) => !(lvStars(x, curLv(x))[y.id] > 0)); return `<button class="whocard" data-act="pick" data-id="${x.id}" style="--c:${RANKS[x.rank].c}">
       <span class="wav">${avHTML(x.avatar)}</span><span class="wbody"><b>${esc(x.name)}</b><span class="rank" style="--c:${RANKS[x.rank].c}">R${x.rank} ${RANKS[x.rank].n}</span>
@@ -334,7 +334,7 @@ function record() {
 }
 function players(first) {
   let av = AVATARS[S.players.length % AVATARS.length]; let rank = 1;
-  show(`${first === true ? '<div class="hero"><div class="logo"><span>ドリブル</span><b>レスキュー！</b></div></div>' : ''}<div class="card"><h2>${first === true ? 'はじめに プレイヤーを つくろう' : 'あたらしい プレイヤー'}</h2>
+  show(`${first === true ? '<div class="hero"><div class="logo"><span>めざせ！ドリブルキング</span><b>ドリバト！</b></div></div>' : ''}<div class="card"><h2>${first === true ? 'はじめに プレイヤーを つくろう' : 'あたらしい プレイヤー'}</h2>
     <h3>なまえ</h3><input id="pname" maxlength="8" placeholder="なまえ" autocomplete="off">
     <div class="avatars">${AVATARS.map((a) => `<button class="av ${a === av ? 'on' : ''}" data-av="${a}">${avHTML(a)}</button>`).join('')}</div>
     <p class="hint">スタートの レベル（ここから はじまります。つぎの レベルは ステージを クリアして ひらく）</p><div class="seg" id="rk">${[1, 2, 3, 4, 5, 6].map((r) => `<button class="${r === 1 ? 'on' : ''}" data-r="${r}">R${r} ${RANKS[r].n}</button>`).join('')}</div>

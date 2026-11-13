@@ -1,4 +1,4 @@
-// ドリブルレスキュー！ 3Dの世界（three.js）
+// ドリバト！（めざせ！ドリブルキング） 3Dの世界（three.js）
 import * as THREE from '../vendor/three.module.min.js';
 import { SKILLS } from './data.js';
 import { ballCanvas } from './balls.js';

@@ -1,4 +1,4 @@
-// ドリブルレスキュー！ ゲームの進行（ステージ・トレーニングルーム・しょうきゅうテスト）
+// ドリバト！（めざせ！ドリブルキング） ゲームの進行（ステージ・トレーニングルーム・しょうきゅうテスト）
 import { SKILLS, MISSIONS, poolFor, rankSkills, tierOf, comboState, SONGS } from './data.js';
 import { Audio, speak, MELODIES } from './audio.js';
 import { createScene, LW } from './scene.js';
