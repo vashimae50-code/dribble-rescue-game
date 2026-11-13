@@ -69,19 +69,17 @@ export function spritePose7(st) {
   if (ax < 0.24 && sk.hand !== 'R' && sk.hand !== 'L') { // まんなかを とおる とき
     const u = clamp(rx / 0.24, -1, 1);
     if (behindT) { out.sheet = 'behind'; out.f = u < 0 ? 3 : 2; out.ball = { x: u * 0.3, y: dribY, z: 0.26 }; }            // せなかの うしろ（見える）
-    else if (legsT) { out.sheet = 'legs'; out.f = u < -0.33 ? 4 : u > 0.33 ? 2 : 3; out.ball = { x: u * 0.22, y: Math.min(dribY, 0.3), z: 0 }; } // 足の あいだ
+    else if (legsT) { out.sheet = 'legs'; out.f = u < -0.33 ? 4 : u > 0.33 ? 2 : 3; out.ball = { x: u * 0.22, y: Math.min(dribY, 0.3), z: 0.06 }; } // 足の あいだ（見える）
     else { out.sheet = 'cross'; out.f = u > 0 ? 5 : 6; out.ball = { x: u * 0.35, y: dribY, z: -0.2 }; }                        // 体の まえを とおる
     return out;
   }
   let sh, f;
   if (sk.low) { sh = side < 0 ? 'turnL' : 'turnR'; f = t > 0.6 ? 6 : t > 0.3 ? 7 : 8; out.sheet = sh; out.f = f; out.ball = { x: side * 0.66, y: dribY, z: FZ }; return out; }
-  if (behindT) { sh = 'behind'; f = side > 0 ? (t > 0.5 ? 0 : 1) : (t > 0.5 ? 7 : 6); }
-  else if (legsT) { sh = 'legs'; f = side > 0 ? (t > 0.5 ? 1 : 0) : (t > 0.5 ? 7 : 6); }
-  else if (CROSS[k]) { sh = 'cross'; f = side > 0 ? (t > 0.5 ? 1 : 2) : (t > 0.5 ? 8 : 7); }
+  if (CROSS[k]) { sh = 'cross'; f = side > 0 ? (t > 0.5 ? 1 : 2) : (t > 0.5 ? 8 : 7); }
   else if (k === 'inout') { sh = side > 0 ? 'inoutR' : 'inoutL'; f = t > 0.66 ? 5 : t > 0.33 ? 1 : 2; }
-  else { // ふつうの ドリブル：たちすぎず ひくすぎない 構え（レッグスルーの 絵の 前後の コマ）。体は ほぼ うごかさず 手だけ
-    sh = 'legs'; f = side > 0 ? (t > 0.55 ? 0 : 1) : (t > 0.55 ? 6 : 7); out.sheet = sh; out.f = f;
-    const bx = P.legs[f].ball ? P.legs[f].ball[0] : side * 0.55; out.ball = { x: side * clamp(Math.abs(bx), 0.45, 0.66), y: dribY, z: 0.12 }; return out; // 絵の ボールの ところに かさねる
+  else { // ふつうの ドリブル：中くらいの 構え。絵に ボールが かいてない コマ（クロスオーバーの 左右の コマ）を つかい、ボールは 体の まえ（むこうがわ）
+    sh = 'cross'; f = t > 0.55 ? 0 : side > 0 ? 1 : 8; out.sheet = sh; out.f = f; // うえ：ふつうの 構え、した：つく 手を すこし のばす
+    const hh = hand(sh, f, side); out.ball = { x: side * clamp(Math.abs(hh[0]) + 0.02, 0.52, 0.72), y: dribY, z: FZ }; return out;
   }
   const h = hand(sh, f, side); out.sheet = sh; out.f = f;
   out.ball = { x: side * clamp(Math.abs(h[0]), 0.45, 0.8), y: dribY, z: behindT ? 0.02 : FZ - 0.1 * clamp(1 - ax / 0.42, 0, 1) };
