@@ -45,7 +45,11 @@ export function runStage(opts) {
   let endBeat = 0, zEnd = 0, lane = 0, curHand = 'R', lastSkill = null, bossStart = 1e9, finaleBeat = 1e9;
   let tier = 1; const tiers = [];
   const RK = opts.level || pl.rank; // あそぶ レベル
-  const pool = dojo ? [opts.skill] : test ? [...new Set([...rankSkills(pl.rank), 'right', 'left'])] : mission.pool || (mission.plan ? [...new Set(mission.plan.flat().map((x) => x[0]))] : poolFor(RK));
+  const isTwo = (k) => SKILLS[k] && SKILLS[k].hand === 'two';
+  const pool0 = dojo ? [opts.skill] : test ? [...new Set([...rankSkills(pl.rank), 'right', 'left'])] : mission.pool || (mission.plan ? [...new Set(mission.plan.flat().map((x) => x[0]))] : poolFor(RK));
+  // 2ボールは とちゅうから もてないので、ステージ まるごと 2ボールか 1ボールに わける（R6 は ボスステージだけ 2ボール）
+  const twoStage = dojo ? isTwo(opts.skill) : pool0.some(isTwo) && (pool0.every(isTwo) || (!test && !mission.plan && !!mission.boss));
+  const pool = twoStage ? pool0.filter(isTwo) : pool0.filter((k) => !isTwo(k)).length ? pool0.filter((k) => !isTwo(k)) : pool0;
   const has = (k) => pool.includes(k);
   const leftBias = mission.leftBias ?? ((pl.leftReps || 0) <= (pl.rightReps || 0) ? 0.6 : 0.45);
 
@@ -63,6 +67,7 @@ export function runStage(opts) {
     else if (sk.hand === 'combo') { c.hand = 'combo'; c.hand0 = curHand; if (sk.reps === 1 && Math.floor(len / (sk.cyc || 4)) % 2 === 1) curHand = curHand === 'R' ? 'L' : 'R'; }
     else if (sk.hand === 'two') c.hand = 'two';
     else c.hand = 'hold';
+    if (twoStage && id === 'rest') c.hand = 'two'; // 2ボールの ステージは 休みの くかんも 2ボールで つく
     if (c.hand === 'R' || c.hand === 'L') curHand = c.hand;
     if (c.hand === 'alt1') curHand = c.hand0 === 'R' ? 'L' : 'R';
     if (c.hand === 'alt' && len % 2 === 1) curHand = curHand === 'R' ? 'L' : 'R';
@@ -132,7 +137,7 @@ export function runStage(opts) {
     addCue('rest', { len: 2, noGate: true });
   } else {
     addCue('rest', { len: 4 });
-    addCue(mission.pool ? mission.pool[0] : RK === 1 && !test ? 'stance' : 'right', { len: 4 }); lastSkill = mission.pool ? mission.pool[0] : 'right';
+    { const w0 = twoStage ? pool[0] : mission.pool ? mission.pool[0] : RK === 1 && !test ? 'stance' : 'right'; addCue(w0, { len: 4 }); lastSkill = w0; } // さいしょの 4はく（2ボールなら 2ボールで）
     addSection(36); safes.push(endBeat);
   }
   const cueAt = (b) => { for (let i = cues.length - 1; i >= 0; i--) if (b >= cues[i].b0) return cues[i]; return cues[0]; };
@@ -150,7 +155,7 @@ export function runStage(opts) {
   const boss = { on: false, hp: 1, hit: 0, dead: false, gone: false, finale: false };
   const mid = { on: false, hp: 1, hit: 0, dead: false, gone: false }; let rushExt = 0; const rushT = [];
   // れんだ（ボス・ちゅうボス）：そのステージの ドリブルの ワザで はやく つよく
-  const rushSkill = (list) => { const n = {}; for (const c of list) { const k = c.skill; const sk = SKILLS[k]; if (!sk || sk.hand === 'hold' || sk.hand === 'two' || sk.lane || sk.handle || sk.jump || sk.spin || sk.turn || k === 'rest') continue; n[k] = (n[k] || 0) + 1; } const k = Object.keys(n).sort((a, b) => n[b] - n[a])[0]; return k || 'fast'; };
+  const rushSkill = (list) => { if (twoStage) return 'two1'; const n = {}; for (const c of list) { const k = c.skill; const sk = SKILLS[k]; if (!sk || sk.hand === 'hold' || sk.hand === 'two' || sk.lane || sk.handle || sk.jump || sk.spin || sk.turn || k === 'rest') continue; n[k] = (n[k] || 0) + 1; } const k = Object.keys(n).sort((a, b) => n[b] - n[a])[0]; return k || 'fast'; };
   function rushHit() { // カメラで ドリブルを 見つけたとき：はやいほど 大ダメージ
     const tgt = phase === 'finale' ? boss : curCue && curCue.mid && mid.on && !mid.dead ? mid : null; if (!tgt) return;
     rushT.push(beat); while (rushT.length && beat - rushT[0] > 2) rushT.shift(); const rate = rushT.length / (2 / bps);

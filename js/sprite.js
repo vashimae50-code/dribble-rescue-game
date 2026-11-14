@@ -56,14 +56,14 @@ export function spritePose(st) {
   // ピボット・ロールターン
   if (cue && (sk.turn || sk.combo === 'roll')) { const p = sk.turn ? 4 : 2; out.sheet = 'hroll'; out.f = Math.min(5, Math.floor((cb % p) / p * 6)); out.ball = { x: 0.3, y: sk.turn ? 0.62 : dribY, z: sk.turn ? HZ : FZ }; return out; }
   // 2ボール：右の ボール＝右手、左の ボール＝左手。手の 上げ下げを ボールの 高さに 合わせる（V字は ボールが よこに うごく）
-  if (cue && sk.hand === 'two') {
+  if (cue && (sk.hand === 'two' || cue.hand === 'two')) {
     const b2 = st.bp2 || bp; if (mem.cue2 !== cue) { mem.cue2 = cue; mem.max2 = 0.3; } mem.max2 = Math.max(mem.max2 * 0.997, b2.y, 0.3);
     const t2 = clamp((b2.y - 0.13) / Math.max(0.12, mem.max2 - 0.13), 0, 1); const topT = sk.high ? 0.78 : sk.low ? 0.34 : TOP;
     const upR = t > 0.55, upL = t2 > 0.55; out.sheet = 'htwo'; out.f = upL && upR ? 0 : !upL && !upR ? 1 : upL ? 2 : 3;
     const sx = (x) => Math.sign(x || 1) * clamp(Math.abs(x) * (0.5 / 0.42), 0.26, 0.78);
     out.ball = { x: sx(rx), y: R + t * (topT - R), z: FZ }; out.ball2 = { x: sx(b2.x), y: R + t2 * (topT - R), z: FZ }; return out;
   }
-  if (cue && sk.hand === 'two') { out.sheet = 'hdribL'; out.f = t > 0.6 ? 2 : 0; const t2 = st.bp2 ? clamp((st.bp2.y - 0.13) / Math.max(0.12, mem.max - 0.13), 0, 1) : t; out.sheet = 'hpower'; out.f = 0; out.ball = { x: DX * 0.85, y: dribY, z: 0.02 }; out.ball2 = { x: -DX * 0.85, y: R + t2 * (top - R), z: 0.02 }; return out; }
+  if (cue && (sk.hand === 'two' || cue.hand === 'two')) { out.sheet = 'hdribL'; out.f = t > 0.6 ? 2 : 0; const t2 = st.bp2 ? clamp((st.bp2.y - 0.13) / Math.max(0.12, mem.max - 0.13), 0, 1) : t; out.sheet = 'hpower'; out.f = 0; out.ball = { x: DX * 0.85, y: dribY, z: 0.02 }; out.ball2 = { x: -DX * 0.85, y: R + t2 * (top - R), z: 0.02 }; return out; }
   // ボールを もつ（パワーポジション・ピタッ など）
   if (cue && cue.skill === 'jab') { const j = Math.sin(Math.min(1, (cb % 1) * 1.7) * Math.PI); out.sheet = (cue.dir || 1) > 0 ? 'hside' : 'hsideL'; out.f = j > 0.3 ? 1 : 0; out.ball = { x: 0.36 * ((cue.dir || 1) > 0 ? -1 : 1), y: 0.62, z: HZ }; return out; }
   if (hold) { out.sheet = 'hpower'; out.f = Math.floor(Math.max(0, beat) / 2) % 2 ? 5 : 0; out.ball = { x: 0.34, y: 0.6, z: HZ }; return out; }

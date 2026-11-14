@@ -67,7 +67,7 @@ export function spritePose7(st) {
   // ピボット・ロールターン
   if (cue && (sk.turn || sk.combo === 'roll')) { const p = sk.turn ? 4 : 2; out.sheet = 'spin'; out.f = Math.min(8, Math.floor((cb % p) / p * 9)); out.ball = { x: 0.3, y: sk.turn ? 0.62 : dribY, z: sk.turn ? HZ : FZ }; return out; }
   // 2ボール：りょう手で つく（コマは りょう手を さげた 形）
-  if (cue && sk.hand === 'two') {
+  if (cue && (sk.hand === 'two' || cue.hand === 'two')) {
     const b2 = st.bp2 || bp; if (mem.cue2 !== cue) { mem.cue2 = cue; mem.max2 = 0.3; } mem.max2 = Math.max(mem.max2 * 0.997, b2.y, 0.3);
     const t2 = clamp((b2.y - 0.13) / Math.max(0.12, mem.max2 - 0.13), 0, 1); const topT = sk.high ? 0.7 : sk.low ? 0.34 : 0.46;
     out.sheet = 'drib2R'; out.f = t > 0.6 && t2 > 0.6 ? 8 : t < 0.35 && t2 < 0.35 ? 0 : 6;
