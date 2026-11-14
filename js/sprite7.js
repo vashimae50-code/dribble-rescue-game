@@ -79,6 +79,10 @@ export function spritePose7(st) {
   // ボールを もつ（パワーポジション・ピタッ など）
   if (hold) { out.sheet = 'cross'; out.f = 0; out.ball = { x: 0.28, y: 0.6, z: HZ }; return out; } // おなかの まえで もつ（よこから すこし 見える）（ひじを まげた 形。ボールは からだの むこうがわ）
 
+  // かたて フロントチェンジ：つく 手は かえない。ボールは 体の まんなか（体の まえ＝かくれる）まで いって もどる
+  if (cue && sk.vmove === 'front') { const hs = cue.hand === 'L' ? -1 : 1; const u = (Math.cos(Math.PI * cb) + 1) / 2; // 1：そと、0：まんなか
+    const x = hs * (0.04 + 0.7 * u); out.sheet = 'cross'; out.f = u < 0.35 ? (hs > 0 ? 5 : 6) : hs > 0 ? (t > 0.6 ? 1 : 2) : (t > 0.6 ? 8 : 7);
+    out.ball = { x, y: dribY, z: u < 0.45 ? -0.26 : -0.18 }; return out; }
   // ドリブル
   const ax = Math.abs(rx); const legsT = sk.legs || sk.combo === 'legs' || sk.fig8; const behindT = sk.behind || sk.combo === 'behind';
   if (ax < 0.24 && sk.hand !== 'R' && sk.hand !== 'L') { // まんなかを とおる とき
