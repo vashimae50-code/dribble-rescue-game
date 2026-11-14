@@ -21,11 +21,11 @@ const CROSS = { cross: 1, dcross: 1, frontv: 1, c2cross: 1, c2cross2: 1, c1cross
 export function spritePose7(st) {
   const { sk, cue, beat, vx, bp, mem } = st;
   const cb = cue ? Math.max(0, beat - cue.b0) : 0;
-  const hold = !cue || sk.hand === 'hold';
+  const hold = !cue || sk.hand === 'hold' || cue.ballMode === 'none'; // ボールなしの 足だけ れんしゅうは ボールを もつ
   const out = { sheet: 'cross', f: 0, lift: 0, ball: null, ball2: null, hideBall: false };
   if (bp) { if (mem.cue !== cue) { mem.cue = cue; mem.max = 0.3; } mem.max = Math.max(mem.max * 0.997, bp.y, 0.3); }
   const t = bp ? clamp((bp.y - 0.13) / Math.max(0.12, mem.max - 0.13), 0, 1) : 1;
-  const rx = bp ? bp.x : 0.4; const side = rx < 0 ? -1 : 1;
+  const rx = bp ? bp.x : 0.4; if (Math.abs(rx) > 0.12) mem.side = rx < 0 ? -1 : 1; const side = mem.side || 1; // まんなか ふきんでは まえの 手の まま
   const strong = !!(cue && cue.skill === 'pound'); out.strong = strong;
   const top = strong ? 0.6 : sk.low ? 0.34 : 0.52;
   const dribY = R + t * (top - R);
@@ -37,7 +37,7 @@ export function spritePose7(st) {
   if (cue && sk.jump) { out.sheet = 'cross'; out.f = 0; if (cb < 1) out.lift = Math.sin(Math.PI * cb) * 0.3; out.ball = { x: 0.28, y: 0.6 + out.lift, z: HZ }; return out; } // リアルな 構えで ジャンプ
   // よこへ うごく（サイドステップ・ドライブ など）
   if (Math.abs(vx) > 0.9) { const d = vx > 0 ? 1 : -1; const seq = d > 0 ? [2, 3, 4, 3] : [6, 7, 6, 8]; out.sheet = 'side'; out.f = seq[Math.floor(performance.now() / 110) % 4]; // リアルな 絵の サイドステップ
-    out.ball = hold ? { x: 0.28 * d, y: 0.6, z: HZ } : { x: d * 0.74, y: R + t * (0.44 - R), z: -0.18 }; return out; }
+    out.ball = hold ? { x: 0.4 * d, y: 0.62, z: -0.12 } : { x: d * 0.74, y: R + t * (0.44 - R), z: -0.18 }; return out; }
   // ハンドリング（ボールまわし）：もとの 絵の じゅんばん どおりに 1しゅう（2はくで 1しゅう）
   if (cue && sk.handle) {
     const ph = cb * 0.5;
@@ -77,7 +77,7 @@ export function spritePose7(st) {
   // ジャブ
   if (cue && k === 'jab') { const j = Math.sin(Math.min(1, (cb % 1) * 1.7) * Math.PI); const d = (cue.dir || 1) > 0 ? 1 : -1; out.sheet = d > 0 ? 'jabR' : 'jabL'; out.f = j > 0.6 ? 3 : j > 0.25 ? 2 : 0; out.ball = { x: -0.25 * d, y: 0.6, z: HZ }; return out; }
   // ボールを もつ（パワーポジション・ピタッ など）
-  if (hold) { out.sheet = 'cross'; out.f = 0; out.ball = { x: 0.28, y: 0.6, z: HZ }; return out; } // おなかの まえで もつ（よこから すこし 見える）（ひじを まげた 形。ボールは からだの むこうがわ）
+  if (hold) { out.sheet = 'cross'; out.f = 0; out.ball = cue && cue.ballMode === 'none' ? { x: 0.42, y: 0.6, z: -0.08 } : { x: 0.28, y: 0.6, z: HZ }; return out; } // 足だけの ときは こしの よこで もって 見せる
 
   // かたて フロントチェンジ：つく 手は かえない。ボールは 体の まんなか（体の まえ＝かくれる）まで いって もどる
   if (cue && sk.vmove === 'front') { const hs = cue.hand === 'L' ? -1 : 1; const u = (Math.cos(Math.PI * cb) + 1) / 2; // 1：そと、0：まんなか
@@ -85,7 +85,7 @@ export function spritePose7(st) {
     out.ball = { x, y: dribY, z: u < 0.45 ? -0.26 : -0.18 }; return out; }
   // ドリブル
   const ax = Math.abs(rx); const legsT = sk.legs || sk.combo === 'legs' || sk.fig8; const behindT = sk.behind || sk.combo === 'behind';
-  if (ax < 0.24 && sk.hand !== 'R' && sk.hand !== 'L') { // まんなかを とおる とき
+  if (ax < 0.24 && sk.hand !== 'R' && sk.hand !== 'L' && (CROSS[k] || legsT || behindT || sk.inout)) { // ボールを 左右に うつす ワザだけ // まんなかを とおる とき
     const u = clamp(rx / 0.24, -1, 1);
     if (behindT) { out.sheet = 'behind'; out.f = u < 0 ? 3 : 2; out.ball = { x: u * 0.3, y: dribY, z: 0.26 }; }            // せなかの うしろ（見える）
     else if (legsT) { out.sheet = 'legs'; out.f = u < -0.33 ? 4 : u > 0.33 ? 2 : 3; out.ball = { x: u * 0.22, y: Math.min(dribY, 0.3), z: 0.06 }; } // 足の あいだ（見える）

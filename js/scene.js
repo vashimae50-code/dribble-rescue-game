@@ -232,7 +232,7 @@ export function createScene(canvas, o) {
       if (pose && pose.strong) { if (by < 0.26 && !psHit) { psHit = true; impact.position.set(bx, 0.02, bz); impact.scale.setScalar(0.3); impact.material.opacity = 0.95; impact.material.color.set(sk.c); camShake = Math.max(camShake, 0.35); } if (by > 0.4) psHit = false; }
       if (impact.material.opacity > 0) { impact.scale.multiplyScalar(1 + dt * 7); impact.material.opacity = Math.max(0, impact.material.opacity - dt * 2.6); } impact.visible = impact.material.opacity > 0.01; }
     shadow.position.set(laneX, 0.012, 0); footGlow.position.set(laneX, 0.06, 0.1);
-    ball.visible = ballGlow.visible = ballShadow.visible = !noBall;
+    ball.visible = ballGlow.visible = ballShadow.visible = !noBall || (!!pspr && NEW7); // 足だけの れんしゅうでも ボールは もったまま 見せる（絵の ときだけ）
     ball.position.set(bx, by, bz); ball.rotation.x -= dt * 8; ballGlow.position.copy(ball.position); ballGlow.material.color.set(sk.c); ballLight.position.copy(ball.position); ballLight.color.set(sk.c);
     { const b2 = human && human.ball2(); ball2.visible = !!b2 && !noBall; if (b2) { if (pose && pose.ball2) ball2.position.set(laneX + pose.ball2.x * GK, 0.17 + (pose.ball2.y - 0.17) * GK, pose.ball2.z); else ball2.position.set(laneX + b2.x, b2.y, b2.z); ball2.rotation.x -= dt * 8; } }
     ballShadow.position.set(bx, 0.014, bz); ballShadow.scale.setScalar(0.25 + (1 - Math.min(1, by / 1.2)) * 0.2);
