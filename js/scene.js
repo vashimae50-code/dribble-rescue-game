@@ -56,7 +56,11 @@ export function createScene(canvas, o) {
   const midH = o.human ? mkFoe('#d9263c', 5, '#ffe03d') : null; if (midH) midH.root.visible = false; // ちゅうボス（大きな ディフェンス）
   const P = human ? human.root : new THREE.Group(); scene.add(P);
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.55, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.5 })); shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.012; scene.add(shadow); disposables.push(shadow.geometry, shadow.material);
-  const aura = (o.grow && o.grow.aura) || 0.25; const footGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: shared.glow, color: o.grow && o.grow.gold ? 0xffd23d : C(suit), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: aura })); footGlow.scale.set(2.0 * (1 + (aura - 0.25)), 0.8 * (1 + (aura - 0.25)), 1); scene.add(footGlow); disposables.push(footGlow.material);
+  // 足元の オーラ：ショップで えらんだ いろ。そだつほど 大きく あかるく（ゆっくり みゃくうつ）
+  const aura = (o.grow && o.grow.aura) || 0.25; const auraK = 1 + (aura - 0.25) * 1.2;
+  const footGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: shared.glow, color: C(suit), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.55 + aura * 0.5 })); footGlow.scale.set(2.6 * auraK, 1.05 * auraK, 1); scene.add(footGlow); disposables.push(footGlow.material);
+  const auraRing = new THREE.Sprite(new THREE.SpriteMaterial({ map: shared.glow, color: C(suit), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.4 })); scene.add(auraRing); disposables.push(auraRing.material);
+  const auraUp = new THREE.Sprite(new THREE.SpriteMaterial({ map: shared.glow, color: C(suit), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.18 + aura * 0.3 })); auraUp.scale.set(1.7 * auraK, 2.4 * auraK, 1); auraUp.renderOrder = -2; scene.add(auraUp); disposables.push(auraUp.material); // からだを つつむ ひかり
   // ボール
   const b = o.ball || { id: 'std', pat: 'solid', c1: '#ff9a3d', c2: '#c4520a' };
   const ballTex = new THREE.CanvasTexture(ballCanvas(b.pat ? b : { id: 'std', pat: 'solid', c1: b.c1, c2: b.c2 })); ballTex.colorSpace = THREE.SRGBColorSpace; ballTex.anisotropy = 4;
@@ -232,6 +236,9 @@ export function createScene(canvas, o) {
       if (pose && pose.strong) { if (by < 0.26 && !psHit) { psHit = true; impact.position.set(bx, 0.02, bz); impact.scale.setScalar(0.3); impact.material.opacity = 0.95; impact.material.color.set(sk.c); camShake = Math.max(camShake, 0.35); } if (by > 0.4) psHit = false; }
       if (impact.material.opacity > 0) { impact.scale.multiplyScalar(1 + dt * 7); impact.material.opacity = Math.max(0, impact.material.opacity - dt * 2.6); } impact.visible = impact.material.opacity > 0.01; }
     shadow.position.set(laneX, 0.012, 0); footGlow.position.set(laneX, 0.06, 0.1);
+    { const tA = performance.now() / 1000, pu = 0.5 + 0.5 * Math.sin(tA * 3.2); footGlow.material.opacity = (0.5 + aura * 0.5) * (0.8 + 0.2 * pu);
+      const rk = (tA * 0.7) % 1; auraRing.position.set(laneX, 0.05, 0.12); auraRing.scale.set((1.2 + rk * 2.4) * auraK, (0.5 + rk * 0.95) * auraK, 1); auraRing.material.opacity = 0.55 * (1 - rk); // ひろがる わ
+      auraUp.position.set(laneX, 0.95 * auraK, -0.05); auraUp.material.opacity = (0.14 + aura * 0.3) * (0.7 + 0.3 * pu); }
     ball.visible = ballGlow.visible = ballShadow.visible = !noBall || (!!pspr && NEW7); // 足だけの れんしゅうでも ボールは もったまま 見せる（絵の ときだけ）
     ball.position.set(bx, by, bz); ball.rotation.x -= dt * 8; ballGlow.position.copy(ball.position); ballGlow.material.color.set(sk.c); ballLight.position.copy(ball.position); ballLight.color.set(sk.c);
     { const b2 = human && human.ball2(); ball2.visible = !!b2 && !noBall; if (b2) { if (pose && pose.ball2) ball2.position.set(laneX + pose.ball2.x * GK, 0.17 + (pose.ball2.y - 0.17) * GK, pose.ball2.z); else ball2.position.set(laneX + b2.x, b2.y, b2.z); ball2.rotation.x -= dt * 8; } }

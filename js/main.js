@@ -261,7 +261,7 @@ function shop(msg = '') {
   show(`${msg}<div class="card capsule"><h2>🎁 なかまカプセル</h2><p class="hint">まだ いない なかまが かならず 1人 出るよ（かぶりなし）。のこり ${left.length}人</p>
       <div class="btns"><button class="big" data-act="capsule" data-pay="coin" ${left.length && p.coins >= CAPSULE_COST ? '' : 'disabled'}>🪙 ${CAPSULE_COST} で まわす</button><button class="big alt" data-act="capsule" data-pay="ticket" ${left.length && p.tickets > 0 ? '' : 'disabled'}>🎟️ けんで まわす（${p.tickets}）</button></div></div>
     <div class="card"><h2>🏀 ボール</h2><div class="items">${BALLS.map((b) => item('ball', b, p.balls.includes(b.id), p.ball === b.id)).join('')}</div></div>
-    <div class="card"><h2>✨ スーツの ひかり</h2><div class="items">${SUITS.map((b) => item('suit', b, p.suits.includes(b.id), p.suit === b.id)).join('')}</div></div>
+    <div class="card"><h2>✨ オーラの いろ</h2><div class="items">${SUITS.map((b) => item('suit', b, p.suits.includes(b.id), p.suit === b.id)).join('')}</div></div>
     <p class="hint">コインで かえるのは 見た目だけ。つよさは かわらないよ。</p>`, 'shop');
 }
 
