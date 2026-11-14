@@ -120,7 +120,7 @@ export function runStage(opts) {
       if (k === 'hesi' && left >= 2) { const l2 = Math.min(4, left); addCue('fast', { len: l2, boss, hand: curHand }); left -= l2; lastSkill = 'fast'; }
     }
   }
-  const SECTIONS = dojo ? 0 : test ? 2 : video ? Math.max(4, Math.round(((stage.bpm / 60) * 130 - 6) / 40)) : 3; let sectionIdx = 1; const hasBoss = !dojo && (test || mission.boss || mission.fin);
+  const SECTIONS = dojo ? 0 : test ? 2 : video ? Math.max(4, Math.round(((stage.bpm / 60) * 130 - 6) / 40)) : 3; let sectionIdx = 1; const secStarts = [0]; const hasBoss = !dojo && (test || mission.boss || mission.fin);
   const dojoSets = [];
   if (dojo) {
     const sk = SKILLS[opts.skill]; const foot = (sk.hand === 'hold' && !sk.handle) || sk.lane; const len = Math.min(4, sk.len);
@@ -142,7 +142,7 @@ export function runStage(opts) {
   let beat = video ? -7 : -4, mbeat = 0, offset = video ? 7 : 4, lastQ = -1, last = performance.now();
   let loaded = false, waitT = 0;
   let phase = 'count'; let paused = false, dead = false, raf = 0;
-  let score = 0, combo = 0, maxCombo = 0, hearts = 3, chaser = 0.3, chaserShow = 0.3;
+  let score = 0, combo = 0, maxCombo = 0, hearts = 3, chaser = 0.3, chaserShow = 0.3, progShow = 0;
   let cuesOk = 0, cuesAll = 0, orbsGot = 0, dribbles = 0, leftReps = 0, rightReps = 0, speedMax = 0;
   const counts = {}; const okCounts = {}; const failCounts = {};
   let shake = 0, flash = 0, flashCol = '#fff', redFlash = 0, slow = 1;
@@ -217,7 +217,7 @@ export function runStage(opts) {
   function advance(t) {
     if (t === 2) tier = Math.min(2, tier + 1); else if (t === 0) { tier = Math.max(0, tier - 1); chaser = Math.max(0.1, chaser - 0.15); }
     if (test) tier = 1;
-    sectionIdx++;
+    sectionIdx++; secStarts[sectionIdx - 1] = endBeat;
     if (sectionIdx === 2 && !dojo && !test && !mission.plan && SECTIONS >= 3) { addCue('rest', { len: 2, noGate: true }).midIntro = true; const m = addCue(rushSkill(cues), { len: 8, hand: curHand }); m.mid = true; m.rush = true; }
     addSection(sectionIdx === 2 ? 44 : 36); if (sectionIdx < SECTIONS) safes.push(endBeat);
     if (sectionIdx === SECTIONS) {
@@ -332,9 +332,15 @@ export function runStage(opts) {
       if (cam && combo >= 3) txt(`${combo} コンボ`, pad * 1.4, pad + fs * 2.4, fs * 0.9, combo >= 15 ? '#ffe03d' : pal.a, 'left');
       if (cam) txt('❤️'.repeat(hearts) + '🖤'.repeat(3 - hearts), W - pad - 50 * DPR, pad * 0.5 + fs * 0.85, fs * 0.8, '#fff', 'right');
       chaserShow += (chaser - chaserShow) * 0.08;
+      // すすみぐあい：エリアごとに くぎり、さいごは ボス（🏃 が 🏁 に むかって すすむ）
+      const nSeg = SECTIONS + (hasBoss ? 1 : 0); let seg, a0, a1;
+      if (beat >= bossStart) { seg = SECTIONS; a0 = bossStart; a1 = Math.max(finaleBeat + 16, endBeat); }
+      else { seg = Math.min(SECTIONS, sectionIdx) - 1; a0 = secStarts[seg] || 0; a1 = seg === sectionIdx - 1 ? Math.min(endBeat, bossStart) : (secStarts[seg + 1] || endBeat); }
+      progShow += ((seg + clamp((beat - a0) / Math.max(1, a1 - a0), 0, 1)) / nSeg - progShow) * 0.1; if (beat < 0) progShow = 0;
       const mw = Math.min(W * (tall ? 0.5 : 0.3), 360 * DPR), mx = cx - mw / 2, my = pad + fs * (tall ? 2.6 : 0.6);
-      pill(mx - 6 * DPR, my - 7 * DPR, mw + 12 * DPR, 14 * DPR, '#040820'); pill(mx, my - 4 * DPR, Math.max(8 * DPR, mw * (1 - chaserShow)), 8 * DPR, chaserShow > 0.7 ? '#ff2d55' : pal.a, 1);
-      g.font = `${Math.round(fs)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🏃', mx + mw + fs * 0.7, my); g.fillText('🚨', mx + mw * (1 - chaserShow) + (chaserShow > 0.7 ? Math.sin(mbeat * 12) * 3 * DPR : 0), my);
+      pill(mx - 6 * DPR, my - 7 * DPR, mw + 12 * DPR, 14 * DPR, '#040820'); pill(mx, my - 4 * DPR, Math.max(8 * DPR, mw * progShow), 8 * DPR, beat >= bossStart ? '#ff2d55' : pal.a, 1);
+      g.fillStyle = '#ffffffaa'; for (let i = 1; i < nSeg; i++) g.fillRect(mx + mw * i / nSeg - DPR, my - 6 * DPR, 2 * DPR, 12 * DPR); // エリアの くぎり
+      g.font = `${Math.round(fs)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(hasBoss ? '👾' : '🏁', mx + mw + fs * 0.75, my); g.fillText('🏃', mx + mw * progShow, my - fs * 0.15);
       txt(beat >= bossStart ? 'BOSS' : test ? 'しょうきゅうテスト' : `エリア ${Math.min(SECTIONS, sectionIdx)}/${SECTIONS}`, cx, my + fs * 1.05, fs * 0.62, '#cfd8ff');
       if (mid.on && !mid.dead) { const bw = Math.min(W * 0.4, 420 * DPR), bh = 12 * DPR, bx = cx - bw / 2, by = my + fs * 2.3; pill(bx - 4, by - 4, bw + 8, bh + 8, '#040820'); pill(bx, by, Math.max(bh, bw * mid.hp), bh, '#ff8a28', 1); txt('ちゅうボス ディフェンス', cx, by + bh + fs * 0.6, fs * 0.6, '#ffe0c0'); }
       if (boss.on && !boss.dead) { const bw = Math.min(W * 0.5, 520 * DPR), bh = 14 * DPR, bx = cx - bw / 2, by = my + fs * 2.3; pill(bx - 4, by - 4, bw + 8, bh + 8, '#040820'); pill(bx, by, Math.max(bh, bw * boss.hp), bh, '#ff2d55', 1); txt(test ? 'しけんかん' : world.boss, cx, by + bh + fs * 0.6, fs * 0.6, '#ffd0d8'); }
