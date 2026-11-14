@@ -74,7 +74,9 @@ export function runStage(opts) {
         if (hold && !sk.lane && b % 2) continue;
         const k = Math.round(b / step); const lx = (c.lane0 + (c.lane1 - c.lane0) * clamp(b / 1.5, 0, 1)) * LW;
         let hx = 0; if (c.hand === 'combo') hx = Math.sign(comboState(sk, c.hand0, b).x || 1) * 0.5; else if (c.hand === 'two') hx = k % 2 ? 0.5 : -0.5; else if (c.hand === 'R') hx = 0.5; else if (c.hand === 'L') hx = -0.5; else if (c.hand === 'alt') hx = (k % 2 ? -1 : 1) * (c.hand0 === 'L' ? -0.5 : 0.5); else if (c.hand === 'alt1') hx = c.hand0 === 'L' ? 0.5 : -0.5;
-        orbs.push({ z: c.z0 + b * V * Math.max(sp, 0.05), x: lx + hx, y: sk.low ? 0.45 : hold ? 1.1 : 0.85, c: sk.c, cue: c, got: false, missed: false, big: c.skill === 'pound' }); // つよく ドリブルは ●を 2ばいに
+        const oz = c.z0 + b * V * Math.max(sp, 0.05), oy = sk.low ? 0.45 : hold ? 1.1 : 0.85;
+        if (c.hand === 'two') { for (const sx of [-0.5, 0.5]) { const dz = sk.two === 'alt' && sx > 0 ? 0.5 * step * V * Math.max(sp, 0.05) : 0; orbs.push({ z: oz + dz, x: lx + sx, y: oy, c: sk.c, cue: c, got: false, missed: false, big: false }); } continue; } // 2ボールは 左右 2こ（こうごは すこし ずらす）
+        orbs.push({ z: oz, x: lx + hx, y: oy, c: sk.c, cue: c, got: false, missed: false, big: c.skill === 'pound' }); // つよく ドリブルは ●を 2ばいに
       }
     }
     return c;
@@ -254,9 +256,21 @@ export function runStage(opts) {
   // ワザの うごきを 絵で見せる（ボールの通り道＝スワイプの線、足、手）
   function ballPath(c, b) {
     const sk = SKILLS[c.skill]; const cb = b - c.b0; const ph = frac(b); const bph = frac(b * (sk.dbl ? 2 : 1)); const hs = c.hand === 'L' ? -1 : 1;
+    if (sk.handle) { // ボールまわし：2はくで 1しゅう（からだの まえを とおる ときは うすく）
+      const th = frac(Math.max(0, cb) * 0.5) * TAU, sn = Math.sin(th), cs = Math.cos(th);
+      if (sk.handle === 'swing') { const u = Math.sin(Math.PI * cb); return { x: u * 0.7, h: 0.4, both: true, dim: true }; }
+      if (sk.handle === 'eight') return { x: 0.85 * sn, h: 0.22 + 0.06 * Math.abs(sn), both: true, dim: Math.sin(2 * th) > 0 };
+      if (sk.handle === 'leg') return { x: 0.55 + 0.4 * sn, h: 0.25, both: true, dim: cs > 0 };
+      const H = sk.handle === 'head' ? 1.2 : sk.handle === 'knees' ? 0.3 : 0.62; return { x: 0.8 * sn, h: H, both: true, dim: cs > 0 };
+    }
     if (c.hand === 'hold') return { x: hs * 0.25, h: 0.85, hold: true };
     if (c.hand === 'combo') { const st = comboState(sk, c.hand0, cb); return { x: st.x, h: Math.abs(Math.sin(Math.PI * cb)) * (st.n ? 0.7 : 1) }; }
-    if (c.hand === 'two') return { x: Math.floor(b * 2) % 2 ? 1 : -1, h: Math.abs(Math.sin(Math.PI * b)) };
+    if (c.hand === 'two') { // 2ボール：ひだり（x, h）と みぎ（x2, h2）
+      const k = sk.dbl ? 2 : 1, a = Math.abs(Math.sin(Math.PI * b * k)) * (sk.low ? 0.45 : sk.high ? 1 : 0.8);
+      if (sk.two === 'alt') return { x: -1, h: a, x2: 1, h2: Math.abs(Math.cos(Math.PI * b)) * 0.8, both: true };
+      if (sk.two === 'v') { const v = Math.cos(Math.PI * b); return { x: -0.6 - 0.4 * Math.abs(v), h: a, x2: 0.6 + 0.4 * Math.abs(v), h2: a, both: true }; }
+      return { x: -1, h: a, x2: 1, h2: a, both: true };
+    }
     if (sk.semi) { const a = Math.PI / 2 * (1 - Math.cos(Math.PI * cb / 2)); return { x: hs * (0.45 + 0.5 * Math.sin(a)), h: Math.abs(Math.sin(Math.PI * cb)) * 0.7, same: hs }; }
     if (sk.vmove) { const c2 = Math.cos(Math.PI * cb); return sk.vmove === 'side' ? { x: hs, h: Math.abs(c2) * 0.75 } : { x: c2 * 0.9 + hs * 0.1, h: Math.abs(c2) * 0.75, same: hs }; }
     if (c.hand === 'alt' || c.hand === 'alt1') { const k = c.hand === 'alt1' ? Math.min(1, Math.max(0, cb)) : cb * (sk.quick || 1); const s0 = c.hand0 === 'L' ? -1 : 1; if (c.hand === 'alt1' && cb >= 1) return { x: -s0, h: Math.abs(Math.sin(Math.PI * bph)) }; return { x: Math.cos(Math.PI * k) * s0, h: Math.abs(Math.cos(Math.PI * k)) * 0.75 }; }
@@ -286,7 +300,7 @@ export function runStage(opts) {
     if (sk.behind) { g.fillStyle = '#e8eeff'; g.globalAlpha = 0.5 * alpha; g.beginPath(); g.roundRect(-r * 0.22, top - r * 0.2, r * 0.44, r * 0.8, r * 0.1); g.fill(); g.globalAlpha = alpha; }
     // 手
     const p = ballPath(c, b);
-    for (const s of [-1, 1]) { const on = p.hold || (p.same ? p.same === s : Math.sign(p.x || 1) === s); g.strokeStyle = on ? col : '#ffffff40'; g.fillStyle = on ? col + '55' : 'transparent'; g.lineWidth = r * 0.035; g.beginPath(); g.arc(s * hx, top - r * 0.22, r * 0.13, 0, TAU); g.fill(); g.stroke(); g.fillStyle = on ? '#fff' : '#ffffff55'; g.font = `900 ${Math.round(r * 0.16)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(s < 0 ? 'ひ' : 'み', s * hx, top - r * 0.21); }
+    for (const s of [-1, 1]) { const on = p.hold || p.both || (p.same ? p.same === s : Math.sign(p.x || 1) === s); g.strokeStyle = on ? col : '#ffffff40'; g.fillStyle = on ? col + '55' : 'transparent'; g.lineWidth = r * 0.035; g.beginPath(); g.arc(s * hx, top - r * 0.22, r * 0.13, 0, TAU); g.fill(); g.stroke(); g.fillStyle = on ? '#fff' : '#ffffff55'; g.font = `900 ${Math.round(r * 0.16)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(s < 0 ? 'ひ' : 'み', s * hx, top - r * 0.21); }
     // よこへ・まえへ・うしろへ の やじるし
     const chev = (cx0, cy0, ang, n) => { for (let i = 0; i < n; i++) { const t = frac(b * 1.5 + i / n); g.globalAlpha = alpha * (1 - Math.abs(t - 0.5) * 1.6); g.save(); g.translate(cx0 + Math.cos(ang) * (t - 0.5) * r * 1.2, cy0 + Math.sin(ang) * (t - 0.5) * r * 1.2); g.rotate(ang); g.strokeStyle = col; g.lineWidth = r * 0.09; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); g.moveTo(-r * 0.1, -r * 0.16); g.lineTo(r * 0.1, 0); g.lineTo(-r * 0.1, r * 0.16); g.stroke(); g.restore(); } g.globalAlpha = alpha; };
     if (sk.lane) chev(0, -r * 0.72, dir > 0 ? 0 : Math.PI, 3);
@@ -295,8 +309,9 @@ export function runStage(opts) {
     // ボールと スワイプの線
     if (c.ballMode !== 'none') {
       const pos = (q) => [q.x * hx, fy - r * 0.14 - q.h * (fy - r * 0.14 - top)];
-      if (!p.hold) { g.lineCap = 'round'; const N = 12; let prev = pos(p); for (let i = 1; i <= N; i++) { const q = pos(ballPath(c, b - i * 0.045)); g.globalAlpha = alpha * (1 - i / N) * (sk.behind ? 0.5 : 0.95); g.strokeStyle = col; g.lineWidth = r * 0.2 * (1 - i / N) + 1; g.beginPath(); g.moveTo(prev[0], prev[1]); g.lineTo(q[0], q[1]); g.stroke(); prev = q; } g.globalAlpha = alpha; }
-      const bp = pos(p); const strong = c.skill === 'pound'; const br = r * (strong ? 0.24 : 0.15); const gr = g.createRadialGradient(bp[0] - br * 0.3, bp[1] - br * 0.3, br * 0.1, bp[0], bp[1], br); gr.addColorStop(0, '#ffc27a'); gr.addColorStop(1, '#e8590c'); g.globalAlpha = alpha * (sk.behind ? 0.6 : 1); g.fillStyle = gr; g.beginPath(); g.arc(bp[0], bp[1], br, 0, TAU); g.fill(); g.strokeStyle = '#5c2000'; g.lineWidth = Math.max(1, r * 0.015); g.beginPath(); g.moveTo(bp[0] - br, bp[1]); g.lineTo(bp[0] + br, bp[1]); g.stroke(); g.globalAlpha = alpha;
+      if (!p.hold) { g.lineCap = 'round'; const N = 12; let prev = pos(p); for (let i = 1; i <= N; i++) { const q = pos(ballPath(c, b - i * 0.045)); g.globalAlpha = alpha * (1 - i / N) * (sk.behind ? 0.5 : 0.95); g.strokeStyle = col; g.lineWidth = r * 0.2 * (1 - i / N) + 1; g.beginPath(); g.moveTo(prev[0], prev[1]); g.lineTo(q[0], q[1]); g.stroke(); prev = q; } if (p.x2 !== undefined) { let pv = pos({ x: p.x2, h: p.h2 }); for (let i = 1; i <= N; i++) { const o2 = ballPath(c, b - i * 0.045); const q = pos({ x: o2.x2, h: o2.h2 }); g.globalAlpha = alpha * (1 - i / N) * 0.95; g.strokeStyle = col; g.lineWidth = r * 0.2 * (1 - i / N) + 1; g.beginPath(); g.moveTo(pv[0], pv[1]); g.lineTo(q[0], q[1]); g.stroke(); pv = q; } } g.globalAlpha = alpha; }
+      const bp = pos(p); const strong = c.skill === 'pound'; const br = r * (strong ? 0.24 : 0.15); const gr = g.createRadialGradient(bp[0] - br * 0.3, bp[1] - br * 0.3, br * 0.1, bp[0], bp[1], br); gr.addColorStop(0, '#ffc27a'); gr.addColorStop(1, '#e8590c'); const dBall = (q, dim) => { const gq = g.createRadialGradient(q[0] - br * 0.3, q[1] - br * 0.3, br * 0.1, q[0], q[1], br); gq.addColorStop(0, '#ffc27a'); gq.addColorStop(1, '#e8590c'); g.globalAlpha = alpha * (dim ? 0.55 : 1); g.fillStyle = gq; g.beginPath(); g.arc(q[0], q[1], br, 0, TAU); g.fill(); g.strokeStyle = '#5c2000'; g.lineWidth = Math.max(1, r * 0.015); g.beginPath(); g.moveTo(q[0] - br, q[1]); g.lineTo(q[0] + br, q[1]); g.stroke(); g.globalAlpha = alpha; };
+      dBall(bp, sk.behind || p.dim); if (p.x2 !== undefined) dBall(pos({ x: p.x2, h: p.h2 }), false); void gr;
       if (strong) { // つよく：ゆかに つく たびに 大きな わ と しょうげき線
         const hit = Math.max(0, 1 - p.h * 5); if (hit > 0) { g.globalAlpha = alpha * hit; g.strokeStyle = '#fff'; g.lineWidth = r * 0.045; g.beginPath(); g.ellipse(bp[0], fy, r * (0.25 + 0.45 * (1 - hit)), r * (0.07 + 0.1 * (1 - hit)), 0, 0, TAU); g.stroke();
           for (let i = -3; i <= 3; i++) { if (!i) continue; g.beginPath(); g.moveTo(bp[0] + i * r * 0.11, fy - r * 0.02); g.lineTo(bp[0] + i * r * 0.2, fy - r * 0.2); g.stroke(); } g.globalAlpha = alpha; }
