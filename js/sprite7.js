@@ -50,7 +50,10 @@ export function spritePose7(st) {
     if (sk.handle === 'knees') { const x = 0.33 * sn, z = -0.24 * cs; out.sheet = 'knees';
       out.f = x > 0.25 ? 2 : x > 0.1 ? (z < 0 ? 1 : 3) : x < -0.25 ? 6 : x < -0.1 ? (z < 0 ? 5 : 7) : (z < 0 ? 0 : 4);
       out.ball = { x, y: 0.36, z }; return out; }
-    if (sk.handle === 'leg' || sk.handle === 'eight') { const x = 0.5 * sn, z = -0.2 * Math.sin(2 * th); out.sheet = 'eight';
+    if (sk.handle === 'leg') { // かたあし：みぎあしの まわりだけを まわす（そと → まえ → うちがわ → うしろ）
+      const x = 0.48 + 0.24 * sn, z = -0.22 * cs; out.sheet = 'eight'; out.f = sn > 0.35 ? 3 : sn < -0.35 ? 4 : 2;
+      out.ball = { x, y: 0.32, z }; return out; }
+    if (sk.handle === 'eight') { const x = 0.5 * sn, z = -0.2 * Math.sin(2 * th); out.sheet = 'eight';
       out.f = Math.min(8, Math.floor((th / TAU) * 9)); out.ball = { x, y: 0.34 + 0.05 * Math.abs(sn), z: Math.abs(x) < 0.18 ? 0.06 : z }; return out; }
     if (sk.handle === 'wrap') { // こしの まわりを 1しゅう：まえ（からだで かくれる）→ みぎ → せなか（見える）→ ひだり
       const x = 0.46 * sn, z = Math.abs(sn) > 0.65 ? 0.06 : -0.26 * cs; out.ball = { x, y: 0.62, z }; // よこは こしの よこで 見える
@@ -59,7 +62,6 @@ export function spritePose7(st) {
       else { out.sheet = 'cross'; out.f = 0; }                     // おなかの まえ（ボールは かくれる）
       return out; }
     if (sk.handle === 'knees') return loop(out, 'knees', ph, [0, 8, 1, 2, 3, 4, 5, 6], ZP);
-    if (sk.handle === 'leg' || sk.handle === 'eight') return loop(out, 'knees', ph, [0, 1, 2, 3, 4, 5, 6, 7, 8], ZP);
     const u = (Math.sin(Math.PI * cb) + 1) / 2; return loop(out, 'behind', u * 0.999 * 7 / 8, [0, 1, 2, 3, 4, 5, 6, 7], ZP); // うしろで ふる
   }
   // ピボット・ロールターン
