@@ -268,6 +268,7 @@ export function runStage(opts) {
     if (c.hand === 'two') { // 2ボール：ひだり（x, h）と みぎ（x2, h2）
       const k = sk.dbl ? 2 : 1, a = Math.abs(Math.sin(Math.PI * b * k)) * (sk.low ? 0.45 : sk.high ? 1 : 0.8);
       if (sk.two === 'alt') return { x: -1, h: a, x2: 1, h2: Math.abs(Math.cos(Math.PI * b)) * 0.8, both: true };
+      if (sk.two === 'par') { const v = Math.cos(Math.PI * b); return { x: -0.6 + 0.35 * v, h: a, x2: 0.6 + 0.35 * v, h2: a, both: true }; }
       if (sk.two === 'v') { const v = Math.cos(Math.PI * b); return { x: -0.6 - 0.4 * Math.abs(v), h: a, x2: 0.6 + 0.4 * Math.abs(v), h2: a, both: true }; }
       return { x: -1, h: a, x2: 1, h2: a, both: true };
     }

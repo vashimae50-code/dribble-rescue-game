@@ -151,6 +151,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     if (cue && cue.hand === 'two') { twoHands = true; stride = 0; Wd = 0.3; const m = sk.low ? 2 : 1; const amp2 = sk.high ? 0.95 : sk.low ? 0.24 : 0.55; crouch = sk.low ? 0.95 : sk.high ? 0.2 : 0.62;
       const p1 = Math.abs(Math.sin(Math.PI * cb * m)); let p2 = sk.two === 'alt' ? Math.abs(Math.cos(Math.PI * cb)) : p1; let x1 = 0.42, x2 = -0.42;
       if (sk.two === 'v') { const c = Math.cos(Math.PI * cb); x1 = 0.42 + 0.17 * c; x2 = -0.42 - 0.17 * c; p2 = Math.abs(c) * 0.8; bx = x1; by = 0.13 + Math.abs(c) * 0.8 * amp2; }
+      else if (sk.two === 'par') { const c = Math.cos(Math.PI * cb); x1 = 0.42 + 0.17 * c; x2 = -0.42 + 0.17 * c; p2 = Math.abs(c) * 0.8; bx = x1; by = 0.13 + Math.abs(c) * 0.8 * amp2; } // 2つ いっしょに おなじ むきへ
       else { bx = x1; by = 0.13 + p1 * amp2; }
       bz = -0.3; ball2 = S.ball2.set(x2, 0.13 + p2 * amp2, -0.3); two1x = x1; }
     pitch = 0.16 + crouch * 0.4 + (id === 'drive' ? 0.25 : 0) + (id === 'fast' ? 0.15 : 0) - (id === 'back' ? 0.2 : 0);

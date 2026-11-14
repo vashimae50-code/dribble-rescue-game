@@ -101,6 +101,8 @@ export const SKILLS = {
     tips: ['ひざより 下で こまかく つく', 'ひざを まげて、せなかは まっすぐ', 'ゆびさきで タタタタ'] },
   twov: { en: 'Two balls, front V', r: 6, n: '2ボール かたてチェンジ', i: '🏀✌️', c: '#ffe08a', say: 'ツーボール かたてチェンジ', hand: 'two', two: 'v', len: 8,
     tips: ['右手・左手 それぞれで、ボールを 左右に V の字', '手を ボールの よこに まわす', '2つ 同時に、同じ はばで'] },
+  twop: { en: 'Two balls, same way', r: 6, n: '2ボール りょうて おなじむき', i: '🏀➡️', c: '#ffcf6b', say: 'ツーボール おなじむき', hand: 'two', two: 'par', len: 8,
+    tips: ['2つの ボールを いっしょに 右へ、つぎは いっしょに 左へ', '右手と 左手の はばは そのまま', 'からだは まっすぐ、目は まえ'] },
   rest: { en: '', r: 0, n: 'じゆうに ドリブル', i: '🏀', c: '#9fb4ff', say: '', hand: 'cur', len: 4, tips: [] },
 };
 // 「2ドリブル → ワザ」の ボールの位置：x は -1(左手)〜1(右手)、chg は 持ちかえの すすみ 0〜1
@@ -142,7 +144,7 @@ export const MISSIONS = {
   weak:    { n: 'ひだりて とっくん', i: '👈', d: 'ひだりての ワザが たくさん 出るぞ', w: { left: 5 }, leftBias: 0.8, vt: 'ひだりて ドリブル とっくん' },
   guard:   { n: 'ディフェンスぬき', i: '⛹️', d: 'ディフェンスの よこを ぬけ！', w: { drive: 6, jab: 3, step: 3, slide: 3, xstep: 3, hesi: 2 }, guards: 1, vt: 'ディフェンスを ぬく ドライブ' },
   stealth: { n: 'ステルス', i: '🔦', d: 'ひくく・ピタッで センサーを かわせ', w: { low: 4, freeze: 4, stance: 3, back: 3, jstop: 2 }, vt: 'ロー ドリブル とっくん' },
-  two:     { n: '2ボール チャレンジ', i: '🏀🏀', d: 'ボールを 2つ つかう ステージ', w: {}, pool: ['two1', 'two2', 'twohi', 'twolo', 'twov'], vt: '2ボール ハンドリング' },
+  two:     { n: '2ボール チャレンジ', i: '🏀🏀', d: 'ボールを 2つ つかう ステージ', w: {}, pool: ['two1', 'two2', 'twohi', 'twolo', 'twov', 'twop'], vt: '2ボール ハンドリング' },
   handle:  { n: 'ハンドリング どうじょう', i: '🤹', d: 'うごかないで、ハンドリングの ワザだけ れんしゅう', w: {},
     pool: SKILL_IDS.filter((k) => !SKILLS[k].lane && SKILLS[k].hand !== 'two'), vt: 'ハンドリング とっくん' },
   lLegs:   { n: 'レッグスルー しゅうとく', i: '🦵', d: '4つの ステップで レッグスルーを おぼえよう', w: {}, fin: 1, learn: 'legs', vt: 'レッグスルー しゅうとく',
