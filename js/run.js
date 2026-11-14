@@ -426,7 +426,8 @@ export function runStage(opts) {
     const par = orbs.length * 10; const hit = cuesAll ? cuesOk / cuesAll : 1; let stars;
     if (cam) stars = hit >= 0.85 && hearts === 3 ? 3 : hit >= 0.55 ? 2 : 1; else stars = score >= par * 1.12 ? 3 : score >= par * 0.85 ? 2 : 1;
     const res = { mode, score, stars, cam, hit, maxCombo, hearts, dribbles, orbsGot, speed: speedMax, counts, okCounts, failCounts, leftReps, rightReps, tiers: tiers.slice(0, 3), tracked: allF ? trackedF / allF : 0, tipIdx, hardest: hardest() };
-    stop(); onEnd(res);
+    try { stop(); } catch (e) { console.error(e); } // かたづけで エラーが でても けっかは かならず だす
+    try { onEnd(res); } catch (e) { console.error(e); overlay.innerHTML = `<div class="safe"><div class="safe-title">けっかを ひょうじ できませんでした</div><div class="safe-btns"><button id="errback"><span>🏠</span><b>もどる</b></button></div></div>`; const bt = document.getElementById('errback'); if (bt) bt.onclick = () => location.reload(); }
   }
   function stop() {
     dead = true; cancelAnimationFrame(raf); clearTimeout(safeTimer); window.removeEventListener('resize', resize); document.removeEventListener('keydown', onKey);
