@@ -4,6 +4,7 @@ import { SKILLS, SKILL_IDS, RANKS, TIERS, tierOf, rankSkills, poolFor, WORLDS, M
 import { runStage } from './run.js';
 import { preloadStage } from './env.js';
 import { ballIcon } from './balls.js';
+import * as RK from './rank.js';
 
 const app = document.getElementById('app'); const nav = document.getElementById('nav'); const gameEl = document.getElementById('game');
 const gl = document.getElementById('gl'); const hud = document.getElementById('hud'); const overlay = document.getElementById('overlay'); const video = document.getElementById('pip');
@@ -174,6 +175,7 @@ function result(o, r, noCam) {
       <div class="res-h">${sl(s)} ${m.n}　クリア！</div>
       <div class="res-stars">${[1, 2, 3].map((n) => `<i class="${n <= r.stars ? 'on' : ''}" style="animation-delay:${n * 0.3}s">★</i>`).join('')}</div>
       <div class="res-score">⚡ ${r.score}　<span class="coinup">🪙 +${coins}</span></div>
+      <div id="rkbox"></div>
       ${isBest && prevBest ? `<div class="recup big">🏆 さいこうきろく こうしん！ <b>${prevBest} → ${r.score}</b></div>` : ''}${extra}
       ${got ? `<div class="rescue rare"><div class="rays"></div><span>${got.e}</span><b>${got.n} が なかまに なった！</b><small>✨ ボスの なかま ✨</small></div>` : ''}
       <h3>れんしゅう ポイント</h3>${upsHtml(ups)}
@@ -184,6 +186,16 @@ function result(o, r, noCam) {
       ${lvUp ? `<div class="rescue rare"><div class="rays"></div><span>🏅</span><b>レベルアップ！ R${lvUp} ${RANKS[lvUp].n} が ひらいた！</b><small>あたらしい ワザ：${rankSkills(lvUp).map((k) => SKILLS[k].n).join('・')}</small></div>` : ''}
       <div class="btns"><button class="big" data-act="stage" data-id="${s.id}">もういちど</button>${next ? `<button class="big alt" data-act="stage" data-id="${next.id}">つぎへ ▶</button>` : ''}<button class="big ghost" data-act="tab" data-tab="home">ホーム</button></div></div>`, 'stages');
   beep([0, 4, 7, 12, 16, 12, 19]);
+  rankAfter(p, s, o.level || curLv(p), r);
+}
+// ランキング：おくって、このステージの じゅんいを 出す（つながらなければ なにも 出さない）
+async function rankAfter(p, s, L, r) {
+  const box = () => document.getElementById('rkbox'); if (!RK.canRank(p)) return;
+  try {
+    await Promise.all([s.sp ? null : RK.sendBest(p, s.id, L, r.score, r.stars), RK.addPlay(p).catch(() => null)]);
+    if (s.sp) return; const top = await RK.topStage(s.id, L, 100); const me = RK.myId(p); const i = top.findIndex((x) => `${x.uid}_${x.pid}` === me);
+    if (box() && i >= 0) box().innerHTML = `<div class="recup">🏆 このステージ（R${L}）の ランキング <b>${i + 1}い</b> / ${top.length}人</div>`;
+  } catch (e) { console.warn('rank', e); }
 }
 function dojoResult(o, r) {
   const p = player(); const d = dayState(p); const sk = SKILLS[o.skill];
@@ -198,6 +210,7 @@ function dojoResult(o, r) {
       <div id="tipout"></div></div>`, 'training');
   $('#tipbtn').addEventListener('click', () => { p.tipIdx[o.skill] = (p.tipIdx[o.skill] || 0) + 1; save(); $('#tipout').innerHTML = `<div class="tipbox big"><span>💡 ${tip}</span><button class="big" data-act="dojoGo" data-id="${o.skill}">この コツで もういちど ▶</button></div>`; });
   beep([0, 7, 12]);
+  RK.addPlay(p).catch(() => null);
 }
 
 // ---------- しょうきゅうテスト ----------
@@ -287,6 +300,8 @@ function settings() {
     <div class="btns"><button class="big ghost" id="ta">① 合成音</button><button class="big ghost" id="tb">② 音声ファイル</button><button class="big ghost" id="tc">③ こえ → 合成音</button></div><p class="hint" id="tout"></p>
     <h3>プレイヤーと ランク</h3><p class="hint">いまの じつりょくに 合わせて、スタートの ランクを えらんでください。ランクが 上がるほど むずかしい ワザが 出ます。</p>
     ${S.players.map((p) => `<div class="prow"><b>${avHTML(p.avatar)}</b><input class="pname-edit" maxlength="10" value="${esc(p.name)}" data-pid="${p.id}" style="width:6em"><div class="seg">${[1, 2, 3, 4, 5, 6].map((r) => `<button class="${p.rank === r ? 'on' : ''}" data-rank="${r}" data-pid="${p.id}">R${r}</button>`).join('')}</div><button class="mini" data-girl="${p.id}" title="おとこのこ／おんなのこ">${p.girl ? '👧 おんなのこ' : '👦 おとこのこ'}</button><button class="mini danger" data-del="${p.id}">けす</button></div>`).join('')}
+    <h3>🏆 ランキング</h3><p class="hint">オンにすると、ニックネームと スコア・れんしゅう回数が インターネットの ランキングに のります（URLを しっている 人なら だれでも 見られます）。ほんみょうは いれないでください。</p>
+    ${S.players.map((p) => `<div class="prow"><b>${avHTML(p.avatar)} ${esc(p.name)}</b><label class="toggle"><input type="checkbox" data-rkon="${p.id}" ${p.rk ? 'checked' : ''}><span>さんか</span></label><input class="rkname" maxlength="10" placeholder="ニックネーム" value="${esc(p.rkName || '')}" data-rkname="${p.id}" style="width:8em"></div>`).join('')}
     <p class="hint">${[1, 2, 3, 4, 5, 6].map((r) => `R${r} ${RANKS[r].n}：${rankSkills(r).map((k) => SKILLS[k].n).join('・')}`).join('<br>')}</p>
     <p class="hint">きろくは この たんまつの ブラウザの 中だけに ほぞんされます。</p></div>`, 'home');
   app.querySelectorAll('[data-set]').forEach((i) => i.addEventListener('change', () => { st[i.dataset.set] = i.checked; save(); }));
@@ -300,6 +315,8 @@ function settings() {
   app.querySelectorAll('[data-ms]').forEach((b) => b.addEventListener('click', () => { st.musicStyle = b.dataset.ms; save(); settings(); }));
   app.querySelectorAll('[data-voice]').forEach((b) => b.addEventListener('click', () => { st.voice = b.dataset.voice || false; save(); settings(); }));
   app.querySelectorAll('[data-rank]').forEach((b) => b.addEventListener('click', () => { const p = S.players.find((x) => x.id === b.dataset.pid); p.rank = +b.dataset.rank; p.lv = p.rank; p.day = null; save(); settings(); }));
+  app.querySelectorAll('[data-rkon]').forEach((i) => i.addEventListener('change', () => { const p = S.players.find((x) => x.id === i.dataset.rkon); if (p) { p.rk = i.checked; save(); } }));
+  app.querySelectorAll('[data-rkname]').forEach((i) => i.addEventListener('change', () => { const p = S.players.find((x) => x.id === i.dataset.rkname); if (p) { p.rkName = i.value.trim().slice(0, 10); save(); } }));
   app.querySelectorAll('[data-girl]').forEach((b) => b.addEventListener('click', () => { const p = S.players.find((x) => x.id === b.dataset.girl); if (p) { p.girl = !p.girl; save(); preloadStage(null, null, p.girl); } settings(); }));
   app.querySelectorAll('.pname-edit').forEach((i) => i.addEventListener('change', () => { const p = S.players.find((x) => x.id === i.dataset.pid); if (p) renamePlayer(p, i.value); settings(); }));
   app.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => { if (b.dataset.sure) { S.players = S.players.filter((x) => x.id !== b.dataset.del); if (S.current === b.dataset.del) S.current = null; save(); settings(); } else { b.dataset.sure = '1'; b.textContent = 'ほんとうに けす'; } }));
@@ -325,13 +342,24 @@ function record() {
       <div class="stats"><div><b>R${p.rank}</b><small>${RANKS[p.rank].n}${p.verified[p.rank - 1] ? ' ✅' : ''}</small></div><div><b>${cleared(p)}/${MAIN_STAGES.length}</b><small>R${curLv(p)} クリアした ステージ</small></div><div><b>⭐${lvTotal(p, curLv(p))}</b><small>/${MAIN_STAGES.length * 3}</small></div><div><b>${p.stamps || 0}日</b><small>あそんだ日</small></div><div><b>${p.plays || 0}回</b><small>プレイ</small></div><div><b>${p.friends.length}</b><small>なかま</small></div></div></div>
     <div class="card"><h2>🌱 せいちょう</h2>${(() => { const g = growOf(p); const nx = GROW[g + 1]; return `<div class="res-lines"><span>いま：<b>${GROW[g].n}</b></span><span>${nx ? `${nx.n}まで あと ${nx.at - p.plays}回` : 'さいこうの すがた！'}</span><span>🔥 さいこう れんぞく ${p.streakBest || 0}日</span></div>`; })()}
       ${p.rec && p.rec.camPlays ? `<div class="res-lines"><span>📷 カメラで ${p.rec.camPlays}回</span><span>さいだい ${p.rec.combo || 0} コンボ</span><span>1回で ドリブル ${p.rec.dribbles || 0}回</span><span>いちばん はやい ${p.rec.speed || 0}回/びょう</span></div>` : '<p class="hint">📷 カメラで あそぶと、コンボや ドリブルの はやさの きろくが のこるよ。</p>'}</div>
+    <div class="card"><h2>🏆 ランキング</h2>${RK.canRank(p) ? '' : '<p class="hint">さんかするには、おうちの人が せってい で「ランキングに さんか」を オンにして、ニックネームを いれてね。</p>'}
+      <div class="seg ztabs"><button class="${rkTab === 'week' ? 'on' : ''}" data-rk="week">💪 こんしゅうの れんしゅう回数</button><button class="${rkTab === 'stage' ? 'on' : ''}" data-rk="stage">⚡ ステージの スコア</button></div>
+      ${rkTab === 'stage' ? `<select id="rksel" class="rksel">${MAIN_STAGES.map((x) => `<option value="${x.id}" ${x.id === rkStage ? 'selected' : ''}>${sl(x)} ${MISSIONS[x.mission].n}</option>`).join('')}</select><small class="hint">（いまの レベル R${curLv(p)} の ランキング）</small>` : ''}
+      <div id="rklist" class="rklist"><p class="hint">よみこみ中…</p></div></div>
     <div class="card"><h2>🗺️ ステージ</h2>${WORLDS.map((w, wi) => `<div class="recrow"><b style="color:${w.pal.a}">${wi + 1} ${w.name}</b><span>${STAGES.filter((x) => x.wi === wi && !x.sp).map((x) => { const v = lvStars(p, curLv(p))[x.id] || 0; return `<i class="${v ? 'on' : ''}" title="${sl(x)}">${v ? '★'.repeat(v) : '・'}</i>`; }).join('')}</span></div>`).join('')}</div>
     <div class="card"><h2>🥋 れんしゅうランク</h2><div class="res-lines">${TIERS.map((t, i) => `<span style="color:${t.c}">${t.i} ${t.n} ${tiers[i]}</span>`).join('')}</div>
       <div class="ups">${SKILL_IDS.filter((k) => mastery(p, k) > 0).sort((a, b) => mastery(p, b) - mastery(p, a)).map((k) => `<div class="up" style="--c:${SKILLS[k].c}"><b>${SKILLS[k].i} ${SKILLS[k].n}</b><span>${mastery(p, k)}</span><small>${TIERS[tierOf(mastery(p, k))].n}</small></div>`).join('') || '<p class="hint">まだ ありません</p>'}</div>
       <p class="hint">ひだりて ${p.leftReps || 0}回 ／ みぎて ${p.rightReps || 0}回</p></div>
     <div class="card"><h2>🕒 さいきんの きろく</h2>${(p.log || []).map((e) => { const st = e.t === 'stage' ? STAGES.find((x) => x.id === e.id) : null; return `<div class="logrow"><small>${e.d} ${e.h}</small><b>${e.t === 'stage' && st ? `${sl(st)} ${MISSIONS[st.mission].n}` : e.t === 'dojo' ? `🥋 ${SKILLS[e.id]?.n || ''}` : `🎓 しょうきゅうテスト ${e.id}`}</b><span>${e.t === 'stage' ? '★'.repeat(e.stars) + `　⚡${e.score}` : ''}</span></div>`; }).join('') || '<p class="hint">まだ ありません</p>'}</div>
     <p class="hint">きろくは この たんまつの 中に、プレイヤーごとに ほぞんされます。</p>`, 'home');
+  app.querySelectorAll('[data-rk]').forEach((b) => b.addEventListener('click', () => { rkTab = b.dataset.rk; record(); }));
+  const sel = $('#rksel'); if (sel) sel.addEventListener('change', () => { rkStage = sel.value; record(); });
+  (async () => { const el = () => document.getElementById('rklist'); const me = RK.myId(p);
+    try { const L = curLv(p); const rows = rkTab === 'stage' ? await RK.topStage(rkStage || MAIN_STAGES[0].id, L) : await RK.topWeek();
+      if (!el()) return; el().innerHTML = rows.length ? rows.map((x, i) => `<div class="rkrow ${`${x.uid}_${x.pid}` === me ? 'me' : ''}"><b>${['🥇', '🥈', '🥉'][i] || i + 1}</b><span>${esc(x.name)}</span><em>${rkTab === 'stage' ? `⚡${x.score} ${'★'.repeat(x.stars || 0)}` : `${x.plays}回`}</em></div>`).join('') : '<p class="hint">まだ だれも いないよ。いちばんのりを めざそう！</p>';
+    } catch (e) { if (el()) el().innerHTML = '<p class="hint">ランキングに つながりませんでした（インターネットを たしかめてね）。</p>'; } })();
 }
+let rkTab = 'week', rkStage = '';
 function players(first) {
   let av = AVATARS[S.players.length % AVATARS.length]; let rank = 1;
   show(`${first === true ? '<div class="hero"><div class="logo"><span>めざせ！ドリブルキング</span><b>ドリバト！</b></div></div>' : ''}<div class="card"><h2>${first === true ? 'はじめに プレイヤーを つくろう' : 'あたらしい プレイヤー'}</h2>
