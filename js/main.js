@@ -190,7 +190,7 @@ function result(o, r, noCam) {
 }
 // ランキング：おくって、このステージの じゅんいを 出す（つながらなければ なにも 出さない）
 async function rankAfter(p, s, L, r) {
-  const box = () => document.getElementById('rkbox'); if (!RK.canRank(p)) return;
+  const box = () => document.getElementById('rkbox'); if (!RK.canRank(p)) return; save(); // じどうの ニックネームを ほぞん
   try {
     await Promise.all([s.sp ? null : RK.sendBest(p, s.id, L, r.score, r.stars), RK.addPlay(p).catch(() => null)]);
     if (s.sp) return; const top = await RK.topStage(s.id, L, 100); const me = RK.myId(p); const i = top.findIndex((x) => `${x.uid}_${x.pid}` === me);
@@ -210,7 +210,7 @@ function dojoResult(o, r) {
       <div id="tipout"></div></div>`, 'training');
   $('#tipbtn').addEventListener('click', () => { p.tipIdx[o.skill] = (p.tipIdx[o.skill] || 0) + 1; save(); $('#tipout').innerHTML = `<div class="tipbox big"><span>💡 ${tip}</span><button class="big" data-act="dojoGo" data-id="${o.skill}">この コツで もういちど ▶</button></div>`; });
   beep([0, 7, 12]);
-  RK.addPlay(p).catch(() => null);
+  if (RK.canRank(p)) { save(); RK.addPlay(p).catch(() => null); }
 }
 
 // ---------- しょうきゅうテスト ----------
