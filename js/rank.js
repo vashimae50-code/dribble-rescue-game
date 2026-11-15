@@ -47,7 +47,9 @@ export function weekId(d = new Date()) {
   return `${j.getUTCFullYear()}${String(j.getUTCMonth() + 1).padStart(2, '0')}${String(j.getUTCDate()).padStart(2, '0')}`;
 }
 export const stageKey = (stageId, level) => `${stageId}L${level}`;
-export const canRank = (p) => !!(p && p.rk && p.rkName);
+// さんかは さいしょから オン（せってい で オフに できる）。ニックネームが ないときは 本名を つかわず「ドリブラー＋ばんごう」を じどうで つける
+export function autoName(p) { if (!p.rkName) p.rkName = 'ドリブラー' + (100 + Math.floor(Math.random() * 900)); return p.rkName; }
+export const canRank = (p) => !!(p && p.rk !== false && autoName(p));
 const pidOf = (p) => String(p.id).replace(/[^a-zA-Z0-9]/g, '').slice(-8) || 'p';
 
 // ステージの じこベストを おくる（いまより 上の ときだけ）
