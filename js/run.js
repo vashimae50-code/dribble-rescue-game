@@ -371,7 +371,11 @@ export function runStage(opts) {
     for (let i = shots.length - 1; i >= 0; i--) { const s = shots[i]; s.t += 0.06; const t = Math.min(1, s.t); const x = ps[0] + (bs[0] - ps[0]) * t, y = ps[1] + (bs[1] - ps[1]) * t - Math.sin(t * Math.PI) * H * 0.08; const r = (1 - t * 0.6) * H * 0.022;
       g.globalAlpha = 0.4; g.fillStyle = pal.a; g.beginPath(); g.arc(x, y, r * 2.2, 0, TAU); g.fill(); g.globalAlpha = 1; g.fillStyle = '#fff'; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
       if (s.t >= 1) { shots.splice(i, 1); boss.hit = 1; audio.sfx('hit'); scene.burst(bp.x, bp.y, bp.z + 2, '#ffe03d', 30, 1.6); shake = Math.max(shake, 0.5); } }
-    if (phase === 'finale') { const t = clamp((beat - finaleBeat) / 8, 0, 1); g.globalAlpha = 0.6 + 0.3 * Math.sin(mbeat * 40); g.strokeStyle = '#3df5ff'; g.lineWidth = (8 + t * 26) * DPR; g.lineCap = 'round'; g.beginPath(); g.moveTo(ps[0], ps[1]); g.lineTo(bs[0], bs[1]); g.stroke(); g.strokeStyle = '#fff'; g.lineWidth = (3 + t * 8) * DPR; g.stroke(); g.globalAlpha = 1; }
+    const beam = (to, t) => { g.globalAlpha = 0.6 + 0.3 * Math.sin(mbeat * 40); g.strokeStyle = '#3df5ff'; g.lineWidth = (8 + t * 26) * DPR; g.lineCap = 'round'; g.beginPath(); g.moveTo(ps[0], ps[1]); g.lineTo(to[0], to[1]); g.stroke(); g.strokeStyle = '#fff'; g.lineWidth = (3 + t * 8) * DPR; g.stroke(); g.globalAlpha = 1; };
+    if (phase === 'finale') beam(bs, clamp((beat - finaleBeat) / 8, 0, 1));
+    // ちゅうボスにも おなじ ビーム（ドリブルで こうげき）
+    if (curCue && curCue.mid && mid.on && !mid.dead && phase === 'run') { const mp = scene.midPos(); const ms = scene.project(mp.x, 2.0, mp.z).map((v) => v * DPR); beam(ms, clamp(1 - mid.hp, 0, 1));
+      if (Math.random() < 0.25) scene.burst(mp.x, 2.0, mp.z + 0.6, Math.random() < 0.5 ? '#3df5ff' : '#ffe03d', 4, 0.8); }
     // けいこく・フラッシュ
     const danger = Math.max(redFlash, clamp((chaserShow - 0.6) * 2, 0, 0.6) * (0.6 + 0.4 * Math.sin(mbeat * TAU * 2)));
     if (danger > 0.02) { const v = g.createRadialGradient(cx, H / 2, H * 0.3, cx, H / 2, Math.max(W, H) * 0.7); v.addColorStop(0, 'rgba(255,0,60,0)'); v.addColorStop(1, `rgba(255,0,60,${danger})`); g.fillStyle = v; g.fillRect(0, 0, W, H); }
