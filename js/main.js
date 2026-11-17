@@ -1,5 +1,5 @@
 // ドリバト！（めざせ！ドリブルキング） メニュー・成長・ごほうび
-import { SKILLS, SKILL_IDS, RANKS, TIERS, tierOf, rankSkills, poolFor, WORLDS, MISSIONS, STAGES, sl, FRIENDS, BOSS_FRIENDS, ALL_FRIENDS, BALLS, SUITS, CAPSULE_COST, AVATARS,
+import { SKILLS, SKILL_IDS, RANKS, TIERS, tierOf, rankSkills, poolFor, WORLDS, MISSIONS, STAGES, sl, FRIENDS, BOSS_FRIENDS, ALL_FRIENDS, BALLS, SUITS, SHOP_BALLS, ballComplete, KING_FRIEND, kingOpen, lvStar3, CAPSULE_COST, AVATARS,
   S, save, avHTML, MAX_LV, LEVEL_GOAL, LEVEL_SPEED, MAIN_STAGES, curLv, lvStars, lvTotal, lvCleared, lvDone, addPlayer, renamePlayer, player, totalStars, mastery, canTest, dayState, missionProgress, stamp, esc, MISSION_COIN, MISSION_ALL, missionAllDone, STREAK_RW, streakNow, GROW, growOf, budLv, BUD_LV, TITLES, checkTitles, titleOf } from './data.js';
 import { runStage } from './run.js';
 import { preloadStage } from './env.js';
@@ -70,7 +70,13 @@ function stages() {
       <h2>コート ${wi + 1}　${w.name} ${locked ? `<small>🔒 ⭐${w.need}こで ひらく</small>` : ''}</h2>
       <div class="sgrid">${STAGES.filter((s) => s.wi === wi && !s.sp).map((s) => { const m = MISSIONS[s.mission]; const st = ls[s.id] || 0;
         return `<button class="stage ${m.boss ? 'boss' : ''}" ${locked ? 'disabled' : ''} data-act="stage" data-id="${s.id}" title="${wi + 1}-${s.mi + 1}"><span class="s-i">${m.i}</span><b>${m.n}</b><small>${wi + 1}-${s.mi + 1}</small><span class="s-st">${[1, 2, 3].map((n) => `<i class="${n <= st ? 'on' : ''}">★</i>`).join('')}</span></button>`; }).join('')}</div>
-    </section>`; }).join('') + `<section class="world" style="--a:#ffb86b;--b:#ff7a1a;--bg:#2a1608"><h2>スペシャル</h2><div class="sgrid">${STAGES.filter((x) => x.sp).map((x) => `<button class="stage" data-act="stage" data-id="${x.id}"><span class="s-i">${MISSIONS[x.mission].i}</span><b>${x.sp}</b><small>${MISSIONS[x.mission].n}</small><span class="s-st">${[1, 2, 3].map((n) => `<i class="${n <= (p.stars[x.id] || 0) ? 'on' : ''}">★</i>`).join('')}</span></button>`).join('')}</div><p class="hint">SP は ボールが 2つ いるよ。L1・L2・L3 は ワザを ステップで おぼえる ステージ。H1 は うごかずに ハンドリングだけ れんしゅう。</p></section>`, 'stages');
+    </section>`; }).join('') + kingCard(p, L) + `<section class="world" style="--a:#ffb86b;--b:#ff7a1a;--bg:#2a1608"><h2>スペシャル</h2><div class="sgrid">${STAGES.filter((x) => x.sp && !x.king).map((x) => `<button class="stage" data-act="stage" data-id="${x.id}"><span class="s-i">${MISSIONS[x.mission].i}</span><b>${x.sp}</b><small>${MISSIONS[x.mission].n}</small><span class="s-st">${[1, 2, 3].map((n) => `<i class="${n <= (p.stars[x.id] || 0) ? 'on' : ''}">★</i>`).join('')}</span></button>`).join('')}</div><p class="hint">SP は ボールが 2つ いるよ。L1・L2・L3 は ワザを ステップで おぼえる ステージ。H1 は うごかずに ハンドリングだけ れんしゅう。</p></section>`, 'stages');
+}
+// だいボス：レベルの ぜんぶの ステージで ★3を とると あらわれる
+function kingCard(p, L) {
+  const n = MAIN_STAGES.length, k = lvStar3(p, L), done = !!(p.king || {})[L];
+  if (!kingOpen(p, L)) return `<section class="world kingw locked"><h2>👑 だいボス <small>🔒 R${L} の ぜんぶの ステージで ★3を とると あらわれる（いま ${k}/${n}）</small></h2><div class="kbar"><i style="width:${(k / n) * 100}%"></i></div></section>`;
+  return `<section class="world kingw"><h2>👑 だいボスが あらわれた！ <small>R${L}${done ? '　🏆 たおした！' : ''}</small></h2><div class="sgrid"><button class="stage boss king" data-act="stage" data-id="sp-king"><span class="s-i">👑</span><b>だいボス せん</b><small>R${L} ファイナル</small><span class="s-st">${[1, 2, 3].map((x) => `<i class="${x <= (p.stars['sp-king'] || 0) ? 'on' : ''}">★</i>`).join('')}</span></button></div></section>`;
 }
 function stageIntro(id) {
   { const st0 = STAGES.find((x) => x.id === id); if (st0) preloadStage(st0.world.theme, st0.id, !!player().girl); }
@@ -151,6 +157,11 @@ function applyPractice(p, r, mult = 1) {
 }
 const upsHtml = (ups) => `<div class="ups">${ups.sort((a, b) => (b.to - b.from) - (a.to - a.from) || b.add - a.add).slice(0, 8).map((u) => `<div class="up ${u.to > u.from ? 'lvl' : ''}" style="--c:${SKILLS[u.k].c}"><b>${SKILLS[u.k].i} ${SKILLS[u.k].n}</b><span>+${u.add}</span>${u.to > u.from ? `<em>${TIERS[u.to].i} ${TIERS[u.to].n}に アップ！</em>` : `<small>${TIERS[u.to].n}</small>`}</div>`).join('')}</div>`;
 // あそんだ あとの ごほうび：れんぞく・そだつ・しょうごう・じこベスト
+function endingHtml(p, e) {
+  return `<div class="ending"><div class="rays"></div><div class="crown">👑</div><h2>おめでとう！</h2><p>R${e.L} の だいボスを たおした！<br>キミこそ <b>ドリブルキング</b>！</p>
+    <div class="presents"><b>🎁 エンディング プレゼント</b>${e.friend ? `<span>${e.friend.e} なかま「${e.friend.n}」</span>` : ''}<span>👑 しょうごう「ドリブルキング」${Object.keys(p.king).length >= 6 ? '・「しんの ドリブルキング」' : ''}</span><span>🪙 200</span></div>
+    <div class="roll"><span>${esc(p.name)} の ぼうけん</span><span>あそんだ かいすう ${p.plays}回</span><span>ひだりて ${p.leftReps || 0}回 ／ みぎて ${p.rightReps || 0}回</span><span>あつめた ★ ${Object.values(p.stars || {}).reduce((a, b) => a + b, 0)}こ</span><span>${e.L < 6 ? `つぎは R${e.L + 1} の だいボスが まってるぞ！` : 'ぜんぶの だいボスを たおした でんせつの プレイヤー！'}</span><span>THANK YOU FOR PLAYING!</span></div></div>`;
+}
 function extrasHtml(p, pr) {
   const out = []; const g = growOf(p); const row = (e, t, sub, cls = '') => `<div class="gift ${cls}"><span>${e}</span><div><b>${t}</b>${sub ? `<small>${sub}</small>` : ''}</div></div>`;
   if (g > pr.g0) out.push(row('🌱', `${GROW[g].n}に せいちょう！`, 'からだが すこし 大きく なって、オーラが つよく なったよ', 'rare'));
@@ -168,11 +179,12 @@ function result(o, r, noCam) {
   const pr = applyPractice(p, r); const { ups, stamped } = pr; d.clears++; d.st = d.st || []; if (!d.st.includes(s.id)) d.st.push(s.id); if (r.stars >= 3) d.star3 = (d.star3 || 0) + 1; if (m.boss) d.boss = (d.boss || 0) + 1; addLog(p, { t: 'stage', id: s.id, stars: r.stars, score: r.score });
   const prevBest = p.best[s.id] || 0; const isBest = r.score > prevBest; if (isBest) p.best[s.id] = r.score; p.stars[s.id] = Math.max(p.stars[s.id] || 0, r.stars); let lvUp = 0; if (!s.sp) { const L = o.level || curLv(p); const ls = lvStars(p, L); ls[s.id] = Math.max(ls[s.id] || 0, r.stars); if (L === p.rank && p.rank < MAX_LV && lvDone(p, L)) { p.rank++; p.lv = p.rank; p.day = null; lvUp = p.rank; } }
   let coins = 20 + (m.boss ? 10 : 0); let got = null;
-  if (m.boss && !p.bossDone[s.world.id]) { p.bossDone[s.world.id] = true; const bf = BOSS_FRIENDS[s.wi]; if (!p.friends.includes(bf.id)) { p.friends.push(bf.id); got = bf; } }
+  let ending = null; if (s.king) { const L = o.level || curLv(p); p.king = p.king || {}; const first = !Object.keys(p.king).length; if (!p.king[L]) { ending = { L, first, friend: null }; p.king[L] = true; coins += 200; if (!p.friends.includes(KING_FRIEND.id)) { p.friends.push(KING_FRIEND.id); ending.friend = KING_FRIEND; } } }
+  if (m.boss && !s.king && !p.bossDone[s.world.id]) { p.bossDone[s.world.id] = true; const bf = BOSS_FRIENDS[s.wi]; if (!p.friends.includes(bf.id)) { p.friends.push(bf.id); got = bf; } }
   p.coins += coins; const extra = extrasHtml(p, pr); save();
   const next = STAGES[STAGES.indexOf(s) + 1]; const hk = r.hardest;
   show(`<div class="card result" style="--a:${s.world.pal.a};--b:${s.world.pal.b}">
-      <div class="res-h">${sl(s)} ${m.n}　クリア！</div>
+      ${ending ? endingHtml(p, ending) : ''}<div class="res-h">${sl(s)} ${m.n}　クリア！</div>
       <div class="res-stars">${[1, 2, 3].map((n) => `<i class="${n <= r.stars ? 'on' : ''}" style="animation-delay:${n * 0.3}s">★</i>`).join('')}</div>
       <div class="res-score">⚡ ${r.score}　<span class="coinup">🪙 +${coins}</span></div>
       <div id="rkbox"></div>
@@ -259,7 +271,7 @@ function friends() {
   if (zTab === 'friends') body = `<p class="hint">タップすると バディに なって、ステージで いっしょに 走るよ。いっしょに あそぶほど レベルが あがって 大きく なる！（Lv2：${BUD_LV[1]}回・Lv3：${BUD_LV[2]}回・Lv4：${BUD_LV[3]}回）</p>
     <div class="zukan">${ALL_FRIENDS.map((f) => { const lv = budLv(p, f.id); return p.friends.includes(f.id) ? `<button class="z on ${f.rare ? 'rare' : ''} ${p.buddy === f.id ? 'sel' : ''} lv${lv}" data-act="buddy" data-id="${f.id}"><span>${f.e}</span><b>${f.n}</b><small>Lv${lv}${'⭐'.repeat(lv - 1)}${p.buddy === f.id ? ' バディ' : ''}</small></button>` : `<div class="z"><span>？</span><b>？？？</b><small>${f.rare ? 'ボスを たおすと…' : 'カプセルで 出る'}</small></div>`; }).join('')}</div>`;
   else if (zTab === 'balls') body = `<p class="hint">ショップで かえるよ。あつめた ボールは ショップで えらんで つかえる。</p>
-    <div class="zukan">${BALLS.map((b) => p.balls.includes(b.id) ? `<div class="z on"><img class="zb" src="${ballIcon(b)}" alt=""><b>${b.n}</b><small>${p.ball === b.id ? 'つかっている' : ''}</small></div>` : `<div class="z"><img class="zb dim" src="${ballIcon(b)}" alt=""><b>？？？</b><small>🪙 ${b.cost}</small></div>`).join('')}</div>`;
+    <div class="zukan">${BALLS.map((b) => p.balls.includes(b.id) ? `<div class="z on"><img class="zb" src="${ballIcon(b)}" alt=""><b>${b.n}</b><small>${p.ball === b.id ? 'つかっている' : ''}</small></div>` : b.secret ? `<div class="z"><span>💎</span><b>？？？</b><small>ぜんぶ あつめると…</small></div>` : `<div class="z"><img class="zb dim" src="${ballIcon(b)}" alt=""><b>？？？</b><small>🪙 ${b.cost}</small></div>`).join('')}</div>`;
   else if (zTab === 'boss') body = `<p class="hint">コートの さいごの ボスを たおすと のるよ。</p>
     <div class="zukan">${WORLDS.map((w, i) => p.bossDone[w.id] ? `<div class="z on rare" style="--a:${w.pal.a}"><span>${BOSS_FRIENDS[i].e}</span><b>${w.boss}</b><small>コート ${i + 1}　たおした！</small></div>` : `<div class="z"><span>？</span><b>？？？</b><small>コート ${i + 1} の ボス</small></div>`).join('')}</div>`;
   else body = `<p class="hint">とった しょうごうを タップすると、なまえの よこに つくよ。</p>
@@ -273,7 +285,7 @@ function shop(msg = '') {
   const item = (kind, it, owned, sel) => `<button class="item ${sel ? 'sel' : ''}" data-act="buy" data-kind="${kind}" data-id="${it.id}">${kind === 'ball' ? `<img class="sw ball" src="${ballIcon(it)}" alt="">` : `<span class="sw" style="background:${it.c}"></span>`}<b>${it.n}</b><small>${sel ? 'つかっている' : owned ? 'もっている' : `🪙 ${it.cost}`}</small></button>`;
   show(`${msg}<div class="card capsule"><h2>🎁 なかまカプセル</h2><p class="hint">まだ いない なかまが かならず 1人 出るよ（かぶりなし）。のこり ${left.length}人</p>
       <div class="btns"><button class="big" data-act="capsule" data-pay="coin" ${left.length && p.coins >= CAPSULE_COST ? '' : 'disabled'}>🪙 ${CAPSULE_COST} で まわす</button><button class="big alt" data-act="capsule" data-pay="ticket" ${left.length && p.tickets > 0 ? '' : 'disabled'}>🎟️ けんで まわす（${p.tickets}）</button></div></div>
-    <div class="card"><h2>🏀 ボール</h2><div class="items">${BALLS.map((b) => item('ball', b, p.balls.includes(b.id), p.ball === b.id)).join('')}</div></div>
+    <div class="card"><h2>🏀 ボール <small>${SHOP_BALLS.filter((b) => p.balls.includes(b.id)).length}/${SHOP_BALLS.length}</small></h2><p class="hint">ぜんぶ あつめると… ひみつの ボールが もらえるよ！</p><div class="items">${BALLS.filter((b) => !b.secret || p.balls.includes(b.id)).map((b) => item('ball', b, p.balls.includes(b.id), p.ball === b.id)).join('')}</div></div>
     <div class="card"><h2>✨ オーラの いろ</h2><div class="items">${SUITS.map((b) => item('suit', b, p.suits.includes(b.id), p.suit === b.id)).join('')}</div></div>
     <p class="hint">コインで かえるのは 見た目だけ。つよさは かわらないよ。</p>`, 'shop');
 }
@@ -390,7 +402,8 @@ const acts = {
     const f = left[Math.floor(Math.random() * left.length)]; p.friends.push(f.id); if (!p.buddy) p.buddy = f.id; save(); beep([0, 4, 7, 12, 16]);
     shop(`<div class="card result"><div class="rescue"><div class="rays"></div><span>${f.e}</span><b>${f.n} が なかまに なった！</b><small>なかまの タブで バディに できるよ</small></div></div>`); },
   buy: (d) => { const p = player(); const list = d.kind === 'ball' ? BALLS : SUITS; const own = d.kind === 'ball' ? p.balls : p.suits; const it = list.find((x) => x.id === d.id);
-    if (!own.includes(it.id)) { if (p.coins < it.cost) return shop('<div class="card"><p class="hint">🪙 コインが たりないよ。ミッションや ステージで あつめよう。</p></div>'); p.coins -= it.cost; own.push(it.id); beep([7, 12]); }
+    if (!own.includes(it.id)) { if (p.coins < it.cost) return shop('<div class="card"><p class="hint">🪙 コインが たりないよ。ミッションや ステージで あつめよう。</p></div>'); p.coins -= it.cost; own.push(it.id); beep([7, 12]);
+      if (d.kind === 'ball' && ballComplete(p)) { checkTitles(p); save(); return shop(`<div class="card result" style="--a:#9ee7ff;--b:#c8b8ff"><div class="rescue rare"><div class="rays"></div><img class="zb" src="${ballIcon(BALLS.find((b) => b.id === 'diamond'))}" alt="" style="width:5em;height:5em"><b>ボール コンプリート！ ひみつの「ダイヤモンド」ボールを ゲット！</b><small>しょうごう「ボールマスター」も ゲット</small></div></div>`); } }
     p[d.kind] = it.id; save(); shop(); },
 };
 document.addEventListener('click', (e) => { const b = e.target.closest('[data-act]'); if (b && !b.disabled && acts[b.dataset.act] && (app.contains(b) || nav.contains(b))) acts[b.dataset.act](b.dataset); });

@@ -162,6 +162,14 @@
   .avatars { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-width: 520px; } .av { width: auto; height: auto; aspect-ratio: 1; padding: 0; overflow: hidden; border-width: 4px; } .av.on { box-shadow: 0 0 14px #ffe03d; transform: scale(1.05); }
   .rklist { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; } .rkrow { display: grid; grid-template-columns: 2.4em 1fr auto; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; background: rgba(10,40,110,.55); } .rkrow b { font-size: 1.2em; text-align: center; } .rkrow em { font-style: normal; font-weight: 900; color: var(--yl); } .rkrow.me { outline: 3px solid var(--yl); }
   .rksel { margin: 6px 0; padding: 6px 10px; border-radius: 10px; font: inherit; max-width: 100%; }
+  .kingw { --a: #ffd23d; --b: #ff8a1a; background: linear-gradient(180deg, rgba(60,30,0,.4), rgba(30,10,0,.85)), url(img/court/castle3.webp) center 35% / cover; border-color: #ffd23d; box-shadow: 0 0 22px #ffd23d66; } .kingw.locked { filter: grayscale(.6); }
+  .kbar { height: 12px; border-radius: 99px; background: #0008; overflow: hidden; margin-top: 6px; } .kbar i { display: block; height: 100%; background: linear-gradient(90deg, #ffd23d, #ff8a1a); }
+  .stage.king { background: linear-gradient(#fff3c0, #ffc23d); border-color: #ffd23d; }
+  .ending { position: relative; overflow: hidden; margin: -6px -6px 14px; padding: 18px 14px; border-radius: 18px; text-align: center; background: radial-gradient(circle at 50% 0%, #fff3b0, #ff9a1a 45%, #6a1fb0); color: #fff; text-shadow: 0 2px 0 #0006; animation: pop .7s cubic-bezier(.2,1.6,.4,1); }
+  .ending .crown { font-size: 4em; animation: pop 1s .3s backwards cubic-bezier(.2,1.6,.4,1); } .ending h2 { font-size: 2em; margin: 0; } .ending p { font-size: 1.2em; } .ending b { color: #fff36b; }
+  .ending .presents { display: flex; flex-direction: column; gap: 4px; margin: 10px auto; padding: 10px; max-width: 420px; border-radius: 14px; background: #0005; } .ending .presents span { font-weight: 800; }
+  .ending .roll { height: 7.5em; overflow: hidden; position: relative; margin-top: 8px; } .ending .roll span { display: block; animation: roll 9s linear infinite; padding: .2em 0; font-weight: 700; }
+  @keyframes roll { from { transform: translateY(8em); } to { transform: translateY(-14em); } }
   .gift { background: rgba(10,40,110,.7); } .gift.rare { background: linear-gradient(90deg, #7a5a08cc, rgba(10,40,110,.7)); }
   .streak { background: linear-gradient(90deg, #ff6a2acc, #ffa53d99); border-color: #ffd7a8; } .streak b { color: #fff; } .streak small { color: #fff3e3; }
 </style>

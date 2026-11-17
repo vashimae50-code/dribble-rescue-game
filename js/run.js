@@ -19,7 +19,7 @@ export function runStage(opts) {
   const g = hud.getContext('2d');
   const wi = stage ? (stage.wi ?? 0) : 0; const video = !!opts.video;
   const audio = new Audio(settings, dojo ? 48 : world.base, { ctx: opts.actx, major: dojo || ['village', 'sunset', 'snow'].includes(world.theme), riff: dojo ? 2 : wi, bpm: dojo ? 86 : stage.bpm, record: video });
-  const scene = createScene(gl, { pal, theme: dojo ? 'gym' : world.theme, stageId: stage ? stage.id : 'dojo', bloom: settings.bloom, video, ...opts.look });
+  const scene = createScene(gl, { pal, theme: dojo ? 'gym' : world.theme, stageId: stage ? stage.id : 'dojo', bloom: settings.bloom, video, ...opts.look, king: !!(stage && stage.king) });
   const cam = !!pose;
   let bps = (dojo ? 76 : stage.bpm) / 60;
   // ドリブルの音：ワールド（ゆか）ごとに かえる

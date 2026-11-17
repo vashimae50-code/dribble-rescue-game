@@ -52,7 +52,7 @@ export function createScene(canvas, o) {
   const mkFoe = (c, num, trim) => { const h = makeHuman(o.human, c, { num, trim, guide: false, skin: '#c98f66', shoe: '#22222a' }); h.root.visible = false; scene.add(h.root); return h; };
   const defs = o.human ? [mkFoe('#d9263c', 23, '#ffe03d'), mkFoe('#d9263c', 11, '#ffe03d'), mkFoe('#2a3a7a', 15, '#ffe03d'), mkFoe('#2a3a7a', 8, '#ffe03d')] : [];
   const rival = o.human ? mkFoe('#d9263c', 4, '#ffe03d') : null;
-  const bossH = o.human ? mkFoe('#1c2450', 99, '#ffe03d') : null;
+  const bossH = o.human ? mkFoe(o.king ? '#3a2600' : '#1c2450', 99, '#ffe03d') : null; // だいボスは 金と 黒
   const midH = o.human ? mkFoe('#d9263c', 5, '#ffe03d') : null; if (midH) midH.root.visible = false; // ちゅうボス（大きな ディフェンス）
   const P = human ? human.root : new THREE.Group(); scene.add(P);
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.55, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.5 })); shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.012; scene.add(shadow); disposables.push(shadow.geometry, shadow.material);
@@ -279,7 +279,7 @@ export function createScene(canvas, o) {
       boss.position.set(Math.sin(st.mbeat * 0.7) * 1.2 + (Math.random() - 0.5) * bossHit * 0.5, bossY + Math.sin(st.mbeat * 1.4) * 0.25, st.boss.finale ? -24 : -34);
       boss.userData.ring.rotation.x += dt * 1.2; boss.userData.ring.rotation.y += dt * 0.8; boss.rotation.y = Math.sin(st.mbeat * 0.5) * 0.3; boss.userData.eye.scale.setScalar(1 + bossHit * 0.5 + pulse * 0.15);
       boss.userData.eyeMat.color.set(bossHit > 0.3 ? 0xffffff : 0xff2d55); if (st.boss.dead) boss.scale.multiplyScalar(0.9); else boss.scale.setScalar(0.5);
-      if (bossH) { if (!bossH._face && faceAtlas) { bossH._face = true; bossH.setFace(faceAtlas, Math.floor(Math.random() * 50)); } for (const ch of boss.children) if (!ch.isSprite) ch.visible = false; bossH.root.visible = boss.visible; if (st.boss.dead) bossH.root.scale.multiplyScalar(0.9); else bossH.root.scale.setScalar(st.boss.finale ? 4.6 : 6); bossH.root.position.set(boss.position.x * 1.6, 0, boss.position.z); bossH.root.rotation.set(0, Math.PI, 0); bossH.animate({ dt, beat: beat * 0.5, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); }
+      if (bossH) { if (!bossH._face && faceAtlas) { bossH._face = true; bossH.setFace(faceAtlas, Math.floor(Math.random() * 50)); } for (const ch of boss.children) if (!ch.isSprite) ch.visible = false; bossH.root.visible = boss.visible; if (st.boss.dead) bossH.root.scale.multiplyScalar(0.9); else bossH.root.scale.setScalar((st.boss.finale ? 4.6 : 6) * (o.king ? 1.3 : 1)); bossH.root.position.set(boss.position.x * 1.6, 0, boss.position.z); bossH.root.rotation.set(0, Math.PI, 0); bossH.animate({ dt, beat: beat * 0.5, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); }
     }
     // つぶ
     for (let i = 0; i < PN; i++) { if (pLife[i] <= 0) continue; pLife[i] -= dt; pVel[i * 3 + 1] -= 9 * dt; pPos[i * 3] += pVel[i * 3] * dt; pPos[i * 3 + 1] += pVel[i * 3 + 1] * dt; pPos[i * 3 + 2] += pVel[i * 3 + 2] * dt + (st.speed || 0) * dt * 6; if (pLife[i] <= 0) pPos[i * 3 + 1] = -50; }

@@ -165,6 +165,7 @@ export const MISSIONS = {
       [['c2cross', 8], ['cross', 4], ['c2cross', 8], ['dcross', 4], ['c2cross', 8], ['pound', 4], ['c2cross', 8]],
       [['c1cross', 8], ['c2cross', 4], ['c1cross', 8], ['frontv', 4], ['c1cross', 8], ['pound', 4]],
       [['cross', 4], ['c1cross', 4], ['cross', 8], ['c2cross2', 8], ['cross', 8], ['dcross', 4], ['cross', 4]]] },
+  king:    { n: 'だいボス せん', i: '👑', d: 'ぜんぶの ★3を とった キミへ。さいごの だいボスを たおせ！', w: {}, boss: 1, king: 1, vt: 'だいボス ちょうせん' },
   boss:    { n: 'ボスせん', i: '👾', d: 'ボスを たおして なかまを すくえ', w: {}, boss: 1, vt: '試合形式 ちょうせん' },
 };
 // BGM（曲の テンポと 最初の 拍の いち は 曲を 解析して はかった あたい）
@@ -191,12 +192,14 @@ STAGES.push({ id: 'sp-legs', world: WORLDS[1], wi: 1, mi: 7, mission: 'lLegs', n
 STAGES.push({ id: 'sp-behind', world: WORLDS[3], wi: 3, mi: 8, mission: 'lBehind', name: 'バックチェンジ しゅうとく', bpm: 88, sections: 3, sp: 'L2', ...songFor('nightlights', 1.15, 2) });
 STAGES.push({ id: 'sp-handle', world: WORLDS[0], wi: 0, mi: 9, mission: 'handle', name: 'ハンドリング どうじょう', bpm: 92, sections: 3, sp: 'H1', ...songFor('focusbeam', 1.15, 2) });
 STAGES.push({ id: 'sp-cross', world: WORLDS[4], wi: 4, mi: 10, mission: 'lCross', name: 'フロントチェンジ しゅうとく', bpm: 88, sections: 3, sp: 'L3', ...songFor('nightlights', 1.15, 2) });
+STAGES.push({ id: 'sp-king', world: WORLDS[4], wi: 4, mi: 11, mission: 'king', name: 'だいボス', bpm: 100, sections: 3, sp: 'KING', king: true, ...songFor('workhard2', 1.12, 2) }); // ぜんぶ ★3で あらわれる
 export const sl = (s) => s.sp || `${s.wi + 1}-${s.mi + 1}`;
 
 // ---------- なかま・みため ----------
 export const FRIENDS = ['🐶', '🐱', '🐰', '🐸', '🐼', '🦊', '🐵', '🐧', '🐯', '🦁', '🐻', '🐨', '🐹', '🦉', '🐢', '🐙', '🦖', '🦄', '🐲', '🦅'].map((e, i) => ({ id: 'f' + i, e, n: ['ポチボ', 'ニャット', 'ピョンタ', 'ケロスケ', 'パンダム', 'コンピー', 'モンキチ', 'ペンタ', 'トラジロー', 'レオン', 'クマード', 'コアラン', 'ハムタ', 'ホーさん', 'カメキチ', 'タコリン', 'レックス', 'ユニコ', 'ミニドラ', 'イーグルX'][i] }));
 export const BOSS_FRIENDS = WORLDS.map((w, i) => ({ id: 'b' + i, e: ['🤖', '👾', '🛸', '🦂', '👑'][i], n: ['ガードロボ(なかま)', 'メトロン', 'UFOくん', 'スコピー', 'キングコア'][i], rare: true }));
-export const ALL_FRIENDS = [...FRIENDS, ...BOSS_FRIENDS];
+export const KING_FRIEND = { id: 'king', e: '🐉', n: 'ドリブルドラゴン', rare: true, king: true }; // だいボスを たおすと なかまに
+export const ALL_FRIENDS = [...FRIENDS, ...BOSS_FRIENDS, KING_FRIEND];
 // pat：もようの しゅるい（balls.js で かく）。じっさいに ある いろ・がらを さんこうに した オリジナル（ロゴなし）
 export const BALLS = [
   { id: 'std', n: 'ノーマル', cost: 0, pat: 'solid', c1: '#ff9a3d', c2: '#c4520a' },
@@ -220,7 +223,11 @@ export const BALLS = [
   { id: 'rainbow', n: 'レインボー', cost: 380, pat: 'prism', cols: ['#ff4d4d', '#ffb13d', '#ffe94d', '#4dff88', '#3db8ff', '#9b5cff', '#ff4d4d'], seam: '#1a1a1a' },
   { id: 'neon', n: 'ネオン', cost: 420, pat: 'neon', cols: ['#3df5ff', '#ff3df0', '#b6ff3d'] },
   { id: 'galaxy', n: 'ギャラクシー', cost: 500, pat: 'galaxy', cols: ['#1b0f4a', '#0a0620', '#2a0f55'], seam: '#000000' },
+  { id: 'diamond', n: 'ダイヤモンド', cost: 0, secret: true, pat: 'prism', cols: ['#e8fbff', '#9ee7ff', '#ffffff', '#c8b8ff', '#e8fbff'], seam: '#5a7ea8' }, // ひみつ：ほかを ぜんぶ あつめると もらえる
 ];
+export const SHOP_BALLS = BALLS.filter((b) => !b.secret);
+// ボールを ぜんぶ あつめたら ひみつの ボールを あげる（あげたら true）
+export function ballComplete(p) { if (p.balls.includes('diamond')) return false; if (SHOP_BALLS.every((b) => p.balls.includes(b.id))) { p.balls.push('diamond'); return true; } return false; }
 export const SUITS = [
   { id: 'cy', n: 'シアン', cost: 0, c: '#3df5ff' }, { id: 'mg', n: 'マゼンタ', cost: 100, c: '#ff3df0' }, { id: 'gr', n: 'グリーン', cost: 100, c: '#4dff88' },
   { id: 'or', n: 'オレンジ', cost: 150, c: '#ffb13d' }, { id: 'wh', n: 'ホワイト', cost: 200, c: '#ffffff' }, { id: 'rd', n: 'レッド', cost: 200, c: '#ff4d4d' },
@@ -236,6 +243,9 @@ export const MAX_LV = 6;
 export const LEVEL_GOAL = { 1: 45, 2: 50, 3: 55, 4: 60, 5: 60, 6: 60 };
 export const LEVEL_SPEED = (L) => 1 + 0.02 * (L - 1); // レベルが 上がるほど 少し はやく
 export const MAIN_STAGES = STAGES.filter((s) => !s.sp);
+// レベルの ぜんぶの ステージで ★3？（だいボスが あらわれる じょうけん）
+export const lvStar3 = (p, L) => { const ls = lvStars(p, L); return MAIN_STAGES.filter((x) => (ls[x.id] || 0) >= 3).length; };
+export const kingOpen = (p, L) => lvStar3(p, L) >= MAIN_STAGES.length || !!(p.king || {})[L];
 function migrateLv(p) { if (!p.ls) { p.ls = {}; const m = {}; MAIN_STAGES.forEach((s) => { if (p.stars && p.stars[s.id]) m[s.id] = p.stars[s.id]; }); p.ls[p.rank || 1] = m; } if (!p.lv) p.lv = p.rank || 1; }
 export const curLv = (p) => Math.max(1, Math.min(p.rank || 1, p.lv || p.rank || 1));
 export function lvStars(p, L) { if (!p.ls) migrateLv(p); if (!p.ls[L]) p.ls[L] = {}; return p.ls[L]; }
@@ -339,6 +349,9 @@ export const TITLES = [
   { id: 'cam', i: '📷', n: 'カメラデビュー', d: 'カメラで 1回 あそぶ', ok: (p) => (p.rec?.camPlays || 0) >= 1 },
   { id: 'combo30', i: '⚡', n: 'コンボキング', d: 'カメラで 30コンボ', ok: (p) => (p.rec?.combo || 0) >= 30 },
   { id: 'r3', i: '🥈', n: 'ちゅうきゅう ドリブラー', d: 'R3に とうたつ', ok: (p) => (p.rank || 1) >= 3 },
+  { id: 'king', i: '👑', n: 'ドリブルキング', d: 'だいボスを たおす（エンディング）', ok: (p) => Object.keys(p.king || {}).length >= 1 },
+  { id: 'king6', i: '🌟', n: 'しんの ドリブルキング', d: 'R1〜R6 ぜんぶの だいボスを たおす', ok: (p) => Object.keys(p.king || {}).length >= 6 },
+  { id: 'ballall', i: '💎', n: 'ボールマスター', d: 'ボールを ぜんぶ あつめる', ok: (p) => (p.balls || []).includes('diamond') },
   { id: 'rmax', i: '🏆', n: 'レジェンド', d: 'さいごの レベルに とうたつ', ok: (p) => (p.rank || 1) >= MAX_LV },
 ];
 // あたらしく とれた しょうごうを かえす（p.titles に きろく）
