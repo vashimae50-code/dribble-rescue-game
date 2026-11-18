@@ -13,6 +13,8 @@ const DOJO_PAL = { a: '#7dffb0', b: '#3df5ff', bg: '#0a2030', floor: '#0e3346' }
 // opts: { gl, hud, overlay, mode:'stage'|'dojo'|'test', stage, skill, player, settings, pose, look, onEnd, onQuit }
 export function runStage(opts) {
   const { gl, hud, overlay, mode, stage, player: pl, settings, pose, onEnd, onQuit } = opts;
+  const logErr = (w, e) => { try { const L = JSON.parse(localStorage.getItem('dribble-errlog') || '[]'); L.unshift({ t: new Date().toLocaleString('ja-JP'), w, m: String((e && (e.stack || e.message)) || e || '').slice(0, 400), ph: phase, st: stage && stage.id, ua: navigator.userAgent.slice(0, 120) }); localStorage.setItem('dribble-errlog', JSON.stringify(L.slice(0, 8))); } catch (x) { /* noop */ } };
+  let frameErrN = 0, rescueTO = null;
   const dojo = mode === 'dojo'; const test = mode === 'test';
   const world = stage ? stage.world : null; const pal = dojo ? DOJO_PAL : world.pal;
   const mission = stage ? MISSIONS[stage.mission] : { w: {} };
@@ -390,7 +392,10 @@ export function runStage(opts) {
   // ---------- 毎フレーム ----------
   function frame(now) {
     if (dead) return; raf = requestAnimationFrame(frame);
-    const rdt = Math.min(video ? 0.5 : (window.__dtcap || 0.05), (now - last) / 1000);
+    try { frameBody(now); } catch (e) { console.error(e); if (frameErrN++ < 3) logErr('frame', e); if (phase === 'rescue') { rescueT += 0.05; if (rescueT > 2.4) finish(); } }
+  }
+  function frameBody(now) {
+    const rdt = Math.min(video ? 0.5 : (window.__dtcap || 0.05), (now - last) / 1000); const rawDt = Math.min(1, Math.max(0, (now - last) / 1000)); // ゴールの よいんは ほんとうの じかんで（おもい たんまつでも のびない）
     if (video) { (window.__ft || (window.__ft = [])).push(now - last); if (window.__ft.length > 2000) window.__ft.shift(); }
     last = now; if (paused) return;
     slow += (1 - slow) * 0.06; let dt = rdt * slow;
@@ -429,7 +434,7 @@ export function runStage(opts) {
         if (phase === 'finale' && boss.hp <= 0.001 && endBeat > beat) endBeat = beat; // たおしたら すぐ おわり
         if (beat >= endBeat && (dojo || sectionIdx >= SECTIONS) && phase === 'finale' && cam && boss.hp > 0.03 && rushExt < 2) { rushExt++; const f = addCue(curCue.skill, { len: 8, boss: true, hand: curHand }); f.rush = true; f.rushMore = true; }
         if (beat >= endBeat && (dojo || sectionIdx >= SECTIONS)) {
-          judge(curCue); phase = 'rescue'; rescueT = 0; flash = 1; flashCol = '#fff';
+          judge(curCue); phase = 'rescue'; rescueT = 0; flash = 1; flashCol = '#fff'; rescueTO = setTimeout(() => { if (!dead) { logErr('rescue-timeout', 'goal 5s'); finish(); } }, 5000); // フレームが 止まっても かならず けっかへ
           if (hasBoss) { boss.dead = true; boss.hp = 0; audio.sfx('boom'); shake = 2; const bp = scene.bossPos(); scene.burst(bp.x, bp.y, bp.z + 2, '#ffe03d', 120, 3); scene.burst(bp.x, bp.y, bp.z + 2, '#ff4d6d', 90, 2.2); slow = 0.3; sayBoth('やったー！', 'You did it!'); setTimeout(() => { boss.gone = true; }, 700); }
           else { audio.sfx('fanfare'); scene.burst(0, 2, -3, pal.a, 80, 2); scene.burst(0, 2, -3, '#ffe03d', 60, 1.6); }
         }
@@ -440,7 +445,7 @@ export function runStage(opts) {
         if (curCue.mid && mid.on && !mid.dead && !cam) { mid.hp = Math.max(0, 1 - (beat - curCue.b0) / (curCue.b1 - curCue.b0)); mid.hit = Math.max(mid.hit, Math.abs(Math.sin(beat * Math.PI * 2))); }
       }
     }
-    if (phase === 'rescue') { rescueT += rdt; if (rescueT > (hasBoss ? 2.4 : 2.2)) { finish(); return; } }
+    if (phase === 'rescue') { rescueT += rawDt; if (rescueT > (hasBoss ? 2.4 : 2.2)) { finish(); return; } }
     redFlash = Math.max(0, redFlash - rdt * 1.5); boss.hit = Math.max(0, boss.hit - rdt * 3); mid.hit = Math.max(0, mid.hit - rdt * 3);
     const spd = phase === 'safe' || phase === 'rescue' || phase === 'count' ? (phase === 'count' ? 1 : 0) : (curCue.sp || 1);
     // よこステップは ディフェンスに ぶつかる 手前で うごきはじめる（つぎのキューを 少し 先読み）
@@ -453,16 +458,17 @@ export function runStage(opts) {
   }
 
   function finish() {
+    if (dead && !video) return; clearTimeout(rescueTO);
     if (video) { if (recorder) recorder.mr.stop(); window.__videoRecorded = true; dead = true; cancelAnimationFrame(raf); clearTimeout(safeTimer); return; }
     const par = orbs.length * 10; const hit = cuesAll ? cuesOk / cuesAll : 1; let stars;
     if (cam) stars = hit >= 0.85 && hearts === 3 ? 3 : hit >= 0.55 ? 2 : 1; else stars = score >= par * 1.12 ? 3 : score >= par * 0.85 ? 2 : 1;
     const res = { mode, score, stars, cam, hit, maxCombo, hearts, dribbles, orbsGot, speed: speedMax, counts, okCounts, failCounts, leftReps, rightReps, tiers: tiers.slice(0, 3), tracked: allF ? trackedF / allF : 0, tipIdx, hardest: hardest() };
-    try { stop(); } catch (e) { console.error(e); } // かたづけで エラーが でても けっかは かならず だす
-    try { onEnd(res); } catch (e) { console.error(e); overlay.innerHTML = `<div class="safe"><div class="safe-title">けっかを ひょうじ できませんでした</div><div class="safe-btns"><button id="errback"><span>🏠</span><b>もどる</b></button></div></div>`; const bt = document.getElementById('errback'); if (bt) bt.onclick = () => location.reload(); }
+    try { stop(); } catch (e) { console.error(e); logErr('stop', e); } // かたづけで エラーが でても けっかは かならず だす
+    try { onEnd(res); } catch (e) { console.error(e); logErr('result', e); overlay.innerHTML = `<div class="safe"><div class="safe-title">けっかを ひょうじ できませんでした</div><div class="safe-btns"><button id="errback"><span>🏠</span><b>もどる</b></button></div></div>`; const bt = document.getElementById('errback'); if (bt) bt.onclick = () => location.reload(); }
   }
   function stop() {
-    dead = true; cancelAnimationFrame(raf); clearTimeout(safeTimer); window.removeEventListener('resize', resize); document.removeEventListener('keydown', onKey);
-    overlay.innerHTML = ''; audio.close(); scene.dispose(); try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { /* noop */ }
+    dead = true; cancelAnimationFrame(raf); clearTimeout(safeTimer); clearTimeout(rescueTO); window.removeEventListener('resize', resize); document.removeEventListener('keydown', onKey);
+    overlay.innerHTML = ''; try { audio.close(); } catch (e) { logErr('audio', e); } try { scene.dispose(); } catch (e) { logErr('dispose', e); } try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { /* noop */ }
   }
   function setPause(v) {
     if (dead || phase === 'safe' || phase === 'rescue') return; paused = v; last = performance.now(); audio.pauseBgm(v);

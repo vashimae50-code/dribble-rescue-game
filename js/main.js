@@ -314,6 +314,7 @@ function settings() {
     <div class="btns"><button class="big ghost" id="ta">① 合成音</button><button class="big ghost" id="tb">② 音声ファイル</button><button class="big ghost" id="tc">③ こえ → 合成音</button></div><p class="hint" id="tout"></p>
     <h3>プレイヤーと ランク</h3><p class="hint">いまの じつりょくに 合わせて、スタートの ランクを えらんでください。ランクが 上がるほど むずかしい ワザが 出ます。</p>
     ${S.players.map((p) => `<div class="prow"><b>${avHTML(p.avatar)}</b><input class="pname-edit" maxlength="10" value="${esc(p.name)}" data-pid="${p.id}" style="width:6em"><div class="seg">${[1, 2, 3, 4, 5, 6].map((r) => `<button class="${p.rank === r ? 'on' : ''}" data-rank="${r}" data-pid="${p.id}">R${r}</button>`).join('')}</div><button class="mini" data-girl="${p.id}" title="おとこのこ／おんなのこ">${p.girl ? '👧 おんなのこ' : '👦 おとこのこ'}</button><button class="mini danger" data-del="${p.id}">けす</button></div>`).join('')}
+    <h3>🛠 エラーきろく</h3><p class="hint">とまった・おかしかった ときに、ここを スクショして おくってください。</p><pre class="errlog">${(() => { try { const L = JSON.parse(localStorage.getItem('dribble-errlog') || '[]'); return L.length ? L.map((x) => esc(`${x.t} [${x.w}${x.ph ? '/' + x.ph : ''}${x.st ? '/' + x.st : ''}] ${x.m}`)).join('\n\n') : 'なし'; } catch (e) { return 'なし'; } })()}</pre>
     <h3>🏆 ランキング</h3><p class="hint">さいしょから オンです。ニックネームと スコア・れんしゅう回数が インターネットの ランキングに のります（URLを しっている 人なら だれでも 見られます）。ニックネームは さいしょ「ドリブラー＋ばんごう」に なっています。かえるときも ほんみょうは いれないでください。のせたくない ときは「さんか」を オフに してください。</p>
     ${S.players.map((p) => `<div class="prow"><b>${avHTML(p.avatar)} ${esc(p.name)}</b><label class="toggle"><input type="checkbox" data-rkon="${p.id}" ${p.rk !== false ? 'checked' : ''}><span>さんか</span></label><input class="rkname" maxlength="10" placeholder="ニックネーム" value="${esc(RK.autoName(p))}" data-rkname="${p.id}" style="width:8em"></div>`).join('')}
     <p class="hint">${[1, 2, 3, 4, 5, 6].map((r) => `R${r} ${RANKS[r].n}：${rankSkills(r).map((k) => SKILLS[k].n).join('・')}`).join('<br>')}</p>
@@ -410,6 +411,10 @@ const acts = {
 };
 document.addEventListener('click', (e) => { const b = e.target.closest('[data-act]'); if (b && !b.disabled && acts[b.dataset.act] && (app.contains(b) || nav.contains(b))) acts[b.dataset.act](b.dataset); });
 document.getElementById('pause').addEventListener('click', () => game && !videoMode && game.pause());
+// エラーきろく（せっていの いちばん下で 見られる）
+const errLog = (w, m) => { try { const L = JSON.parse(localStorage.getItem('dribble-errlog') || '[]'); L.unshift({ t: new Date().toLocaleString('ja-JP'), w, m: String(m || '').slice(0, 400), ua: navigator.userAgent.slice(0, 120) }); localStorage.setItem('dribble-errlog', JSON.stringify(L.slice(0, 8))); } catch (x) { /* noop */ } };
+window.addEventListener('error', (e) => errLog('error', (e.error && e.error.stack) || e.message));
+window.addEventListener('unhandledrejection', (e) => { const r = e.reason; if (r && /rank|firestore|fetch/i.test(String(r.stack || r))) return; errLog('promise', (r && (r.stack || r.message)) || r); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && game && !videoMode) game.pause(); });
 window.__game = () => game;
 who();
