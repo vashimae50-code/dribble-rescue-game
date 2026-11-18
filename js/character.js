@@ -16,14 +16,28 @@ function verifyRig(scene) {
   if (!skinned || missing.length) throw new Error('No.7 GLB incompatible rig: ' + (missing.join(', ') || 'no skinned mesh'));
   return scene;
 }
-export async function loadHuman() {
-  const mode = new URLSearchParams(location.search).get('model');
-  const key = mode === 'no7-v2' ? 'no7-v2' : 'legacy';
+// どのモデルを つかうか：3D試験版（?character3d=1 や /preview/）は 新しい No.7（no7-v2.glb）が 標準。
+// ?model=legacy で 旧モデル、?model=no7-v2 で どこでも 新モデル。読めない・骨が合わないときは 旧モデルに もどる
+export function playerModelKey() {
+  const q = new URLSearchParams(location.search); const mode = q.get('model');
+  if (mode === 'legacy') return 'legacy';
+  if (mode === 'no7-v2') return 'no7-v2';
+  const preview3D = q.get('character3d') === '1' || location.pathname.includes('/preview/');
+  return preview3D ? 'no7-v2' : 'legacy';
+}
+async function loadLegacy() {
+  if (modelCache.has('legacy')) return modelCache.get('legacy');
+  const b64 = (await import('../models/human_model.js')).default;
+  const bin = atob(b64); const buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  const gltf = await new GLTFLoader().parseAsync(buf.buffer, '');
+  modelCache.set('legacy', gltf.scene); return gltf.scene;
+}
+export async function loadHuman(key = playerModelKey()) {
   if (modelCache.has(key)) return modelCache.get(key);
   if (key === 'no7-v2') {
     try {
       // Fixed same-origin path: no untrusted user-provided model URLs.
-      const gltf = await new GLTFLoader().loadAsync('models/no7-v2.glb');
+      const gltf = await new GLTFLoader().loadAsync('models/no7-v2.glb?v=20261119a');
       const model = verifyRig(gltf.scene);
       model.userData.no7Replacement = true;
       modelCache.set(key, model);
@@ -33,12 +47,10 @@ export async function loadHuman() {
       console.warn('[No.7] Replacement GLB unavailable or incompatible; using original', error);
     }
   }
-  if (modelCache.has('legacy')) return modelCache.get('legacy');
-  const b64 = (await import('../models/human_model.js')).default;
-  const bin = atob(b64); const buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-  const gltf = await new GLTFLoader().parseAsync(buf.buffer, '');
-  modelCache.set('legacy', gltf.scene); return gltf.scene;
+  return loadLegacy();
 }
+// 敵（ディフェンスなど）は いつも 旧モデル（ユニフォームの 色を かえて つかう）
+export function loadFoeHuman() { return loadLegacy(); }
 
 // ひな型から 1体ぶんを 作る（骨と メッシュを 新しく つなぎなおす）
 function cloneModel(src) {
@@ -80,7 +92,16 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   const cloth = (c) => c === JERSEY || c === SHORTS || c === TRIM;
   const meshes = []; const mats = []; const outlines = []; const outlineMats = []; const tmpV = new THREE.Vector3(); const geos = []; let zBack = -1, zFront = 1;
   root.updateMatrixWorld(true);
-  model.traverse((o) => { if (!o.isSkinnedMesh) return; const g = o.geometry; geos.push(g); const si = g.attributes.skinIndex, sw = g.attributes.skinWeight, pos = g.attributes.position, nor = g.attributes.normal; const col = new Float32Array(pos.count * 3);
+  const outlineW = nativeLook ? 0.0075 : 0.013;
+  model.traverse((o) => { if (!o.isSkinnedMesh) return; const g = o.geometry; geos.push(g);
+    if (nativeLook) {
+      // 新モデル：GLB の 色・テクスチャを そのまま 使い、アニメ風の 段々の 影（トゥーン）に する
+      const src = o.material; const m = new THREE.MeshToonMaterial({ color: src.color ? src.color.clone() : 0xffffff, map: src.map || null, gradientMap: gradientMap3(), side: src.side, emissive: 0x1a1410, emissiveIntensity: 0.12 });
+      m.name = src.name; o.material = m; meshes.push(o); mats.push(m);
+      const om = new THREE.MeshBasicMaterial({ color: 0x120e0c, side: THREE.BackSide }); om.onBeforeCompile = (sh) => { sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n transformed += normalize(normal) * ' + outlineW.toFixed(4) + ';'); };
+      const ol = new THREE.SkinnedMesh(g, om); ol.bind(o.skeleton, o.bindMatrix); ol.frustumCulled = false;
+      ol.userData.par = o.parent || model; outlines.push(ol); outlineMats.push(om); return; }
+    const si = g.attributes.skinIndex, sw = g.attributes.skinWeight, pos = g.attributes.position, nor = g.attributes.normal; const col = new Float32Array(pos.count * 3);
     for (let i = 0; i < pos.count; i++) { let best = 0, bw = -1; for (let k = 0; k < 4; k++) { const w = sw.getComponent(i, k); if (w > bw) { bw = w; best = si.getComponent(i, k); } }
       const bn = o.skeleton.bones[best].name; tmpV.fromBufferAttribute(pos, i); const x = tmpV.x, y = tmpV.y, z = tmpV.z; const c = regionOf(bn, x, y);
       // うらがわ・つなぎ目を ほんの少し くらくして、のっぺりしすぎないように（かんいAO）
@@ -171,18 +192,20 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   }
   // せばんごう（せなか と むね）
   const numMats = [];
-  if (B.Spine2) { const cv = document.createElement('canvas'); cv.width = cv.height = 128; const g2 = cv.getContext('2d'); g2.font = '900 104px Arial, sans-serif'; g2.textAlign = 'center'; g2.textBaseline = 'middle'; g2.lineWidth = 10; g2.strokeStyle = 'rgba(0,0,0,.55)'; g2.strokeText(String(opt.num ?? 7), 64, 70); g2.fillStyle = '#' + TRIM.getHexString(); g2.fillText(String(opt.num ?? 7), 64, 70);
+  if (B.Spine2 && !nativeLook) { const cv = document.createElement('canvas'); cv.width = cv.height = 128; const g2 = cv.getContext('2d'); g2.font = '900 104px Arial, sans-serif'; g2.textAlign = 'center'; g2.textBaseline = 'middle'; g2.lineWidth = 10; g2.strokeStyle = 'rgba(0,0,0,.55)'; g2.strokeText(String(opt.num ?? 7), 64, 70); g2.fillStyle = '#' + TRIM.getHexString(); g2.fillText(String(opt.num ?? 7), 64, 70);
     const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; const nm = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }); numMats.push(nm, tex); const pg = new THREE.PlaneGeometry(1, 1); geos.push(pg);
     const inv = new THREE.Matrix4().copy(B.Spine2.matrixWorld).invert(); const mw = new THREE.Matrix4();
     for (const [zz, ry, sz, yy] of [[-(zBack + 0.03), Math.PI, 0.25, 1.3], [zFront + 0.03, 0, 0.13, 1.36]]) { const pl = new THREE.Mesh(pg, nm); const lm = new THREE.Matrix4().compose(new THREE.Vector3(0, yy, zz), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), ry), new THREE.Vector3(sz, sz, sz)); mw.multiplyMatrices(model.matrixWorld, lm); mw.premultiply(inv); mw.decompose(pl.position, pl.quaternion, pl.scale); pl.userData.mat0 = nm; B.Spine2.add(pl); meshes.push(pl); } }
   const sil = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
   const setSilhouette = (on, color) => { if (on) sil.color.set(color); let i = 0; for (const m of meshes) { if (m.isSkinnedMesh) m.material = on ? sil : mats[i++]; else if (m.userData.mat0) m.visible = !on; else m.material = on ? sil : band; } outlines.forEach((ol) => { ol.visible = !on; }); accessories.forEach((a) => { a.visible = !on; }); };
   if (opt.guide !== false) meshes.forEach((m) => m.layers.enable(1));
-  const dispose = () => { geos.forEach((g) => g.dispose()); mats.forEach((m) => { if (!nativeLook) m.dispose(); }); numMats.forEach((m) => m.dispose()); band.dispose(); tor.dispose(); sil.dispose(); accessoryGeometries.forEach((g) => g.dispose()); accessoryMaterials.forEach((m) => m.dispose()); outlineMats.forEach((m) => m.dispose()); if (faceMat) { faceMat.dispose(); faceTex.dispose(); } };
+  const dispose = () => { geos.forEach((g) => g.dispose()); mats.forEach((m) => m.dispose()); numMats.forEach((m) => m.dispose()); band.dispose(); tor.dispose(); sil.dispose(); accessoryGeometries.forEach((g) => g.dispose()); accessoryMaterials.forEach((m) => m.dispose()); outlineMats.forEach((m) => m.dispose()); if (faceMat) { faceMat.dispose(); faceTex.dispose(); } };
   root.updateMatrixWorld(true);
   const wp = (b) => b.getWorldPosition(V());
   const L = { up: wp(B.LeftUpLeg).distanceTo(wp(B.LeftLeg)), lo: wp(B.LeftLeg).distanceTo(wp(B.LeftFoot)), ua: wp(B.LeftArm).distanceTo(wp(B.LeftForeArm)), fa: wp(B.LeftForeArm).distanceTo(wp(B.LeftHand)) };
   const hipsBind = wp(B.Hips).y; const ankleH = wp(B.LeftFoot).y; const hipW = Math.abs(wp(B.LeftUpLeg).x);
+  // 新モデル：床に ついている 足は 足うらを 床と 平行に たもつ（つま先が しずんだり 浮いたり しない）
+  const flatQ = new Map(); if (nativeLook) { const rq0 = root.getWorldQuaternion(new THREE.Quaternion()).invert(); for (const f of [B.LeftFoot, B.RightFoot]) if (f) flatQ.set(f, rq0.clone().multiply(f.getWorldQuaternion(new THREE.Quaternion()))); }
   const t1 = V(), t2 = V(), t3 = V(), q1 = Q(), q2 = Q(), q3 = Q();
 
   function preWorld(bone, qW) { bone.getWorldQuaternion(q2); q2.premultiply(qW); bone.parent.getWorldQuaternion(q3).invert(); bone.quaternion.copy(q3.multiply(q2)); bone.updateMatrixWorld(true); }
@@ -406,7 +429,8 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     // 足
     const foot = (up, lo, ft, toe, tgt, s) => { const a = V().copy(tgt); a.y += ankleH; ik(up, lo, ft, toW(a).clone(), dirW(s * (0.06 + 0.36 * S.knee), 0.1, -1), L.up, L.lo); // In the static basketball stance, preserve the model's neutral ankle/toe rotation.
       // Aiming the foot toward an elevated toe target made the shoe point upward.
-      if (!basicDribble && !previewCross) { const tt = V().copy(tgt); tt.z -= 0.2; tt.x += s * 0.03; tt.y = Math.max(0.02, tgt.y * 0.6 + 0.02); aim(ft, toe, toW(tt).clone()); } };
+      if (flatQ.has(ft) && tgt.y < 0.012) { const want = rq.clone().multiply(axisQ(Y, -s * 0.14)).multiply(flatQ.get(ft)); ft.parent.getWorldQuaternion(q3).invert(); ft.quaternion.copy(q3.multiply(want)); ft.updateMatrixWorld(true); }
+      else if (!basicDribble && !previewCross) { const tt = V().copy(tgt); tt.z -= 0.2; tt.x += s * 0.03; tt.y = Math.max(0.02, tgt.y * 0.6 + 0.02); aim(ft, toe, toW(tt).clone()); } };
     foot(B.LeftUpLeg, B.LeftLeg, B.LeftFoot, B.LeftToeBase, S.fl, -1); foot(B.RightUpLeg, B.RightLeg, B.RightFoot, B.RightToeBase, S.fr, 1);
     // うで
     const behind = lbz > 0.2;
@@ -417,7 +441,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   }
   // かお：イラストの スプライトを 頭の 位置に のせる（もとの 頭は 小さく たたむ）
   let faceSp = null, faceTex = null, faceMat = null;
-  if (opt.bigHead && B.Head) B.Head.scale.setScalar(opt.bigHead); // イラストの 顔と 同じ テイスト（頭 大きめ）
+  if (opt.bigHead && B.Head && !nativeLook) B.Head.scale.setScalar(opt.bigHead); // イラストの 顔と 同じ テイスト（頭 大きめ）
   const setFace = (tex, i) => { if (!tex || !B.Head) return;
     if (!faceSp) { faceTex = tex.clone(); faceTex.repeat.set(0.1, 0.2); faceTex.needsUpdate = true; faceMat = new THREE.SpriteMaterial({ map: faceTex, transparent: true, alphaTest: 0.4 }); faceSp = new THREE.Sprite(faceMat); faceSp.center.set(0.5, 0.2); faceSp.scale.set(0.66, 0.66, 1); root.add(faceSp); B.Head.scale.setScalar(0.02); }
     faceTex.offset.set((i % 10) * 0.1, 1 - (Math.floor(i / 10) + 1) * 0.2); };
