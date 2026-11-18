@@ -220,6 +220,23 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
         if (sk.handle === 'pull') { const u = Math.sin(Math.PI * cb); const a = smooth(Math.abs(u)); bx = Math.sign(u) * 0.3 * a; bz = -0.55 + 0.6 * a; by = hy + 0.22 - 0.2 * a; twist = Math.sign(u) * 0.35 * a; crouch = 0.6; both = true; }
       }
     }
+    // Opening countdown: hold the ball with both hands at the front of the waist.
+    if (opt.practicePose && st.startHold) {
+      both = true; twoHands = false; guard = false;
+      crouch = 0.65; pitch = 0.82; hipZ = -0.03;
+      T.fl.set(-0.27, 0, -0.17); T.fr.set(0.27, 0, 0.03);
+      rootY = 0; bx = 0; bz = -0.42; by = hipsBind - crouch * 0.24 + 0.04;
+    }
+    // A strong stationary dribble uses a small coordinated knee/hip/torso pulse.
+    // The feet remain planted; the pulse peaks as the ball travels downward.
+    if (basicDribble && !st.startHold && id !== 'rest') {
+      const drive = Math.pow(Math.max(0, Math.sin(2 * Math.PI * bph)), 2);
+      crouch += 0.045 * drive;
+      pitch += 0.055 * drive;
+      hipZ -= 0.018 * drive;
+      hipX += handSide * 0.012 * drive;
+      twist += handSide * 0.045 * drive;
+    }
     const hipY = hipsBind - crouch * 0.24 + rootY;
     if (by < 0) by = hipY - 0.06;
     T.hip.set(hipX, hipY, hipZ - (pitch - 0.2) * 0.12);
