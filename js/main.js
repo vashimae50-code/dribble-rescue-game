@@ -136,7 +136,7 @@ async function start(o) {
   app.hidden = true; nav.hidden = true; gameEl.hidden = false; video.hidden = !pose; awake(true);
   const noCam = st.camera && !pose;
   let human = null; try { if (msg) msg.textContent = 'キャラクターを よみこみちゅう…'; human = await (await import('./character.js')).loadHuman(); } catch (e) { human = null; }
-  const preview3D = new URLSearchParams(location.search).get('character3d') === '1';
+  const preview3D = new URLSearchParams(location.search).get('character3d') === '1' || location.pathname.includes('/preview/');
   const look = { human, sprite: !preview3D, girl: !!p.girl, suit: SUITS.find((x) => x.id === p.suit)?.c, ball: BALLS.find((x) => x.id === p.ball), buddy: p.buddy ? friend(p.buddy)?.e : null, buddyLv: p.buddy ? budLv(p, p.buddy) : 1, grow: GROW[growOf(p)] };
   try {
     const qVid = new URLSearchParams(location.search).get('video');
