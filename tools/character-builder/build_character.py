@@ -224,6 +224,11 @@ def build(cfg, out_path, blend_path=None):
             if len(f) == 4: fn += (c - a).cross(verts[f[3]] - a)
             for i in f: n[i] += fn
         return [x.normalized() if x.length > 1e-12 else Vector((0, 0, 1)) for x in n]
+    # 口元の 深い みぞを すこし なめらかに（アニメ風の りんかく線が 口角に 出すぎない ように）
+    eZ0 = sum((BV[i].z for i in range(nB) if is_eye[i]), 0.0) / max(1, sum(1 for i in range(nB) if is_eye[i]))
+    mz = eZ0 - cfg['face'].get('mouth_below_eyes', 0.072)
+    mouth_ids = {i for i in range(nB) if not is_eye[i] and abs(BV[i].x) < cfg['face'].get('mouth_half', 0.03) and abs(BV[i].z - mz) < 0.013 and BV[i].y < -0.11}
+    laplacian(BV, adj, mouth_ids, cfg['face'].get('mouth_smooth', 0), 0.5)
     BN = vnormals(BV, BF)
 
     hipZ = H('Hips').z; kneeZ = H('LeftLeg').z; ankleZ = H('LeftFoot').z
@@ -274,22 +279,6 @@ def build(cfg, out_path, blend_path=None):
         if is_eye[i]: return False
         v = BV[i]; d = DOM[i]
         return (d.endswith('Foot') or d.endswith('ToeBase') or (d.endswith('Leg') and not d.endswith('UpLeg'))) and v.z < ankleZ + SO.get('collar_above_ankle', 0.035)
-    if os.environ.get('DBG'):
-        for i in range(nB):
-            v = BV[i]
-            if 0.08 < v.x < 0.13 and v.z > shZ - 0.02 and abs(v.y - H('Neck').y) < 0.03:
-                print('DBG', tuple(round(x, 3) for x in v), DOM[i], round(strap_limit(v.z), 3), in_jersey(i))
-    if os.environ.get('DBG'):
-        from PIL import Image, ImageDraw
-        im = Image.new('RGB', (1200, 600), 'white'); dr = ImageDraw.Draw(im)
-        for i in range(nB):
-            v = BV[i]
-            if v.z < 1.32 or v.z > 1.56 or abs(v.x) > 0.25 or is_eye[i]: continue
-            ox = 300 if v.y < H('Neck').y else 900
-            X = ox + v.x * 1150; Y = 600 - (v.z - 1.32) * 2500
-            c = (0, 160, 0) if in_jersey(i) else ((200, 0, 0) if is_arm(DOM[i]) else (120, 120, 120))
-            dr.ellipse((X-2, Y-2, X+2, Y+2), fill=c)
-        im.save('/tmp/jmask.png')
     SHORTS = [in_shorts(i) for i in range(nB)]
     JERSEY = [in_jersey(i) for i in range(nB)]
     SHOE = [in_shoe(i) for i in range(nB)]
@@ -305,9 +294,6 @@ def build(cfg, out_path, blend_path=None):
                 if x != y: fnb[x].add(y)
     def region_faces(mask, close_iter=2, open_iter=1, keep_frac=0.15):
         sel = {fi for fi, f in enumerate(BF) if BFG[fi] == 'body' and all(mask[i] for i in f)}
-        if os.environ.get('DBG'):
-            def strapcount(S): return sum(1 for fi in S if all(0.07 < BV[i].x < 0.14 and BV[i].z > shZ + 0.03 for i in BF[fi]))
-            print('DBG strap faces initial', strapcount(sel), 'partial', sum(1 for fi, f in enumerate(BF) if BFG[fi]=='body' and all(0.07 < BV[i].x < 0.14 and BV[i].z > shZ + 0.03 for i in f) and any(mask[i] for i in f)))
         for _ in range(close_iter):   # 小さな 穴を うめる
             add = {fi for fi in fnb if fi not in sel and sum(1 for g in fnb[fi] if g in sel) >= 3}
             sel |= add
@@ -324,7 +310,6 @@ def build(cfg, out_path, blend_path=None):
                     if y in sel and y not in seen: seen.add(y); q.append(y)
             comps.append(comp)
         big = max(len(c) for c in comps)
-        if os.environ.get('DBG'): print('DBG after', strapcount(sel), 'comps', sorted(len(c) for c in comps)[-6:])
         out = sorted(fi for c in comps if len(c) >= keep_frac * big for fi in c)
         return out
 
@@ -362,7 +347,12 @@ def build(cfg, out_path, blend_path=None):
     for i in shorts['boundary']:
         v = shorts['verts'][i]
         if v.z < hipZ - 0.1: v.z = min(v.z, hemZ + 0.012)
-    shoes = make_shell('No7_Shoes', SHOE, lambda v, n, i: SO.get('offset', 0.013), SO.get('smooth', 3))
+    footY = {1: H('LeftFoot').y, -1: H('RightFoot').y}
+    def shoe_off(v, n, i):
+        fwd = smoothstep(0.02, 0.16, footY[1 if v.x > 0 else -1] - v.y)   # つま先がわ ほど ふっくら
+        low = smoothstep(ankleZ + 0.02, 0.02, v.z)
+        return SO.get('offset', 0.013) + SO.get('toe_boost', 0.008) * fwd * (0.4 + 0.6 * low) + SO.get('side_boost', 0.004) * low
+    shoes = make_shell('No7_Shoes', SHOE, shoe_off, SO.get('smooth', 3))
     soleT = SO.get('sole_thickness', 0.022)
     for k, v in enumerate(shoes['verts']):
         if v.z < soleT:
@@ -398,6 +388,7 @@ def build(cfg, out_path, blend_path=None):
         'hair': new_mat('Hair', col['hair'], 0.85),
     }
     img = make_number_texture(cfg)
+    MATS['shoe_tex'] = new_mat('Shoe', (1, 1, 1, 1), 0.5, image=make_shoe_texture(cfg))
     MATS['shorts_tex'] = new_mat('ShortsBlue', (1, 1, 1, 1), 0.8, double=True, image=make_stripe_texture(cfg))
     MATS['jersey'] = new_mat('JerseyBlue', (1, 1, 1, 1), 0.8, double=True, image=img)
 
@@ -467,12 +458,14 @@ def build(cfg, out_path, blend_path=None):
     me.materials.clear()
     for mn in order: me.materials.append(MATS[mn])
     vg_names = {g.index: g.name for g in body.vertex_groups}
+    gi_head = [g.index for g in body.vertex_groups if g.name in ('mixamorig:Head', 'mixamorig:HeadTop_End')]
+    head_w = [sum(e.weight for e in v.groups if e.group in gi_head) for v in me.vertices]
     for poly in me.polygons:
         c = poly.center; m = 'skin'
         if ankleZ - 0.02 < c.z < sockTop: m = 'sock'
         if c.z > neckZ - 0.02:
-            _, _, dist = kd.find(c)
-            if dist < HC.get('scalp_dist', 0.02) and c.z > scalp_lim(c): m = 'scalp'
+            hw = sum(head_w[vi] for vi in poly.vertices) / len(poly.vertices)
+            if hw > 0.6 and c.z > scalp_lim(c) and not (head_angle(c) < 60 and c.z < eyeZ + 0.05): m = 'scalp'
             for ec in (eyeCL, eyeCR):
                 if c.y > ec.y + 0.012: continue
                 dx = c.x - ec.x; dz = c.z - ec.z
@@ -547,17 +540,19 @@ def build(cfg, out_path, blend_path=None):
           add_ribbons(shorts_ob, MATS['trim'], lambda c, pts: c.z > hipZ, SH.get('waist_width', 0.026), outset=0.0))
 
     # くつ（こん色、白い くつ底、黄色の はき口と よこの ライン）
-    shoes_ob = build_obj('No7_Shoes', shoes['verts'], shoes['faces'], ['shoe'] * len(shoes['faces']), lambda vi: VW[shoes['src'][vi]])
+    # くつの 色は 横から 投影した テクスチャ（くつ底の 白、よこの ライン、かかと）で なめらかに
+    shv = shoes['verts']
+    sy0 = min(v.y for v in shv); sy1 = max(v.y for v in shv); sz1 = max(v.z for v in shv)
+    shfn = []
+    for f in shoes['faces']:
+        a_, b_, c_ = shv[f[0]], shv[f[1]], shv[f[2]]; shfn.append((b_ - a_).cross(c_ - a_).normalized())
+    def shuv(pi, vi):
+        v = shv[vi]; fy = footY[1 if v.x > 0 else -1]
+        u = (v.y - fy + 0.20) / 0.30
+        if abs(shfn[pi].x) < 0.45: u = 0.04   # 前・後ろ・上の 面は ラインなし（くつ底の 白だけ）
+        return (u, (v.z + 0.02) / 0.16)
+    shoes_ob = build_obj('No7_Shoes', shv, shoes['faces'], ['shoe_tex'] * len(shoes['faces']), lambda vi: VW[shoes['src'][vi]], uvs=shuv)
     subdivide(shoes_ob, 1)
-    def shoe_pick(poly):
-        c = poly.center
-        if c.z < SO.get('sole_color_top', 0.022): return 'sole'
-        fx = H('LeftFoot').x if c.x > 0 else H('RightFoot').x
-        fy = H('LeftFoot').y
-        n = poly.normal
-        if (n.x * (1 if c.x > 0 else -1)) > 0.5 and abs(c.z - 0.052 - 0.18 * (c.y - fy + 0.06)) < 0.008 and -0.14 < c.y - fy < 0.03: return 'shoe_accent'
-        return 'shoe'
-    set_mats(shoes_ob, ['shoe', 'sole', 'shoe_accent'], shoe_pick)
     print('[build] shoe ribbons', add_ribbons(shoes_ob, MATS['shoe_accent'], lambda c, pts: c.z > 0.04, SO.get('collar_width', 0.012), outset=0.002))
 
     # 7) カーリーヘア（頭の上の部分だけ。メタボールの つぶを ならべて 1つの メッシュに）
@@ -699,8 +694,16 @@ def rest_pose(arm, meshes, cfg):
         md = ob.modifiers.new('Armature', 'ARMATURE'); md.object = arm
 
 
+def need_pil():
+    try:
+        import PIL  # noqa: F401
+    except ImportError:
+        sys.exit('Pillow が ありません。Blender 付属の Python なら次を 1回 実行してください:\n'
+                 '  blender -b --python-expr "import subprocess,sys; subprocess.check_call([sys.executable,\'-m\',\'pip\',\'install\',\'pillow\'])"')
+
 def make_number_texture(cfg):
     """背番号の 絵（左半分＝背中、右半分＝胸）。ジャージの 青の 上に 黄色の 数字と こん色の ふち"""
+    need_pil()
     from PIL import Image, ImageDraw, ImageFont
     NB = cfg['number']; W, Hh = 1024, 512
     def rgb(h): h = h.lstrip('#'); return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
@@ -733,6 +736,27 @@ def make_stripe_texture(cfg):
     d.rectangle([W / 2 - hw, 0, W / 2 + hw, 8], fill=rgb(cfg['colors']['trim']))
     path = os.path.join(bpy.app.tempdir or '/tmp', 'shorts_tex.png'); im.save(path)
     img = bpy.data.images.load(path); img.pack(); img.name = 'shorts_stripe'
+    return img
+
+def make_shoe_texture(cfg):
+    """くつを 横から 見た 絵：u = つま先(0)→かかと(1)、v = 床(0)→上(1)。ロゴは 入れない"""
+    from PIL import Image, ImageDraw
+    def rgb(h): h = h.lstrip('#'); return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+    C = cfg['colors']; SO = cfg['shoes']
+    W, Hh = 512, 256
+    im = Image.new('RGB', (W, Hh), rgb(C['shoe'])); d = ImageDraw.Draw(im)
+    def Y(z): return Hh - (z + 0.02) / 0.16 * Hh       # z(m) → 画像の y
+    def X(t): return t * W
+    # よこの ライン（つま先がわ 低く → かかとへ 上がる 帯）
+    a = SO.get('stripe', [[0.22, 0.040], [0.80, 0.085]]); w = SO.get('stripe_w', 0.013)
+    d.polygon([(X(a[0][0]), Y(a[0][1] + w)), (X(a[1][0]), Y(a[1][1] + w)), (X(a[1][0] + 0.06), Y(a[1][1] - w * 0.4)), (X(a[0][0] + 0.06), Y(a[0][1] - w))], fill=rgb(C['shoe_accent']))
+    # かかとの 補強（ヒールカウンター）
+    d.rectangle([X(0.86), Y(0.075), X(1.0), Y(SO.get('sole_color_top', 0.022))], fill=rgb(C.get('shoe_heel', C['shoe_accent'])))
+    # くつ底（白）と 底の ふち（こい グレー）
+    d.rectangle([0, Y(SO.get('sole_color_top', 0.022)), W, Hh], fill=rgb(C['sole']))
+    d.rectangle([0, Y(-0.004), W, Hh], fill=rgb(C.get('outsole', '#3a3f4a')))
+    path = os.path.join(bpy.app.tempdir or '/tmp', 'shoe_tex.png'); im.save(path)
+    img = bpy.data.images.load(path); img.pack(); img.name = 'shoe_side'
     return img
 
 def make_hair(cfg, hair_pts, H, eyeCL, eyeCR, coll, mat, curl_lim):

@@ -18,5 +18,7 @@
 ## ライセンス
 vendor/ の MediaPipe と models/pose_model.js は Google、Apache-2.0。vendor/three.module.min.js と vendor/addons は three.js、MIT。models/human_model.js は three.js の examples にある Xbot（Mixamo 由来の人型モデル）。販売する場合は、このモデルの利用条件の確認か、別モデルへの差しかえが必要です。
 
+models/no7-v2.glb（3D試験版の新しい No.7）は tools/character-builder/ で作ったモデルです。人体のもとは MakeHuman / MPFB2 のアセット（CC0 1.0）、背番号の字体は Anton（SIL Open Font License 1.1）。敵キャラクターはまだ Xbot を使っています。
+
 ## 英語の声
 models/voice_en.js は、Piper（MIT）の en-us-ryan-medium で作った音声です。もとのデータセット RyanSpeech は CC BY-NC-SA 4.0（非営利のみ）なので、販売する場合は別の声に差しかえが必要です。

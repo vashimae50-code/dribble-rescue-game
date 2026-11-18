@@ -51,7 +51,9 @@
   "sole": "#f2f2f2",
   "shoe_accent": "#ffd21b",
   "hair": "#5a3822",
-  "hair_short": "#4a2e1c"
+  "hair_short": "#4a2e1c",
+  "outsole": "#3a3f4a",
+  "shoe_heel": "#ffd21b"
  },
  "number": {
   "text": "7",
@@ -60,7 +62,8 @@
   "front_center_z": 1.31,
   "front_span": 0.34,
   "back_size": 0.62,
-  "front_size": 0.42
+  "front_size": 0.42,
+  "font": "fonts/Anton-Regular.ttf"
  },
  "jersey": {
   "offset": 0.011,
@@ -91,13 +94,26 @@
   "stripe_half_u": 0.022
  },
  "shoes": {
-  "offset": 0.013,
-  "collar_above_ankle": 0.035,
+  "offset": 0.012,
+  "collar_above_ankle": 0.05,
   "smooth": 3,
   "sole_thickness": 0.022,
   "sole_drop": 0.012,
-  "sole_color_top": 0.022,
-  "collar_width": 0.012
+  "sole_color_top": 0.024,
+  "collar_width": 0.012,
+  "toe_boost": 0.009,
+  "side_boost": 0.004,
+  "stripe": [
+   [
+    0.22,
+    0.04
+   ],
+   [
+    0.8,
+    0.085
+   ]
+  ],
+  "stripe_w": 0.012
  },
  "socks": {
   "height_above_ankle": 0.15
@@ -111,7 +127,9 @@
   "brow_out": 0.026,
   "liner_in": 0.92,
   "liner_out": 1.22,
-  "liner_low": 0.2
+  "liner_low": 0.2,
+  "mouth_smooth": 4,
+  "mouth_half": 0.03
  },
  "eyes": {
   "pupil_deg": 13,
@@ -146,6 +164,9 @@
   "eyes/r-eye-scale-incr": 1.0,
   "head/head-age-decr": 0.35,
   "nose/nose-scale-horiz-decr": 0.25,
-  "nose/nose-volume-decr": 0.3
+  "nose/nose-volume-decr": 0.3,
+  "eyes/l-eye-height2-incr": 0.5,
+  "eyes/r-eye-height2-incr": 0.5,
+  "eyebrows/eyebrows-trans-up": 0.25
  }
 }
