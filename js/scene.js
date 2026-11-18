@@ -308,7 +308,25 @@ export function createScene(canvas, o) {
       const bp0 = ball.position.clone(), b20 = ball2.position.clone(); const gb = human.animate({ dt, beat, cue, sk, vx: 0, guide: true }); ball.position.set(laneX + gb.x, gb.y, gb.z); { const g2 = human.ball2(); if (g2) ball2.position.set(laneX + g2.x, g2.y, g2.z); } trail.visible = false;
       const bg = scene.background; const fg = scene.fog; scene.background = null; scene.fog = null; human.setSilhouette(true, sk.c); const bm = ball.material; ball.material = pipBall; ball2.material = pipBall;
       renderer.setRenderTarget(null); renderer.autoClear = false; renderer.setScissorTest(true); renderer.setScissor(p.x, H - p.y - p.h, p.w, p.h); renderer.setViewport(p.x, H - p.y - p.h, p.w, p.h); renderer.setClearColor(0x050a22, 1); renderer.clear(true, true, false);
-      renderer.render(scene, gcam);
+      if (o.sprite === false) {
+        // Diagnostic guide: left panel = side profile, right panel = front profile.
+        // Both render the same skeleton pose, so posture differences are visible.
+        const half = Math.floor(p.w / 2);
+        const views = [
+          { x: p.x, w: half, eye: [laneX + 4.3, 1.15, 0], target: [laneX, 0.95, 0] },
+          { x: p.x + half, w: p.w - half, eye: [laneX, 1.15, -4.3], target: [laneX, 0.95, 0] }
+        ];
+        for (const view of views) {
+          gcam.position.set(...view.eye); gcam.lookAt(...view.target);
+          gcam.aspect = view.w / p.h; gcam.updateProjectionMatrix();
+          renderer.setScissor(view.x, H - p.y - p.h, view.w, p.h);
+          renderer.setViewport(view.x, H - p.y - p.h, view.w, p.h);
+          renderer.clear(true, true, false);
+          renderer.render(scene, gcam);
+        }
+      } else {
+        renderer.render(scene, gcam);
+      }
       renderer.setScissorTest(false); renderer.setViewport(0, 0, W, H); renderer.autoClear = true; human.setSilhouette(false); ball.position.copy(bp0); ball2.position.copy(b20); trail.visible = true; ball.material = bm; ball2.material = bm; scene.background = bg; scene.fog = fg;
     }
   }
