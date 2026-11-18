@@ -39,7 +39,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   const B = {}; let skinned = null;
   model.traverse((o) => { if (o.isBone) B[o.name.replace('mixamorig', '')] = o; if (o.isSkinnedMesh) { skinned = o; o.frustumCulled = false; } });
   // 見た目：骨ごとに 色を ぬりわけて、ユニフォーム・はだ・くつ に見せる
-  const suitC = new THREE.Color(suit); const SKIN = new THREE.Color(opt.skin || '#e8b48a'); const JERSEY = suitC.clone().lerp(new THREE.Color('#ffffff'), 0.06); const SHORTS = suitC.clone().multiplyScalar(0.82); const TRIM = new THREE.Color(opt.trim || '#ffffff'); const SHOE = new THREE.Color(opt.shoe || '#f6f8ff'); const SOCK = new THREE.Color('#ffffff'); const HAIR = new THREE.Color('#2a1c14');
+  const suitC = new THREE.Color(suit); const SKIN = new THREE.Color(opt.skin || '#e8b48a'); const JERSEY = suitC.clone().lerp(new THREE.Color('#ffffff'), 0.06); const SHORTS = suitC.clone().multiplyScalar(0.82); const TRIM = new THREE.Color(opt.trim || '#ffffff'); const SHOE = new THREE.Color(opt.shoe || '#f6f8ff'); const SOCK = new THREE.Color('#ffffff'); const HAIR = new THREE.Color(opt.hair || '#2a1c14');
   // ユニフォーム：そでなしの ジャージ（わきに ライン）＋ ひざ上までの ゆったり パンツ（よこに ライン）＋ ハイカットの くつ
   const regionOf = (name, x, y) => { const n = name.replace('mixamorig', ''); const ax = Math.abs(x);
     if (/Foot|Toe/.test(n)) return y > 0.085 && y < 0.12 ? TRIM : SHOE;
@@ -115,7 +115,10 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     let comboStag = 0; let handleMode = null; let two1x = 0.42;
     let crouch = 0.35, Wd = 0.2, pitch, roll = 0, twist = 0, hipX = 0, hipZ = 0, rootY = 0, stride = 0.24, lift = 0.11, cad = 1, runDir = 1;
     let bx = hs * 0.4, by = 0.2, bz = -0.3, handSide = hs, both = false, guard = false, amp = 0.62;
-    const moving = !G && !hold && sp > 0.3;
+    // The No.7 preview demonstrates stationary ball-hand control before runner motion.
+    const basicDribble = opt.practicePose && cue && (id === 'right' || id === 'left');
+    const moving = !G && !hold && sp > 0.3 && !basicDribble;
+    if (basicDribble) { crouch = 0.64; Wd = 0.29; stride = 0; guard = true; bx = hs * 0.43; bz = -0.28; }
     if (sk.low) { crouch = 0.95; Wd = 0.3; amp = 0.3; stride = 0.12; lift = 0.06; guard = true; }
     if (id === 'pound') { crouch = 0.55; amp = 0.8; guard = true; }
     if (id === 'fast') { crouch = 0.5; stride = 0.42; lift = 0.2; cad = 2; amp = 0.5; }
@@ -208,7 +211,8 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     // 手の ねらい
     if (st.mode) { handSide = 0; both = false; guard = false; twoHands = false; }
     bx = lbx; bz = lbz;
-    const handY = Math.max(by + 0.13, S.hip.y - 0.36);
+    // Keep the palm near the rising ball; on the floor, avoid an unnaturally long arm.
+    const handY = Math.max(by + 0.16, S.hip.y - (opt.practicePose ? 0.25 : 0.36));
     for (const [h, s] of [[T.hl, -1], [T.hr, 1]]) {
       if (st.mode === 'defend') h.set(s * 0.76, S.hip.y + 0.44 + Math.sin(beat * Math.PI * 2 + s) * 0.16, -0.3);
       else if (st.mode === 'chase') { const sw = Math.sin(beat * Math.PI * 2 + (s > 0 ? 0 : Math.PI)); h.set(s * 0.3, S.hip.y + 0.25 + Math.max(0, sw) * 0.15, -0.3 - sw * 0.25); }
