@@ -42,8 +42,8 @@ export function createScene(canvas, o) {
   // ---- 背景の世界 ----
   const env = buildEnv(scene, { themeName: o.theme, stageId: o.stageId, HW, LW, glow: shared.glow });
   // ---- プレイヤー（人型モデル） ----
-  const human = o.human ? makeHuman(o.human, o.sprite === false ? '#171a24' : suit, o.sprite === false
-    ? { num: 7, bigHead: 1.12, trim: '#2879ec', skin: '#c99068', shoe: '#111318', hair: '#593923', practicePose: true, rich: new URLSearchParams(location.search).get('rich') !== '0' }
+  const human = o.human ? makeHuman(o.human, o.sprite === false ? '#0f4cd6' : suit, o.sprite === false
+    ? { num: 7, bigHead: 1.12, trim: '#ffd200', skin: '#c99068', shoe: '#122a65', hair: '#593923', practicePose: true, rich: new URLSearchParams(location.search).get('rich') !== '0' }
     : { num: 7, bigHead: 1.65 }) : null;
   // 敵も バスケットマン：ディフェンス 2人、おいかけてくる 1人、ボス 1人（べつの チームの ユニフォーム）
   // プレイヤーを 絵（スプライト）で 出す：右手ドリブル と パワーポジション

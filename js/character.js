@@ -98,22 +98,22 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     ol.userData.par = o.parent || model; outlines.push(ol); outlineMats.push(om); });
   outlines.forEach((ol) => { ol.userData.par.add(ol); if (opt.guide !== false) ol.layers.enable(1); });
   // ヘッドバンド
-  const band = new THREE.MeshBasicMaterial({ color: suitC }); const tor = new THREE.TorusGeometry(1, 0.22, 8, 20);
+  const band = new THREE.MeshBasicMaterial({ color: TRIM }); const tor = new THREE.TorusGeometry(1, 0.22, 8, 20);
   const attach = (bone, r, y, rx) => { if (!bone) return; const t = new THREE.Mesh(tor, band); const ws = bone.getWorldScale(new THREE.Vector3()).x || 1; t.scale.setScalar(r / ws); t.position.y = y / ws; t.rotation.x = rx; bone.add(t); meshes.push(t); };
   // No.7 appearance prototype: reusable accessories parented to the existing rig.
   // The original skinned mesh and all basketball motions remain unchanged.
   const accessories = []; const accessoryMaterials = []; const accessoryGeometries = [];
   if (opt.rich && !nativeLook && B.Head) {
-    const curlGeo = new THREE.IcosahedronGeometry(0.055, 1);
+    const curlGeo = new THREE.IcosahedronGeometry(0.075, 1);
     const curlMat = new THREE.MeshStandardMaterial({ color: opt.hair || '#593923', roughness: 0.88 });
     accessoryGeometries.push(curlGeo); accessoryMaterials.push(curlMat);
     // Crown and rear curls: deliberately avoid covering the player's face.
     for (let row = 0; row < 3; row++) {
-      const y = 0.14 + row * 0.043;
+      const y = 0.13 + row * 0.065;
       const count = row === 2 ? 7 : 11;
       for (let i = 0; i < count; i++) {
         const theta = Math.PI * 0.15 + i / (count - 1) * Math.PI * 1.7;
-        const radius = row === 2 ? 0.065 : 0.108;
+        const radius = row === 2 ? 0.085 : 0.145;
         const curl = new THREE.Mesh(curlGeo, curlMat);
         curl.position.set(Math.cos(theta) * radius, y + Math.sin(i * 2.4 + row) * 0.012, Math.sin(theta) * radius);
         curl.scale.set(0.82 + (i % 3) * 0.12, 0.65 + (i % 2) * 0.18, 0.85);
