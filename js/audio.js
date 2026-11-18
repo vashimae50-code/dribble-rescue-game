@@ -40,9 +40,9 @@ export class Audio {
   }
   hz(semi) { return 440 * Math.pow(2, (this.base + semi - 69) / 12); }
   // 英語の声（あらかじめ作った音声）を 読みこむ
-  async loadVoice() {
+  async loadVoice(lang = 'en') {
     if (!this.ctx || this.voice) return; this.voice = {};
-    try { const clips = (await import('../models/voice_en.js')).default;
+    try { const clips = (await import(lang === 'ja' ? '../models/voice_ja.js' : '../models/voice_en.js')).default;
       await Promise.all(Object.entries(clips).map(async ([k, b64]) => { try { const bin = atob(b64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); this.voice[k] = await new Promise((res, rej) => this.ctx.decodeAudioData(u.buffer, res, rej)); } catch (e) { /* noop */ } }));
     } catch (e) { /* noop */ }
   }

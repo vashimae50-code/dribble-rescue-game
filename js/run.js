@@ -169,8 +169,9 @@ export function runStage(opts) {
   let trackedF = 0, allF = 0, lowNow = false, rescueT = 0, safeTimer = null, hxNow = 0, hyNow = 0;
   const tipIdx = { ...(pl.tipIdx || {}) };
 
-  const sayBoth = (ja, en) => { if (settings.voice === 'en') audio.say(en); else if (settings.voice) speak(ja, 'ja'); };
-  if (settings.voice === 'en') audio.loadVoice();
+  // こえ：英語・日本語とも あらかじめ 作った 音声。日本語に ない ことばだけ 端末の よみあげ
+  const sayBoth = (ja, en) => { if (settings.voice === 'en') audio.say(en); else if (settings.voice) { if (!audio.say(ja)) speak(ja, 'ja'); } };
+  if (settings.voice === 'en' || settings.voice === 'ja') audio.loadVoice(settings.voice);
   const addText = (t, col = '#fff', size = 1, y = 0.34, life = 1) => texts.push({ t, col, size, y, life });
   const ballScreen = () => scene.project(scene.laneX + 0.4, 0.9, -0.3);
 
@@ -238,7 +239,7 @@ export function runStage(opts) {
   function enterSafe() {
     if (video) { advance(1); return; }   // どうが モード：せんたく がめんを 出さず そのまま つづける
     phase = 'safe'; audio.bgmVol(0.35); sayBoth('セーフゾーン！', 'Safe zone! Take a break.');
-    const hit = cuesAll ? cuesOk / cuesAll : 1; const defT = cam ? (hit > 0.8 ? 2 : hit > 0.5 ? 1 : 0) : 1; const secs = cam ? 6 : 10;
+    const hit = cuesAll ? cuesOk / cuesAll : 1; const defT = cam ? (hit > 0.8 ? 2 : hit > 0.5 ? 1 : 0) : 1; const secs = cam ? 6 : 5;
     overlay.innerHTML = `<div class="safe"><div class="safe-title">🛡️ セーフゾーン <small>ボールを持って ひとやすみ</small></div>
       <div class="safe-q">${cam ? `ここまで <b>${Math.round(hit * 100)}%</b> せいこう！ つぎのルートは？` : 'いまの どうだった？ つぎのルートを えらぼう'}</div>
       <div class="safe-btns"><button data-t="2"><span>🔥</span><b>よゆう！</b><small>ちかみち（はやい・⚡多い）</small></button><button data-t="1"><span>🙂</span><b>ギリギリ</b><small>このままのルート</small></button><button data-t="0"><span>😵</span><b>むずかしい</b><small>あんぜんルート＋コツ</small></button></div>

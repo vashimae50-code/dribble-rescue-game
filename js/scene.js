@@ -6,6 +6,7 @@ import { makeHuman } from './character.js';
 import { buildEnv } from './env.js';
 import { spritePose, SHEETS } from './sprite.js';
 import { spritePose7, SHEETS7 } from './sprite7.js';
+const SHEET_SC = { head: [0.86, 0.92], waist: [0.86, 0.92] }; const ONE_SC = [1, 1];
 import { EffectComposer } from '../vendor/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from '../vendor/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from '../vendor/addons/postprocessing/UnrealBloomPass.js';
@@ -228,8 +229,10 @@ export function createScene(canvas, o) {
       pose = (NEW7 ? spritePose7 : spritePose)({ sk, cue, beat: abeat, vx, bp, bp2: human && human.ball2(), mem: psMem });
       const T = psT[pose.sheet] || psT[PSN[0]]; const f = pose.f;
       if (pspr.material.map !== T) { pspr.material.map = T; pspr.material.needsUpdate = true; }
+      // 頭・こしまわりの 絵は 体が 大きめに かいてあるので、ほかの コマと サイズを そろえる（よこ・たて）
+      const sc = (NEW7 && SHEET_SC[pose.sheet]) || ONE_SC; pspr.scale.set(PSS * GK * sc[0], PSS * GK * sc[1], 1);
       T.repeat.set(1 / 3, 1 / PSROWS); T.offset.set((f % 3) / 3, (PSROWS - 1 - Math.floor(f / 3)) / PSROWS); pspr.position.set(laneX, pose.lift * GK, 0.02);
-      if (pose.ball) { bx = laneX + pose.ball.x * GK; by = 0.17 + (pose.ball.y - 0.17) * GK; bz = pose.ball.z; }
+      if (pose.ball) { bx = laneX + pose.ball.x * GK * sc[0]; by = 0.17 + (pose.ball.y * sc[1] - 0.17) * GK; bz = pose.ball.z; }
     }
     // つよく ドリブル：ボールを 大きく、ゆかに つくたびに 大きな わ
     { ball.scale.setScalar(1); // つよい ドリブルでも ボールの 大きさは かえない（大きく するのは 流れてくる ●）

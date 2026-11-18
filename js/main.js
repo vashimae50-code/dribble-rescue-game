@@ -302,12 +302,13 @@ function how() {
     <li><b>セーフゾーン</b>では ボールを持って きゅうけい。つぎの ルートを えらべる。「むずかしい」を えらぶと コツが 出る。</li>
     <li>ワザを やるたびに <b>れんしゅうポイント</b>が たまる。レベルの ステージを ぜんぶ クリアして ★が たまったら <b>しょうきゅうテスト</b>。ごうかくで つぎの レベルへ。</li>
     <li>むずかしい ワザは <b>トレーニングルーム</b>で ゆっくり れんしゅうできる。</li></ol>
+    <p class="hint">🗣️ にほんごの こえ：VOICEVOX:No.7</p>
     <p class="hint">📷 カメラはんてい：iPad・iPhone を 2〜3m はなして 全身を うつすと、手の左右・ひくさ・はやさ・持ちかえ・左右の うごき・ジャンプを 見ます。レッグスルーや ビハインドは「持ちかえたか」まで。カメラが つかえない がめんでは 自動で カメラなしに なります。</p></div>`, 'home');
 }
 function settings() {
   const st = S.settings; const tg = (k, l) => `<label class="toggle"><input type="checkbox" data-set="${k}" ${st[k] ? 'checked' : ''}><span>${l}</span></label>`;
   show(`<div class="card"><h2>⚙️ せってい（おうちの人むけ）</h2>
-    ${tg('camera', '📷 カメラはんていを つかう')}<div class="prow"><b>🗣️ こえの あいず</b><div class="seg">${[['en', 'English'], ['ja', 'にほんご（iPhoneでは 音楽が 止まることが あります）'], ['', 'オフ']].map(([v, l]) => `<button class="${(st.voice || '') === v || (st.voice === true && v === 'ja') ? 'on' : ''}" data-voice="${v}">${l}</button>`).join('')}</div></div>${tg('bloom', '✨ ひかりの えんしゅつ（うごきが おもい ときは オフ）')}${tg('music', '🎵 おんがく')}${tg('sound', '🔊 こうかおん')}${tg('openAll', '🔓 すべての コートを ひらく（おためし用）')}${tg('swap', '📷 右手と左手を 入れかえる（ぎゃくに 数えるとき）')}${tg('videoRec', '🎬 どうが ろくがモード（つぎに あそぶ ステージを じどうで ろくがする・セーフゾーンの せんたくも スキップ）')}
+    ${tg('camera', '📷 カメラはんていを つかう')}<div class="prow"><b>🗣️ こえの あいず</b><div class="seg">${[['en', 'English'], ['ja', 'にほんご'], ['', 'オフ']].map(([v, l]) => `<button class="${(st.voice || '') === v || (st.voice === true && v === 'ja') ? 'on' : ''}" data-voice="${v}">${l}</button>`).join('')}</div></div>${tg('bloom', '✨ ひかりの えんしゅつ（うごきが おもい ときは オフ）')}${tg('music', '🎵 おんがく')}${tg('sound', '🔊 こうかおん')}${tg('openAll', '🔓 すべての コートを ひらく（おためし用）')}${tg('swap', '📷 右手と左手を 入れかえる（ぎゃくに 数えるとき）')}${tg('videoRec', '🎬 どうが ろくがモード（つぎに あそぶ ステージを じどうで ろくがする・セーフゾーンの せんたくも スキップ）')}
     <div class="prow"><b>🎵 おんがくの スタイル</b><div class="seg">${[['workout', 'ダンス（アップテンポ）'], ['game', 'ゲーム（ピコピコ）']].map(([v, l]) => `<button class="${(st.musicStyle || 'workout') === v ? 'on' : ''}" data-ms="${v}">${l}</button>`).join('')}</div></div>
     <h3>🔈 おとの おおきさ</h3>
     ${[['volMusic', '🎵 おんがく', 0.5], ['volBall', '🏀 ボールの 音', 1], ['volVoice', '🗣️ こえ', 1]].map(([k, l, d]) => `<div class="prow"><b>${l}</b><input type="range" min="0" max="100" step="5" value="${Math.round((st[k] ?? d) * 100)}" data-vol="${k}" style="flex:1;max-width:260px"><span class="volv" style="width:3em;text-align:right">${Math.round((st[k] ?? d) * 100)}</span></div>`).join('')}
