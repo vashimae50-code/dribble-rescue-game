@@ -181,9 +181,11 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     if (basicDribble) {
       // Jr. NBA: balanced knee bend and a controlled dribble below the waist.
       crouch = 0.65;
-      pitch = 0.52;
-      T.fl.set(-0.27, 0, -0.10);
-      T.fr.set(0.27, 0, 0.10);
+      pitch = 0.58;
+      // Hip hinge: shift pelvis behind the planted feet, not just bend the torso.
+      hipZ = 0.16;
+      T.fl.set(-0.27, 0, -0.14);
+      T.fr.set(0.27, 0, 0.06);
       rootY = 0;
       // Release/catch cycle: ball reaches waist height, but the hand does not follow it to the floor.
       const waistTop = Math.max(0.72, hipsBind - crouch * 0.24 + 0.05);
