@@ -365,7 +365,10 @@ export function runStage(opts) {
       if (SKILLS[c.skill].lane || c.skill === 'back' || c.skill === 'fast' || c.skill === 'drive') drawArrows(c, gx, gy - r * 0.78, r, beat);
       if (settings.voice === 'en' && SKILLS[c.skill].en) { const e = enLabel(c).toUpperCase() + '!'; txt(e, W - pad, gy - r - fs * 0.75, Math.min(fs * 1.25, (W * 0.5) / Math.max(4, e.length) * 1.7), '#fff', 'right'); }
       if (c.b1 - c.b0 >= 2) { const pr = clamp((beat - c.b0) / (c.b1 - c.b0), 0, 1); pill(gx - r, gy + r + 4 * DPR, 2 * r * pr, 5 * DPR, SKILLS[c.skill].c, 0.95); }
-      const s = cueLabel(c); txt(s, W - pad, gy + r + fs * 0.95, Math.min(fs * 1.05, (W * 0.6) / Math.max(4, s.length) * 1.5), SKILLS[c.skill].c, 'right');
+      // The current technique belongs above the two-view demonstration, like the 'つぎ' label.
+      const s = cueLabel(c);
+      const labelSize = Math.min(fs * 0.95, (2 * r) / Math.max(5, s.length) * 1.55);
+      txt(s, gx, gy - r - fs * 0.55, labelSize, SKILLS[c.skill].c);
       if (next && next.skill !== 'rest') { const rem = next.b0 - beat; if (rem <= 4 && rem > 0) { const r2 = r * 0.56; const nx = gx - r - r2 - 10 * DPR, ny = gy + r - r2; g.globalAlpha = 0.9; drawGlyph(next, nx, ny, r2, next.b0 + frac(beat) + Math.floor(beat) % 2, 0.9); g.globalAlpha = 1; txt(`つぎ ${Math.ceil(rem)}`, nx, ny - r2 - fs * 0.5, fs * 0.7, SKILLS[next.skill].c); } }
     }
     if (cam) { const ok = allF ? trackedF / allF : 0; txt(ok > 0.5 ? '📷 OK' : '📷 からだを うつしてね', W - pad, H - pad - fs * 0.5, fs * 0.6, ok > 0.5 ? '#7dffb0' : '#ffe03d', 'right'); }
