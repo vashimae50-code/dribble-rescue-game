@@ -224,7 +224,7 @@ export function createScene(canvas, o) {
     const noBall = cue && cue.ballMode === 'none';
     P.position.set(laneX, 0, 0);
     const abeat = cue && cue.rush ? cue.b0 + (beat - cue.b0) * 2 : beat; // れんだ：ドリブルを 2ばいの はやさに
-    let bp = null; if (human) bp = human.animate({ dt, beat: abeat, cue, sk, vx, startHold: !!st.startHold });
+    let bp = null; if (human) bp = human.animate({ dt, beat: abeat, cue, sk, vx, startHold: !!st.startHold, startHand: st.startHand });
     let bx = laneX + (bp ? bp.x : 0.4), by = bp ? bp.y : 0.8, bz = bp ? bp.z : -0.3;
     let pose = null;
     if (pspr) { // 絵の コマえらび と ボールの いち（js/sprite.js）
@@ -305,7 +305,7 @@ export function createScene(canvas, o) {
     // うごきガイド：同じ人を 正面から（かがみのように 左右そのまま）かげ絵で うつす
     if (st.pip && human) {
       const p = st.pip; const back = sk.behind || sk.handle === 'swing' || sk.combo === 'behind'; const legv = sk.legs || sk.combo === 'legs'; gfloor.scale.y = legv ? 14 : 1; if (legv) { const hz = human.root.position.z; gcam.position.set(laneX - 4.3, 0.95, hz - 1.5); gcam.lookAt(laneX, 0.78, hz); } else { const sd = !back && cue && (cue.hand === 'R' || cue.hand === 'L') && !sk.lane ? (cue.hand === 'L' ? -1 : 1) : 0; gcam.position.set(laneX + sd * 2.3, sd ? 0.85 : 1.0, back ? 4.3 : sd ? -3.7 : -4.3); gcam.lookAt(laneX, sd ? 0.8 : 0.92, 0); if (sd) gfloor.scale.y = 14; } gcam.updateProjectionMatrix(); // お手本は かがみに しない（右手は 右手の ほうに 見える）
-      const bp0 = ball.position.clone(), b20 = ball2.position.clone(); const gb = human.animate({ dt, beat, cue, sk, vx: 0, guide: true, startHold: !!st.startHold }); ball.position.set(laneX + gb.x, gb.y, gb.z); { const g2 = human.ball2(); if (g2) ball2.position.set(laneX + g2.x, g2.y, g2.z); } trail.visible = false;
+      const bp0 = ball.position.clone(), b20 = ball2.position.clone(); const gb = human.animate({ dt, beat, cue, sk, vx: 0, guide: true, startHold: !!st.startHold, startHand: st.startHand }); ball.position.set(laneX + gb.x, gb.y, gb.z); { const g2 = human.ball2(); if (g2) ball2.position.set(laneX + g2.x, g2.y, g2.z); } trail.visible = false;
       const bg = scene.background; const fg = scene.fog; scene.background = null; scene.fog = null; human.setSilhouette(true, sk.c); const bm = ball.material; ball.material = pipBall; ball2.material = pipBall;
       renderer.setRenderTarget(null); renderer.autoClear = false; renderer.setScissorTest(true); renderer.setScissor(p.x, H - p.y - p.h, p.w, p.h); renderer.setViewport(p.x, H - p.y - p.h, p.w, p.h); renderer.setClearColor(0x050a22, 1); renderer.clear(true, true, false);
       if (o.sprite === false) {

@@ -225,7 +225,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
       both = true; twoHands = false; guard = false;
       crouch = 0.65; pitch = 0.82; hipZ = -0.03;
       T.fl.set(-0.27, 0, -0.17); T.fr.set(0.27, 0, 0.03);
-      rootY = 0; bx = 0; bz = -0.42; by = hipsBind - crouch * 0.24 + 0.04;
+      rootY = 0; bx = (st.startHand === 'L' ? -1 : 1) * 0.32; bz = -0.40; by = hipsBind - crouch * 0.24 + 0.04;
     }
     // A strong stationary dribble uses a small coordinated knee/hip/torso pulse.
     // The feet remain planted; the pulse peaks as the ball travels downward.
