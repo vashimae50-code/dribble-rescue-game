@@ -1,6 +1,6 @@
 // ドリバト！（めざせ！ドリブルキング） メニュー・成長・ごほうび
 import { SKILLS, SKILL_IDS, RANKS, TIERS, tierOf, rankSkills, poolFor, WORLDS, MISSIONS, STAGES, sl, FRIENDS, BOSS_FRIENDS, ALL_FRIENDS, BALLS, SUITS, SHOP_BALLS, ballComplete, KING_FRIEND, kingOpen, lvStar3, CAPSULE_COST, AVATARS,
-  S, save, avHTML, MAX_LV, LEVEL_GOAL, LEVEL_SPEED, MAIN_STAGES, curLv, lvStars, lvTotal, lvCleared, lvDone, addPlayer, renamePlayer, player, totalStars, mastery, canTest, dayState, missionProgress, stamp, esc, MISSION_COIN, MISSION_ALL, missionAllDone, STREAK_RW, streakNow, GROW, growOf, budLv, BUD_LV, TITLES, checkTitles, titleOf } from './data.js';
+  S, save, avHTML, MAX_LV, LEVEL_GOAL, LEVEL_SPEED, MAIN_STAGES, curLv, lvStars, lvTotal, lvCleared, lvDone, testReady, addPlayer, renamePlayer, player, totalStars, mastery, canTest, dayState, missionProgress, stamp, esc, MISSION_COIN, MISSION_ALL, missionAllDone, STREAK_RW, streakNow, GROW, growOf, budLv, BUD_LV, TITLES, checkTitles, titleOf } from './data.js';
 import { runStage } from './run.js';
 import { preloadStage } from './env.js';
 import { ballIcon } from './balls.js';
@@ -55,15 +55,17 @@ function home() {
 }
 
 // ---------- ステージ ----------
+const testBtn = (p) => `<button class="banner test" data-act="testIntro"><b>🎓 しょうきゅうテストに ちょうせんできる！</b><small>R${p.rank} ${RANKS[p.rank].n} → R${p.rank + 1} ${RANKS[p.rank + 1].n}　ごうかくで つぎの レベルと 🪙100</small></button>`;
 function lvBanner(p) {
   const L = curLv(p); const tot = lvTotal(p, L), cl = lvCleared(p, L), goal = LEVEL_GOAL[L]; const n = MAIN_STAGES.length;
+  if (L === p.rank && testReady(p)) return testBtn(p);
   if (L < p.rank || L >= MAX_LV) return `<button class="banner" data-act="tab" data-tab="stages"><b>🏅 R${L} ${RANKS[L].n}　⭐${tot}/${n * 3}</b><small>${L < p.rank ? 'クリアずみの レベル' : 'さいごの レベル'}</small></button>`;
   return `<button class="banner" data-act="tab" data-tab="stages"><b>🏅 R${L} ${RANKS[L].n} → R${L + 1} ${RANKS[L + 1].n} まで</b><small>ステージ ★1いじょう ${cl}/${n}　・　⭐ ${tot}/${goal}</small><span class="mbar"><i style="width:${Math.min(100, (Math.min(cl / n, tot / goal)) * 100)}%"></i></span></button>`;
 }
 function stages() {
   const p = player(); const L = curLv(p); const ls = lvStars(p, L); const ts = lvTotal(p, L); const goal = LEVEL_GOAL[L]; const cl = lvCleared(p, L); const n = MAIN_STAGES.length;
   const tabs = `<section class="card lvcard"><div class="seg lvtabs">${Array.from({ length: MAX_LV }, (_, i) => i + 1).map((r) => `<button class="${r === L ? 'on' : ''}" ${r > p.rank ? 'disabled' : ''} data-act="lv" data-lv="${r}">${r > p.rank ? '🔒' : lvDone(p, r) ? '🏅' : ''}R${r} ${RANKS[r].n}</button>`).join('')}</div>
-    <p class="hint">${L < MAX_LV ? (L < p.rank ? `R${L} は クリアずみ！ ⭐${ts}/${n * 3}` : `R${L + 1} が ひらく じょうけん：<b>ぜんぶの ステージで ★1いじょう（${cl}/${n}）</b> ＋ <b>⭐ ごうけい ${goal}こ（いま ${ts}こ）</b>　めざせ ぜんぶ ★2！`) : `さいごの レベル！ ⭐${ts}/${n * 3}`}</p></section>`;
+    <p class="hint">${L < MAX_LV ? (L < p.rank ? `R${L} は クリアずみ！ ⭐${ts}/${n * 3}` : `しょうきゅうテスト（R${L + 1} へ）が うけられる じょうけん：<b>ぜんぶの ステージで ★1いじょう（${cl}/${n}）</b> ＋ <b>⭐ ごうけい ${goal}こ（いま ${ts}こ）</b>　めざせ ぜんぶ ★2！`) : `さいごの レベル！ ⭐${ts}/${n * 3}`}</p>${L === p.rank && testReady(p) ? testBtn(p) : ''}</section>`;
   show(tabs + WORLDS.map((w, wi) => {
     const locked = !S.settings.openAll && ts < w.need;
     return `<section class="world ${locked ? 'locked' : ''}" style="--a:${w.pal.a};--b:${w.pal.b};--bg:${w.pal.bg};--img:url(img/court/${w.theme}1.webp)">
@@ -177,7 +179,7 @@ function result(o, r, noCam) {
   if (o.mode === 'test') return testResult(o, r);
   const s = o.stage; const m = MISSIONS[s.mission]; const d = dayState(p);
   const pr = applyPractice(p, r); const { ups, stamped } = pr; d.clears++; d.st = d.st || []; if (!d.st.includes(s.id)) d.st.push(s.id); if (r.stars >= 3) d.star3 = (d.star3 || 0) + 1; if (m.boss) d.boss = (d.boss || 0) + 1; addLog(p, { t: 'stage', id: s.id, stars: r.stars, score: r.score });
-  const prevBest = p.best[s.id] || 0; const isBest = r.score > prevBest; if (isBest) p.best[s.id] = r.score; p.stars[s.id] = Math.max(p.stars[s.id] || 0, r.stars); let lvUp = 0; if (!s.sp) { const L = o.level || curLv(p); const ls = lvStars(p, L); ls[s.id] = Math.max(ls[s.id] || 0, r.stars); if (L === p.rank && p.rank < MAX_LV && lvDone(p, L)) { p.rank++; p.lv = p.rank; p.day = null; lvUp = p.rank; } }
+  const prevBest = p.best[s.id] || 0; const isBest = r.score > prevBest; if (isBest) p.best[s.id] = r.score; p.stars[s.id] = Math.max(p.stars[s.id] || 0, r.stars); let lvUp = 0; if (!s.sp) { const L = o.level || curLv(p); const ls = lvStars(p, L); ls[s.id] = Math.max(ls[s.id] || 0, r.stars); if (L === p.rank && testReady(p)) lvUp = p.rank; }
   let coins = 20 + (m.boss ? 10 : 0); let got = null;
   let ending = null; if (s.king) { const L = o.level || curLv(p); p.king = p.king || {}; const first = !Object.keys(p.king).length; if (!p.king[L]) { ending = { L, first, friend: null }; p.king[L] = true; coins += 200; if (!p.friends.includes(KING_FRIEND.id)) { p.friends.push(KING_FRIEND.id); ending.friend = KING_FRIEND; } } }
   if (m.boss && !s.king && !p.bossDone[s.world.id]) { p.bossDone[s.world.id] = true; const bf = BOSS_FRIENDS[s.wi]; if (!p.friends.includes(bf.id)) { p.friends.push(bf.id); got = bf; } }
@@ -195,7 +197,7 @@ function result(o, r, noCam) {
       ${noCam ? '<p class="hint">📷 この がめんでは カメラが つかえなかったので、カメラなしで あそびました。</p>' : ''}
       ${r.cam && r.tracked < 0.5 ? '<p class="hint">📷 からだが あまり うつって いなかったよ。もうすこし はなれて 全身を うつしてね。</p>' : ''}
       ${hk ? `<button class="banner" data-act="dojo" data-id="${hk}"><b>💡 ${SKILLS[hk].i} ${SKILLS[hk].n} を れんしゅうする？</b><small>コツ：${SKILLS[hk].tips[0]}</small></button>` : ''}
-      ${lvUp ? `<div class="rescue rare"><div class="rays"></div><span>🏅</span><b>レベルアップ！ R${lvUp} ${RANKS[lvUp].n} が ひらいた！</b><small>あたらしい ワザ：${rankSkills(lvUp).map((k) => SKILLS[k].n).join('・')}</small></div>` : ''}
+      ${lvUp ? testBtn(p) : ''}
       <div class="btns"><button class="big" data-act="stage" data-id="${s.id}">もういちど</button>${next ? `<button class="big alt" data-act="stage" data-id="${next.id}">つぎへ ▶</button>` : ''}<button class="big ghost" data-act="tab" data-tab="home">ホーム</button></div></div>`, 'stages');
   beep([0, 4, 7, 12, 16, 12, 19]);
   rankAfter(p, s, o.level || curLv(p), r);
@@ -236,7 +238,7 @@ function testIntro() {
 }
 function testResult(o, r) {
   const p = player(); const ks = rankSkills(p.rank); applyPractice(p, r); addLog(p, { t: 'test', id: 'R' + p.rank }); save();
-  const pass = () => { p.verified[p.rank] = true; p.rank++; p.coins += 100; save(); beep([0, 4, 7, 12, 16, 19, 24]);
+  const pass = () => { p.verified[p.rank] = true; p.rank++; p.lv = p.rank; p.day = null; p.coins += 100; save(); beep([0, 4, 7, 12, 16, 19, 24]);
     show(`<div class="card result" style="--a:${RANKS[p.rank].c};--b:#ffe03d"><div class="rescue rare"><div class="rays"></div><span>🎓</span><b>ごうかく！ R${p.rank} ${RANKS[p.rank].n} に しょうきゅう！</b><small>${RANKS[p.rank].sub}　🪙 +100</small></div>
       <h3>あたらしい ワザ</h3><div class="legend">${rankSkills(p.rank).map((k) => `<div class="tile" style="--c:${SKILLS[k].c}"><b>${SKILLS[k].i} ${SKILLS[k].n}</b><span>${SKILLS[k].tips[0]}</span></div>`).join('')}</div>
       <div class="btns"><button class="big" data-act="tab" data-tab="training">トレーニングルームへ</button><button class="big ghost" data-act="tab" data-tab="home">ホーム</button></div></div>`, 'home'); };
@@ -297,7 +299,7 @@ function how() {
     <li>通路の おくから <b>ゲート</b> が せまってくる。くぐるときに、その ワザに きりかえる！</li>
     <li>がめんの <b>ロボ</b>が お手本。うごきを まねしよう。「みぎへ」「ひだりへ」は <b>1〜2歩</b> うごく。</li>
     <li><b>セーフゾーン</b>では ボールを持って きゅうけい。つぎの ルートを えらべる。「むずかしい」を えらぶと コツが 出る。</li>
-    <li>ワザを やるたびに <b>れんしゅうポイント</b>が たまる。ランクの ワザが そだったら <b>しょうきゅうテスト</b>へ。</li>
+    <li>ワザを やるたびに <b>れんしゅうポイント</b>が たまる。レベルの ステージを ぜんぶ クリアして ★が たまったら <b>しょうきゅうテスト</b>。ごうかくで つぎの レベルへ。</li>
     <li>むずかしい ワザは <b>トレーニングルーム</b>で ゆっくり れんしゅうできる。</li></ol>
     <p class="hint">📷 カメラはんてい：iPad・iPhone を 2〜3m はなして 全身を うつすと、手の左右・ひくさ・はやさ・持ちかえ・左右の うごき・ジャンプを 見ます。レッグスルーや ビハインドは「持ちかえたか」まで。カメラが つかえない がめんでは 自動で カメラなしに なります。</p></div>`, 'home');
 }
@@ -377,7 +379,7 @@ function players(first) {
   show(`${first === true ? '<div class="hero"><div class="logo"><span>めざせ！ドリブルキング</span><b>ドリバト！</b></div></div>' : ''}<div class="card"><h2>${first === true ? 'はじめに プレイヤーを つくろう' : 'あたらしい プレイヤー'}</h2>
     <h3>なまえ</h3><input id="pname" maxlength="8" placeholder="なまえ" autocomplete="off">
     <div class="avatars">${AVATARS.map((a) => `<button class="av ${a === av ? 'on' : ''}" data-av="${a}">${avHTML(a)}</button>`).join('')}</div>
-    <p class="hint">スタートの レベル（ここから はじまります。つぎの レベルは ステージを クリアして ひらく）</p><div class="seg" id="rk">${[1, 2, 3, 4, 5, 6].map((r) => `<button class="${r === 1 ? 'on' : ''}" data-r="${r}">R${r} ${RANKS[r].n}</button>`).join('')}</div>
+    <p class="hint">スタートの レベル（ここから はじまります。つぎの レベルは ステージを クリアして しょうきゅうテストに ごうかくすると ひらく）</p><div class="seg" id="rk">${[1, 2, 3, 4, 5, 6].map((r) => `<button class="${r === 1 ? 'on' : ''}" data-r="${r}">R${r} ${RANKS[r].n}</button>`).join('')}</div>
     <button class="big" id="psave">つくる</button>${first === true ? '' : '<button class="mini" data-act="who">← もどる</button>'}</div>`, 'home', true);
   app.querySelectorAll('.av').forEach((b) => b.addEventListener('click', () => { av = b.dataset.av; app.querySelectorAll('.av').forEach((x) => x.classList.toggle('on', x === b)); }));
   app.querySelectorAll('#rk button').forEach((b) => b.addEventListener('click', () => { rank = +b.dataset.r; app.querySelectorAll('#rk button').forEach((x) => x.classList.toggle('on', x === b)); }));

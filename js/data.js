@@ -252,6 +252,8 @@ export function lvStars(p, L) { if (!p.ls) migrateLv(p); if (!p.ls[L]) p.ls[L] =
 export const lvTotal = (p, L) => { const m = lvStars(p, L); return MAIN_STAGES.reduce((a, s) => a + (m[s.id] || 0), 0); };
 export const lvCleared = (p, L) => { const m = lvStars(p, L); return MAIN_STAGES.filter((s) => (m[s.id] || 0) > 0).length; };
 export const lvDone = (p, L) => lvCleared(p, L) === MAIN_STAGES.length && lvTotal(p, L) >= LEVEL_GOAL[L];
+// しょうきゅうテストが うけられる：いまの レベルの じょうけんを みたした
+export const testReady = (p) => (p.rank || 1) < MAX_LV && lvDone(p, p.rank || 1);
 
 // ---------- 保存 ----------
 const KEY = 'dribble-rescue-v2';
