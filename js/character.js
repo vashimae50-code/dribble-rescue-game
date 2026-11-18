@@ -25,6 +25,7 @@ export async function loadHuman() {
       // Fixed same-origin path: no untrusted user-provided model URLs.
       const gltf = await new GLTFLoader().loadAsync('models/no7-v2.glb');
       const model = verifyRig(gltf.scene);
+      model.userData.no7Replacement = true;
       modelCache.set(key, model);
       console.info('[No.7] Rigged replacement GLB loaded');
       return model;
@@ -62,6 +63,7 @@ function gradientMap3() {
 
 export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   const model = cloneModel(template);
+  const nativeLook = !!template.userData.no7Replacement;
   const root = new THREE.Group(); const holder = new THREE.Group(); holder.rotation.y = Math.PI; holder.add(model); root.add(holder);
   const B = {}; let skinned = null;
   model.traverse((o) => { if (o.isBone) B[o.name.replace('mixamorig', '')] = o; if (o.isSkinnedMesh) { skinned = o; o.frustumCulled = false; } });
@@ -87,9 +89,9 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
       // 服の ところは 少し ふくらませて、ぴったり しすぎない ように
       if (nor && cloth(c) && !/Foot|Toe/.test(bn)) { const legs = /UpLeg|Hips/.test(bn); const k = legs ? 0.02 + 0.035 * clamp((0.95 - y) / 0.35, 0, 1) : 0.014; pos.setXYZ(i, x + nor.getX(i) * k, y + nor.getY(i) * k, z + nor.getZ(i) * k); }
       if (/Spine/.test(bn) && Math.abs(x) < 0.06 && y > 1.2 && y < 1.4) { zBack = Math.max(zBack, -z); zFront = Math.max(zFront === 1 ? -1 : zFront, z); } }
-    pos.needsUpdate = true; g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    if (!nativeLook) { pos.needsUpdate = true; g.setAttribute('color', new THREE.BufferAttribute(col, 3)); }
     // アニメっぽい セルシェーディング（段々の 色わけ）に
-    const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradientMap3(), emissive: 0x1a1410, emissiveIntensity: 0.22 }); o.material = m; meshes.push(o); mats.push(m);
+    const m = nativeLook ? o.material : new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradientMap3(), emissive: 0x1a1410, emissiveIntensity: 0.22 }); o.material = m; meshes.push(o); mats.push(m);
     // ふちどり（アウトライン）：ひとまわり 大きい 黒の うらめんメッシュを かさねる
     const om = new THREE.MeshBasicMaterial({ color: 0x120e0c, side: THREE.BackSide }); om.onBeforeCompile = (sh) => { sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n transformed += normalize(normal) * 0.013;'); };
     const ol = new THREE.SkinnedMesh(g, om); ol.bind(o.skeleton, o.bindMatrix); ol.frustumCulled = false;
@@ -101,7 +103,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   // No.7 appearance prototype: reusable accessories parented to the existing rig.
   // The original skinned mesh and all basketball motions remain unchanged.
   const accessories = []; const accessoryMaterials = []; const accessoryGeometries = [];
-  if (opt.rich && B.Head) {
+  if (opt.rich && !nativeLook && B.Head) {
     const curlGeo = new THREE.IcosahedronGeometry(0.055, 1);
     const curlMat = new THREE.MeshStandardMaterial({ color: opt.hair || '#593923', roughness: 0.88 });
     accessoryGeometries.push(curlGeo); accessoryMaterials.push(curlMat);
@@ -128,7 +130,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   const sil = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
   const setSilhouette = (on, color) => { if (on) sil.color.set(color); let i = 0; for (const m of meshes) { if (m.isSkinnedMesh) m.material = on ? sil : mats[i++]; else if (m.userData.mat0) m.visible = !on; else m.material = on ? sil : band; } outlines.forEach((ol) => { ol.visible = !on; }); accessories.forEach((a) => { a.visible = !on; }); };
   if (opt.guide !== false) meshes.forEach((m) => m.layers.enable(1));
-  const dispose = () => { geos.forEach((g) => g.dispose()); mats.forEach((m) => m.dispose()); numMats.forEach((m) => m.dispose()); band.dispose(); tor.dispose(); sil.dispose(); accessoryGeometries.forEach((g) => g.dispose()); accessoryMaterials.forEach((m) => m.dispose()); outlineMats.forEach((m) => m.dispose()); if (faceMat) { faceMat.dispose(); faceTex.dispose(); } };
+  const dispose = () => { geos.forEach((g) => g.dispose()); mats.forEach((m) => { if (!nativeLook) m.dispose(); }); numMats.forEach((m) => m.dispose()); band.dispose(); tor.dispose(); sil.dispose(); accessoryGeometries.forEach((g) => g.dispose()); accessoryMaterials.forEach((m) => m.dispose()); outlineMats.forEach((m) => m.dispose()); if (faceMat) { faceMat.dispose(); faceTex.dispose(); } };
   root.updateMatrixWorld(true);
   const wp = (b) => b.getWorldPosition(V());
   const L = { up: wp(B.LeftUpLeg).distanceTo(wp(B.LeftLeg)), lo: wp(B.LeftLeg).distanceTo(wp(B.LeftFoot)), ua: wp(B.LeftArm).distanceTo(wp(B.LeftForeArm)), fa: wp(B.LeftForeArm).distanceTo(wp(B.LeftHand)) };
