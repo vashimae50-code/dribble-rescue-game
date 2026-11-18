@@ -118,7 +118,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     // The No.7 preview demonstrates stationary ball-hand control before runner motion.
     // Keep the preview player in a basketball-ready stance, not a running gait.
     // Rest is included because most stage time is spent between skill cues.
-    const basicDribble = opt.practicePose && !G && !hold && (id === 'right' || id === 'left' || id === 'rest');
+    const basicDribble = opt.practicePose && !hold && (id === 'right' || id === 'left' || id === 'rest');
     const moving = !G && !hold && sp > 0.3 && !basicDribble;
     if (basicDribble) { crouch = 0.65; Wd = 0.27; stride = 0; guard = true; bx = hs * 0.43; bz = -0.32; amp = 0.58; }
     if (sk.low) { crouch = 0.95; Wd = 0.3; amp = 0.3; stride = 0.12; lift = 0.06; guard = true; }
@@ -181,9 +181,9 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     if (basicDribble) {
       // Jr. NBA: balanced knee bend and a controlled dribble below the waist.
       crouch = 0.65;
-      pitch = 0.58;
+      pitch = 0.78;
       // Hip hinge: shift pelvis behind the planted feet, not just bend the torso.
-      hipZ = 0.16;
+      hipZ = 0.26;
       T.fl.set(-0.27, 0, -0.14);
       T.fr.set(0.27, 0, 0.06);
       rootY = 0;
