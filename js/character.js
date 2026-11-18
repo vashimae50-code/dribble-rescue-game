@@ -3,13 +3,40 @@ import * as THREE from '../vendor/three.module.min.js';
 import { GLTFLoader } from '../vendor/addons/loaders/GLTFLoader.js';
 import { comboState } from './data.js';
 
-let cached = null;
+// Load a replaceable, rigged GLB from our own site when present. The existing
+// embedded Mixamo model remains the safe fallback for all gameplay motions.
+const modelCache = new Map();
+const REQUIRED_BONES = ['Hips', 'Spine', 'Spine1', 'Spine2', 'Head',
+  'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'RightUpLeg', 'RightLeg', 'RightFoot',
+  'LeftArm', 'LeftForeArm', 'LeftHand', 'RightArm', 'RightForeArm', 'RightHand'];
+function verifyRig(scene) {
+  const bones = new Set(); let skinned = false;
+  scene.traverse((o) => { if (o.isBone) bones.add(o.name.replace(/^mixamorig:?/, '')); if (o.isSkinnedMesh) skinned = true; });
+  const missing = REQUIRED_BONES.filter((b) => !bones.has(b));
+  if (!skinned || missing.length) throw new Error('No.7 GLB incompatible rig: ' + (missing.join(', ') || 'no skinned mesh'));
+  return scene;
+}
 export async function loadHuman() {
-  if (cached) return cached;
+  const mode = new URLSearchParams(location.search).get('model');
+  const key = mode === 'no7-v2' ? 'no7-v2' : 'legacy';
+  if (modelCache.has(key)) return modelCache.get(key);
+  if (key === 'no7-v2') {
+    try {
+      // Fixed same-origin path: no untrusted user-provided model URLs.
+      const gltf = await new GLTFLoader().loadAsync('models/no7-v2.glb');
+      const model = verifyRig(gltf.scene);
+      modelCache.set(key, model);
+      console.info('[No.7] Rigged replacement GLB loaded');
+      return model;
+    } catch (error) {
+      console.warn('[No.7] Replacement GLB unavailable or incompatible; using original', error);
+    }
+  }
+  if (modelCache.has('legacy')) return modelCache.get('legacy');
   const b64 = (await import('../models/human_model.js')).default;
   const bin = atob(b64); const buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
   const gltf = await new GLTFLoader().parseAsync(buf.buffer, '');
-  cached = gltf.scene; return cached;
+  modelCache.set('legacy', gltf.scene); return gltf.scene;
 }
 
 // ひな型から 1体ぶんを 作る（骨と メッシュを 新しく つなぎなおす）
