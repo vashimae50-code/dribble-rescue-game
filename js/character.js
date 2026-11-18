@@ -184,7 +184,8 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
       // Balanced athletic stance: hinge at hips while keeping torso/head above the forefoot.
       // In this model negative Z is forward. A large positive hipZ previously pushed
       // the entire body behind the feet, making the pose look like it would fall back.
-      pitch = 0.94;
+      // Reference pose: athletic hip hinge with weight balanced across both feet.
+      pitch = 0.82;
       hipZ = -0.03;
       T.fl.set(-0.27, 0, -0.17);
       T.fr.set(0.27, 0, 0.03);
@@ -262,7 +263,9 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     for (const b of [B.Spine, B.Spine1, B.Spine2]) preWorld(b, axisQ(ry, S.twist * 0.22).multiply(axisQ(rz, S.roll * 0.17)).multiply(axisQ(rx, -S.pitch * 0.22)));
     preWorld(B.Neck, axisQ(rx, S.pitch * 0.45)); preWorld(B.Head, axisQ(ry, -S.twist * 0.5).multiply(axisQ(rx, S.pitch * 0.3)));
     // 足
-    const foot = (up, lo, ft, toe, tgt, s) => { const a = V().copy(tgt); a.y += ankleH; ik(up, lo, ft, toW(a).clone(), dirW(s * (0.06 + 0.36 * S.knee), 0.1, -1), L.up, L.lo); const tt = V().copy(tgt); tt.z -= 0.2; tt.x += s * 0.03; tt.y = Math.max(0.02, tgt.y * 0.6 + 0.02); aim(ft, toe, toW(tt).clone()); };
+    const foot = (up, lo, ft, toe, tgt, s) => { const a = V().copy(tgt); a.y += ankleH; ik(up, lo, ft, toW(a).clone(), dirW(s * (0.06 + 0.36 * S.knee), 0.1, -1), L.up, L.lo); // In the static basketball stance, preserve the model's neutral ankle/toe rotation.
+      // Aiming the foot toward an elevated toe target made the shoe point upward.
+      if (!basicDribble) { const tt = V().copy(tgt); tt.z -= 0.2; tt.x += s * 0.03; tt.y = Math.max(0.02, tgt.y * 0.6 + 0.02); aim(ft, toe, toW(tt).clone()); } };
     foot(B.LeftUpLeg, B.LeftLeg, B.LeftFoot, B.LeftToeBase, S.fl, -1); foot(B.RightUpLeg, B.RightLeg, B.RightFoot, B.RightToeBase, S.fr, 1);
     // うで
     const behind = lbz > 0.2;
