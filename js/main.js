@@ -5,6 +5,7 @@ import { runStage } from './run.js';
 import { preloadStage } from './env.js';
 import { ballIcon } from './balls.js';
 import * as RK from './rank.js';
+import * as MV from './move.js';
 
 const app = document.getElementById('app'); const nav = document.getElementById('nav'); const gameEl = document.getElementById('game');
 const gl = document.getElementById('gl'); const hud = document.getElementById('hud'); const overlay = document.getElementById('overlay'); const video = document.getElementById('pip');
@@ -38,7 +39,7 @@ function home() {
   const sk7 = streakNow(p); let nxt = sk7 + 1; while (nxt < 3 || !STREAK_RW[nxt % 7]) nxt++; const nrw = STREAK_RW[nxt % 7];
   const st = p.stamps % 7;
   const weak = poolFor(curLv(p)).slice().sort((a, b) => mastery(p, a) - mastery(p, b))[0];
-  show(`
+  show(`${MV.inLine() ? '<button class="banner warn" data-act="moveSafari"><b>⚠️ LINEの 中では とまることが あります</b><small>タップで Safariに ひっこし（データも いっしょに うつります）</small></button>' : ''}
     <div class="hero">
       <div class="logo"><span>めざせ！ドリブルキング</span><b>ドリバト！</b></div>
       ${(() => { const L = curLv(p); const ls = lvStars(p, L); const nx = MAIN_STAGES.find((x) => !(ls[x.id] > 0)); return nx ? `<button class="play" data-act="stage" data-id="${nx.id}">▶ つづきから<small>${sl(nx)} ${MISSIONS[nx.mission].n}</small></button>` : '<button class="play" data-act="tab" data-tab="stages">▶ ステージへ</button>'; })()}
@@ -314,6 +315,10 @@ function settings() {
     <div class="btns"><button class="big ghost" id="ta">① 合成音</button><button class="big ghost" id="tb">② 音声ファイル</button><button class="big ghost" id="tc">③ こえ → 合成音</button></div><p class="hint" id="tout"></p>
     <h3>プレイヤーと ランク</h3><p class="hint">いまの じつりょくに 合わせて、スタートの ランクを えらんでください。ランクが 上がるほど むずかしい ワザが 出ます。</p>
     ${S.players.map((p) => `<div class="prow"><b>${avHTML(p.avatar)}</b><input class="pname-edit" maxlength="10" value="${esc(p.name)}" data-pid="${p.id}" style="width:6em"><div class="seg">${[1, 2, 3, 4, 5, 6].map((r) => `<button class="${p.rank === r ? 'on' : ''}" data-rank="${r}" data-pid="${p.id}">R${r}</button>`).join('')}</div><button class="mini" data-girl="${p.id}" title="おとこのこ／おんなのこ">${p.girl ? '👧 おんなのこ' : '👦 おとこのこ'}</button><button class="mini danger" data-del="${p.id}">けす</button></div>`).join('')}
+    <h3>📦 ひっこし（ほかの ブラウザ・たんまつへ）</h3><p class="hint">LINEの 中から Safariへ うつるときや、ほかの iPad に うつすときに つかいます。プレイヤー・★・コイン・ボールなど ぜんぶ うつります。</p>
+    <div class="btns"><button class="big" data-act="moveSafari">🧭 Safariで ひらく（データごと）</button><button class="big ghost" id="mvcopy">📋 ひっこしコードを コピー</button></div>
+    <p class="hint">Safariで ひらかないときは：①「ひっこしコードを コピー」→ ② Safariで このゲームを ひらく → ③ せっていの ここに はりつけて「コードで ひっこし」</p>
+    <textarea id="mvin" rows="2" placeholder="ここに ひっこしコードを はりつけ" style="width:100%"></textarea><button class="big ghost" id="mvgo">📥 コードで ひっこし</button><p class="hint" id="mvmsg"></p>
     <h3>🛠 エラーきろく</h3><p class="hint">とまった・おかしかった ときに、ここを スクショして おくってください。</p><pre class="errlog">${(() => { try { const L = JSON.parse(localStorage.getItem('dribble-errlog') || '[]'); return L.length ? L.map((x) => esc(`${x.t} [${x.w}${x.ph ? '/' + x.ph : ''}${x.st ? '/' + x.st : ''}] ${x.m}`)).join('\n\n') : 'なし'; } catch (e) { return 'なし'; } })()}</pre>
     <h3>🏆 ランキング</h3><p class="hint">さいしょから オンです。ニックネームと スコア・れんしゅう回数が インターネットの ランキングに のります（URLを しっている 人なら だれでも 見られます）。ニックネームは さいしょ「ドリブラー＋ばんごう」に なっています。かえるときも ほんみょうは いれないでください。のせたくない ときは「さんか」を オフに してください。</p>
     ${S.players.map((p) => `<div class="prow"><b>${avHTML(p.avatar)} ${esc(p.name)}</b><label class="toggle"><input type="checkbox" data-rkon="${p.id}" ${p.rk !== false ? 'checked' : ''}><span>さんか</span></label><input class="rkname" maxlength="10" placeholder="ニックネーム" value="${esc(RK.autoName(p))}" data-rkname="${p.id}" style="width:8em"></div>`).join('')}
@@ -323,6 +328,8 @@ function settings() {
   const tout = $('#tout'); const say = (t) => { tout.textContent = t; };
   const wav = () => { const sr = 8000, n = sr * 0.6; const buf = new ArrayBuffer(44 + n); const v = new DataView(buf); const w = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); }; w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, 'data'); v.setUint32(40, n, true); for (let i = 0; i < n; i++) v.setUint8(44 + i, 128 + Math.round(Math.sin(i / sr * 6.283 * (i < n / 2 ? 660 : 880)) * 90 * (1 - i / n))); return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' })); };
   const tone = (c) => { [0, 4, 7].forEach((sm, i) => { const o = c.createOscillator(); const g = c.createGain(); o.frequency.value = 523 * Math.pow(2, sm / 12); const t = c.currentTime + i * 0.15; g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3); o.connect(g).connect(c.destination); o.start(t); o.stop(t + 0.32); }); };
+  $('#mvcopy').addEventListener('click', async () => { try { const c = await MV.makeCode(); try { await navigator.clipboard.writeText(c); alertMsg('📋 コピーしました（' + c.length + 'もじ）。Safariで ひらいて はりつけてね'); } catch (e) { $('#mvin').value = c; $('#mvin').select(); alertMsg('コピーできなかったので、上の わくの もじを ぜんぶ えらんで コピーしてね'); } } catch (e) { alertMsg('つくれませんでした'); } });
+  $('#mvgo').addEventListener('click', () => { const v = $('#mvin').value.trim(); if (!v) return alertMsg('コードを はりつけてね'); moveIn(v); });
   $('#ta').addEventListener('click', async () => { try { const c = new (window.AudioContext || window.webkitAudioContext)(); const s0 = c.state; try { await c.resume(); } catch (e) { /* noop */ } tone(c); say(`① 合成音：はじめ=${s0} → いま=${c.state}（ポポポと 3音 鳴るはず）`); setTimeout(() => say(`① 合成音：はじめ=${s0} → 1びょう後=${c.state} 時間=${c.currentTime.toFixed(2)}`), 1000); } catch (e) { say('① エラー：' + e.message); } });
   $('#tb').addEventListener('click', async () => { try { const a = document.createElement('audio'); a.src = wav(); a.setAttribute('playsinline', ''); await a.play(); say('② 音声ファイル：再生できた（ピポと 鳴るはず）'); } catch (e) { say('② エラー：' + e.name + ' ' + e.message); } });
   $('#tc').addEventListener('click', async () => { try { const c = new (window.AudioContext || window.webkitAudioContext)(); try { await c.resume(); } catch (e) { /* noop */ } const u = new SpeechSynthesisUtterance('Test'); u.lang = 'en-US'; window.speechSynthesis.speak(u); setTimeout(() => { const s1 = c.state; try { c.resume(); } catch (e) { /* noop */ } tone(c); setTimeout(() => say(`③ こえの あと：合成音=${s1} → ${c.state}（こえの あとに 3音 鳴るはず）`), 600); }, 1500); say('③ こえ → 合成音 を ためしちゅう…'); } catch (e) { say('③ エラー：' + e.message); } });
@@ -390,6 +397,7 @@ function players(first) {
 // ---------- ボタン ----------
 const tabs = { home, stages, training, friends, shop };
 const acts = {
+  moveSafari: async () => { try { const u = await MV.moveUrl(); location.href = u; } catch (e) { alertMsg('うまく いきませんでした。せっていの「ひっこしコードを コピー」を つかってね'); } },
   tab: (d) => tabs[d.tab](), how, settings, players: () => players(), who, record, testIntro,
   pick: (d) => { S.current = d.id; save(); home(); },
   lv: (d) => { const p = player(); if (+d.lv <= p.rank) { p.lv = +d.lv; save(); } stages(); },
@@ -415,7 +423,20 @@ document.getElementById('pause').addEventListener('click', () => game && !videoM
 const errLog = (w, m) => { try { const L = JSON.parse(localStorage.getItem('dribble-errlog') || '[]'); L.unshift({ t: new Date().toLocaleString('ja-JP'), w, m: String(m || '').slice(0, 400), ua: navigator.userAgent.slice(0, 120) }); localStorage.setItem('dribble-errlog', JSON.stringify(L.slice(0, 8))); } catch (x) { /* noop */ } };
 window.addEventListener('error', (e) => errLog('error', (e.error && e.error.stack) || e.message));
 window.addEventListener('unhandledrejection', (e) => { const r = e.reason; if (r && /rank|firestore|fetch/i.test(String(r.stack || r))) return; errLog('promise', (r && (r.stack || r.message)) || r); });
+// ひっこし：とどいた データを うけとる
+function alertMsg(t) { const m = document.getElementById('mvmsg'); if (m) m.textContent = t; else window.alert(t); }
+async function moveIn(code) {
+  const clear = () => { try { history.replaceState(null, '', location.pathname); } catch (e) { /* noop */ } };
+  let got; try { got = await MV.readCode(code); } catch (e) { clear(); show('<div class="card"><h2>📦 ひっこし</h2><p class="hint">ひっこしコードが よめませんでした。せっていの「ひっこしコードを コピー」で もういちど ためしてね。</p><button class="big" data-act="who">OK</button></div>', 'home', true); return; }
+  const cur = S.players.filter((x) => !x.guest || x.plays > 0);
+  const list = got.s.players.filter((x) => !x.guest || x.plays > 0).map((p) => `<div class="prow"><b>${avHTML(p.avatar)} ${esc(p.name)}</b><span>R${p.rank || 1}　🪙${p.coins || 0}　🏀${(p.balls || []).length}こ</span></div>`).join('');
+  show(`<div class="card"><h2>📦 ひっこしデータが とどきました</h2>${list || '<p class="hint">プレイヤーなし</p>'}
+    ${cur.length ? '<p class="hint">⚠️ この ブラウザに ある いまの データは、とどいた データで うわがき されます。</p>' : ''}
+    <div class="btns"><button class="big" id="mvok">✅ この データで つづける</button><button class="big ghost" id="mvno">やめる</button></div></div>`, 'home', true);
+  $('#mvok').addEventListener('click', () => { MV.applyCode(got.o); clear(); location.reload(); });
+  $('#mvno').addEventListener('click', () => { clear(); who(); });
+}
 document.addEventListener('visibilitychange', () => { if (document.hidden && game && !videoMode) game.pause(); });
 window.__game = () => game;
-who();
+if (location.hash.startsWith('#move=')) moveIn(location.hash.slice(6)); else who();
 preloadStage(null, null, !!player().girl); // プレイヤーの 絵は さいしょに 読みこんでおく
