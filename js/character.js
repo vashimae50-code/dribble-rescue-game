@@ -144,30 +144,30 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     // Upper body: a sculpted jersey panel and a contrasting waist seam.
     // Spine2 is the animated torso anchor, so the jersey follows forward lean.
     attachShape(B.Spine2, new THREE.SphereGeometry(1, 24, 16), blue,
-      [0, 0.025, 0], [0.285, 0.36, 0.165]);
+      [0, 0.025, 0], [0.235, 0.285, 0.125]);
     attachShape(B.Spine2, new THREE.TorusGeometry(0.22, 0.018, 8, 36), yellow,
-      [0, 0.285, -0.015], [1.2, 0.75, 1], [Math.PI / 2, 0, 0]);
+      [0, 0.24, -0.015], [0.95, 0.65, 1], [Math.PI / 2, 0, 0]);
     attachShape(B.Spine, new THREE.SphereGeometry(1, 20, 12), darkBlue,
-      [0, -0.015, 0], [0.24, 0.18, 0.17]);
+      [0, -0.015, 0], [0.18, 0.12, 0.12]);
     // Two independent short legs keep the fabric moving with the hip joints.
     for (const side of ['Left', 'Right']) {
       const thigh = B[side + 'UpLeg'];
-      attachShape(thigh, new THREE.CylinderGeometry(0.175, 0.20, 0.34, 16), blue,
-        [0, -0.16, 0], [1, 1, 1]);
-      attachShape(thigh, new THREE.TorusGeometry(0.18, 0.018, 8, 24), yellow,
-        [0, -0.32, 0], [1, 1, 1], [Math.PI / 2, 0, 0]);
+      attachShape(thigh, new THREE.CylinderGeometry(0.12, 0.145, 0.25, 16), blue,
+        [0, -0.13, 0], [1, 1, 1]);
+      attachShape(thigh, new THREE.TorusGeometry(0.13, 0.012, 8, 24), yellow,
+        [0, -0.25, 0], [1, 1, 1], [Math.PI / 2, 0, 0]);
       attachShape(B[side + 'Foot'], new THREE.SphereGeometry(1, 16, 12), shoe,
-        [0, -0.025, -0.09], [0.115, 0.09, 0.23]);
+        [0, -0.025, -0.09], [0.10, 0.075, 0.18]);
       attachShape(B[side + 'Foot'], new THREE.BoxGeometry(0.12, 0.012, 0.20), yellow,
-        [0, 0.04, -0.10], [1, 1, 1]);
+        [0, 0.035, -0.10], [1, 1, 1]);
     }
     // Head details: larger hair cap and curled strands, all attached to Head.
     attachShape(B.Head, new THREE.SphereGeometry(1, 20, 14), skin,
-      [0, 0.065, 0], [0.15, 0.20, 0.15]);
+      [0, 0.065, 0], [0.135, 0.17, 0.135]);
     const capMat = new THREE.MeshStandardMaterial({ color: '#50311d', roughness: 0.96 });
     accessoryMaterials.push(capMat);
     attachShape(B.Head, new THREE.SphereGeometry(1, 20, 14), capMat,
-      [0, 0.205, 0.005], [0.16, 0.10, 0.16]);
+      [0, 0.19, 0.005], [0.145, 0.08, 0.145]);
   }
   // せばんごう（せなか と むね）
   const numMats = [];
