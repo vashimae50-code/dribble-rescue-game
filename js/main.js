@@ -136,7 +136,8 @@ async function start(o) {
   app.hidden = true; nav.hidden = true; gameEl.hidden = false; video.hidden = !pose; awake(true);
   const noCam = st.camera && !pose;
   let human = null; try { if (msg) msg.textContent = 'キャラクターを よみこみちゅう…'; human = await (await import('./character.js')).loadHuman(); } catch (e) { human = null; }
-  const look = { human, girl: !!p.girl, suit: SUITS.find((x) => x.id === p.suit)?.c, ball: BALLS.find((x) => x.id === p.ball), buddy: p.buddy ? friend(p.buddy)?.e : null, buddyLv: p.buddy ? budLv(p, p.buddy) : 1, grow: GROW[growOf(p)] };
+  const preview3D = new URLSearchParams(location.search).get('character3d') === '1';
+  const look = { human, sprite: !preview3D, girl: !!p.girl, suit: SUITS.find((x) => x.id === p.suit)?.c, ball: BALLS.find((x) => x.id === p.ball), buddy: p.buddy ? friend(p.buddy)?.e : null, buddyLv: p.buddy ? budLv(p, p.buddy) : 1, grow: GROW[growOf(p)] };
   try {
     const qVid = new URLSearchParams(location.search).get('video');
     const vid = qVid || (st.videoRec && o.mode === 'stage' && o.stage ? o.stage.id : null); videoMode = !!vid; document.body.classList.toggle('rec', videoMode); // どうがは 1920×1080 で ろくが
