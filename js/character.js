@@ -121,6 +121,54 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
       }
     }
   }
+  // No.7 sculpted appearance prototype: independent meshes follow the EXISTING
+  // animation rig. This is intentionally a prototype, not a finished GLB.
+  // Switch it on with ?visual=sculpt; the default character is unaffected.
+  const sculpted = opt.sculpt && !nativeLook && opt.guide !== false;
+  if (sculpted) {
+    const blue = new THREE.MeshStandardMaterial({ color: '#1154dc', roughness: 0.78, metalness: 0.04 });
+    const darkBlue = new THREE.MeshStandardMaterial({ color: '#07348d', roughness: 0.88 });
+    const yellow = new THREE.MeshStandardMaterial({ color: '#ffd21b', roughness: 0.65 });
+    const shoe = new THREE.MeshStandardMaterial({ color: '#12265b', roughness: 0.65 });
+    const skin = new THREE.MeshStandardMaterial({ color: opt.skin || '#c99068', roughness: 0.9 });
+    accessoryMaterials.push(blue, darkBlue, yellow, shoe, skin);
+    const attachShape = (bone, geometry, material, position, scale, rotation) => {
+      if (!bone) { geometry.dispose(); return null; }
+      const shape = new THREE.Mesh(geometry, material);
+      shape.position.set(...position); shape.scale.set(...scale);
+      if (rotation) shape.rotation.set(...rotation);
+      bone.add(shape); accessories.push(shape); accessoryGeometries.push(geometry);
+      shape.layers.enable(1);
+      return shape;
+    };
+    // Upper body: a sculpted jersey panel and a contrasting waist seam.
+    // Spine2 is the animated torso anchor, so the jersey follows forward lean.
+    attachShape(B.Spine2, new THREE.SphereGeometry(1, 24, 16), blue,
+      [0, 0.025, 0], [0.285, 0.36, 0.165]);
+    attachShape(B.Spine2, new THREE.TorusGeometry(0.22, 0.018, 8, 36), yellow,
+      [0, 0.285, -0.015], [1.2, 0.75, 1], [Math.PI / 2, 0, 0]);
+    attachShape(B.Spine, new THREE.SphereGeometry(1, 20, 12), darkBlue,
+      [0, -0.015, 0], [0.24, 0.18, 0.17]);
+    // Two independent short legs keep the fabric moving with the hip joints.
+    for (const side of ['Left', 'Right']) {
+      const thigh = B[side + 'UpLeg'];
+      attachShape(thigh, new THREE.CylinderGeometry(0.175, 0.20, 0.34, 16), blue,
+        [0, -0.16, 0], [1, 1, 1]);
+      attachShape(thigh, new THREE.TorusGeometry(0.18, 0.018, 8, 24), yellow,
+        [0, -0.32, 0], [1, 1, 1], [Math.PI / 2, 0, 0]);
+      attachShape(B[side + 'Foot'], new THREE.SphereGeometry(1, 16, 12), shoe,
+        [0, -0.025, -0.09], [0.115, 0.09, 0.23]);
+      attachShape(B[side + 'Foot'], new THREE.BoxGeometry(0.12, 0.012, 0.20), yellow,
+        [0, 0.04, -0.10], [1, 1, 1]);
+    }
+    // Head details: larger hair cap and curled strands, all attached to Head.
+    attachShape(B.Head, new THREE.SphereGeometry(1, 20, 14), skin,
+      [0, 0.065, 0], [0.15, 0.20, 0.15]);
+    const capMat = new THREE.MeshStandardMaterial({ color: '#50311d', roughness: 0.96 });
+    accessoryMaterials.push(capMat);
+    attachShape(B.Head, new THREE.SphereGeometry(1, 20, 14), capMat,
+      [0, 0.205, 0.005], [0.16, 0.10, 0.16]);
+  }
   // せばんごう（せなか と むね）
   const numMats = [];
   if (B.Spine2) { const cv = document.createElement('canvas'); cv.width = cv.height = 128; const g2 = cv.getContext('2d'); g2.font = '900 104px Arial, sans-serif'; g2.textAlign = 'center'; g2.textBaseline = 'middle'; g2.lineWidth = 10; g2.strokeStyle = 'rgba(0,0,0,.55)'; g2.strokeText(String(opt.num ?? 7), 64, 70); g2.fillStyle = '#' + TRIM.getHexString(); g2.fillText(String(opt.num ?? 7), 64, 70);
