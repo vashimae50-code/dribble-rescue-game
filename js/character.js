@@ -185,7 +185,9 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
       T.fl.set(-0.27, 0, -0.10);
       T.fr.set(0.27, 0, 0.10);
       rootY = 0;
-      by = 0.13 + bounce * 0.65;
+      // Release/catch cycle: ball reaches waist height, but the hand does not follow it to the floor.
+      const waistTop = Math.max(0.72, hipsBind - crouch * 0.24 + 0.05);
+      by = 0.13 + bounce * (waistTop - 0.13);
       bx = handSide * 0.43;
       bz = -0.32;
     }
@@ -227,7 +229,12 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     if (st.mode) { handSide = 0; both = false; guard = false; twoHands = false; }
     bx = lbx; bz = lbz;
     // Keep the palm near the rising ball; on the floor, avoid an unnaturally long arm.
-    const handY = basicDribble ? Math.max(by + 0.13, S.hip.y - 0.18) : Math.max(by + 0.16, S.hip.y - (opt.practicePose ? 0.25 : 0.36));
+    // Ball and palm are independent during the flight: contact near the top, release on descent.
+    // Do not stretch the arm to the ball when it is close to the floor.
+    const releasePhase = basicDribble ? Math.pow(Math.max(0, Math.min(1, (bounce - 0.65) / 0.35)), 2) : 1;
+    const handY = basicDribble
+      ? (S.hip.y + 0.03) * (1 - releasePhase) + (by + 0.14) * releasePhase
+      : Math.max(by + 0.16, S.hip.y - (opt.practicePose ? 0.25 : 0.36));
     for (const [h, s] of [[T.hl, -1], [T.hr, 1]]) {
       if (st.mode === 'defend') h.set(s * 0.76, S.hip.y + 0.44 + Math.sin(beat * Math.PI * 2 + s) * 0.16, -0.3);
       else if (st.mode === 'chase') { const sw = Math.sin(beat * Math.PI * 2 + (s > 0 ? 0 : Math.PI)); h.set(s * 0.3, S.hip.y + 0.25 + Math.max(0, sw) * 0.15, -0.3 - sw * 0.25); }
