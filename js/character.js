@@ -119,7 +119,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     // Keep the preview player in a basketball-ready stance, not a running gait.
     // Rest is included because most stage time is spent between skill cues.
     const basicDribble = opt.practicePose && !hold && (id === 'right' || id === 'left' || id === 'rest');
-    const moving = !G && !hold && sp > 0.3 && !basicDribble;
+    const moving = !G && !hold && sp > 0.3 && !basicDribble && !(opt.practicePose && (id === 'cross' || id === 'dcross'));
     if (basicDribble) { crouch = 0.65; Wd = 0.27; stride = 0; guard = true; bx = hs * 0.43; bz = -0.32; amp = 0.58; }
     if (sk.low) { crouch = 0.95; Wd = 0.3; amp = 0.3; stride = 0.12; lift = 0.06; guard = true; }
     if (id === 'pound') { crouch = 0.55; amp = 0.8; guard = true; }
@@ -196,6 +196,32 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
       bx = handSide * 0.43;
       bz = -0.32;
     }
+    // No.7 crossover: low, close to the body, with a planted athletic stance.
+    // Use a single shared bounce point between the feet and transfer hands at that point.
+    const previewCross = opt.practicePose && !G && !hold && (id === 'cross' || id === 'dcross');
+    if (previewCross) {
+      const speed = id === 'dcross' ? 2 : 1;
+      const u = ((cb * speed) % 2 + 2) % 2;
+      const direction = cue && cue.hand0 === 'L' ? -1 : 1;
+      const side = Math.cos(Math.PI * u) * direction;
+      const center = Math.abs(Math.sin(Math.PI * u));
+      crouch = 0.83 + 0.055 * center;
+      pitch = 0.82 + 0.065 * center;
+      hipZ = -0.03;
+      hipX = -side * 0.035;
+      twist = -side * 0.12;
+      roll = -side * 0.045;
+      rootY = 0;
+      stride = 0; guard = true;
+      T.fl.set(-0.31, 0, -0.12);
+      T.fr.set(0.31, 0, 0.06);
+      bx = side * 0.39;
+      bz = -0.43;
+      by = 0.13 + Math.pow(Math.abs(Math.cos(Math.PI * u)), 0.75) * 0.36;
+      handSide = side >= 0 ? 1 : -1;
+      // At the low central bounce both hands move toward the transfer zone.
+      both = center > 0.90;
+    }
     // 敵（ディフェンス／おいかける）の うごき
     // ディフェンスの しせい：ひざを 深く おとし、足を 広く、うでを 大きく 広げる（本物の ディフェンスの かまえを イメージ）
     if (st.mode === 'defend') { const sh = Math.sin(beat * Math.PI); crouch = 0.98; pitch = 0.38; T.fl.set(-0.46 + sh * 0.07, Math.max(0, sh) * 0.05, 0); T.fr.set(0.46 + sh * 0.07, Math.max(0, -sh) * 0.05, 0); hipX = sh * 0.06; rootY = 0; }
@@ -254,7 +280,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     // Ball and palm are independent during the flight: contact near the top, release on descent.
     // Do not stretch the arm to the ball when it is close to the floor.
     const releasePhase = basicDribble ? Math.pow(Math.max(0, Math.min(1, (bounce - 0.65) / 0.35)), 2) : 1;
-    const handY = basicDribble
+    const handY = previewCross ? Math.max(S.hip.y - 0.12, by + 0.10) : basicDribble
       ? (S.hip.y + 0.03) * (1 - releasePhase) + (by + 0.14) * releasePhase
       : Math.max(by + 0.16, S.hip.y - (opt.practicePose ? 0.25 : 0.36));
     for (const [h, s] of [[T.hl, -1], [T.hr, 1]]) {
@@ -282,7 +308,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     // 足
     const foot = (up, lo, ft, toe, tgt, s) => { const a = V().copy(tgt); a.y += ankleH; ik(up, lo, ft, toW(a).clone(), dirW(s * (0.06 + 0.36 * S.knee), 0.1, -1), L.up, L.lo); // In the static basketball stance, preserve the model's neutral ankle/toe rotation.
       // Aiming the foot toward an elevated toe target made the shoe point upward.
-      if (!basicDribble) { const tt = V().copy(tgt); tt.z -= 0.2; tt.x += s * 0.03; tt.y = Math.max(0.02, tgt.y * 0.6 + 0.02); aim(ft, toe, toW(tt).clone()); } };
+      if (!basicDribble && !previewCross) { const tt = V().copy(tgt); tt.z -= 0.2; tt.x += s * 0.03; tt.y = Math.max(0.02, tgt.y * 0.6 + 0.02); aim(ft, toe, toW(tt).clone()); } };
     foot(B.LeftUpLeg, B.LeftLeg, B.LeftFoot, B.LeftToeBase, S.fl, -1); foot(B.RightUpLeg, B.RightLeg, B.RightFoot, B.RightToeBase, S.fr, 1);
     // うで
     const behind = lbz > 0.2;
