@@ -120,7 +120,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     // Rest is included because most stage time is spent between skill cues.
     const basicDribble = opt.practicePose && !G && !hold && (id === 'right' || id === 'left' || id === 'rest');
     const moving = !G && !hold && sp > 0.3 && !basicDribble;
-    if (basicDribble) { crouch = 1.0; Wd = 0.35; stride = 0; guard = true; bx = hs * 0.47; bz = -0.34; amp = 0.42; }
+    if (basicDribble) { crouch = 0.65; Wd = 0.27; stride = 0; guard = true; bx = hs * 0.43; bz = -0.32; amp = 0.58; }
     if (sk.low) { crouch = 0.95; Wd = 0.3; amp = 0.3; stride = 0.12; lift = 0.06; guard = true; }
     if (id === 'pound') { crouch = 0.55; amp = 0.8; guard = true; }
     if (id === 'fast') { crouch = 0.5; stride = 0.42; lift = 0.2; cad = 2; amp = 0.5; }
@@ -179,14 +179,15 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     // Power position: hips back, knees flexed, staggered feet and forward torso.
     // Apply after the generic gait/guide setup so the stance cannot be overwritten.
     if (basicDribble) {
-      crouch = 1.0;
-      pitch = 0.86;
-      T.fl.set(-0.35, 0, -0.18);
-      T.fr.set(0.35, 0, 0.18);
+      // Jr. NBA: balanced knee bend and a controlled dribble below the waist.
+      crouch = 0.65;
+      pitch = 0.52;
+      T.fl.set(-0.27, 0, -0.10);
+      T.fr.set(0.27, 0, 0.10);
       rootY = 0;
-      by = 0.13 + bounce * 0.39;
-      bx = hs * 0.47;
-      bz = -0.34;
+      by = 0.13 + bounce * 0.65;
+      bx = handSide * 0.43;
+      bz = -0.32;
     }
     // 敵（ディフェンス／おいかける）の うごき
     // ディフェンスの しせい：ひざを 深く おとし、足を 広く、うでを 大きく 広げる（本物の ディフェンスの かまえを イメージ）
@@ -226,7 +227,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     if (st.mode) { handSide = 0; both = false; guard = false; twoHands = false; }
     bx = lbx; bz = lbz;
     // Keep the palm near the rising ball; on the floor, avoid an unnaturally long arm.
-    const handY = Math.max(by + 0.16, S.hip.y - (opt.practicePose ? 0.25 : 0.36));
+    const handY = basicDribble ? Math.max(by + 0.13, S.hip.y - 0.18) : Math.max(by + 0.16, S.hip.y - (opt.practicePose ? 0.25 : 0.36));
     for (const [h, s] of [[T.hl, -1], [T.hr, 1]]) {
       if (st.mode === 'defend') h.set(s * 0.76, S.hip.y + 0.44 + Math.sin(beat * Math.PI * 2 + s) * 0.16, -0.3);
       else if (st.mode === 'chase') { const sw = Math.sin(beat * Math.PI * 2 + (s > 0 ? 0 : Math.PI)); h.set(s * 0.3, S.hip.y + 0.25 + Math.max(0, sw) * 0.15, -0.3 - sw * 0.25); }
