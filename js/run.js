@@ -30,7 +30,7 @@ export function runStage(opts) {
   const sRate = (stage && stage.rate || 1) * (opts.speedK || 1); if (!useSong && opts.speedK) bps *= opts.speedK;
   if (useSong) { audio.loadBgm(SONGS[stage.song], sRate, stage.half || 1); bps = (SONGS[stage.song].bpm * sRate / (stage.half || 1)) / 60; }
   let W = 0, H = 0, DPR = 1;
-  function resize() { const r = hud.getBoundingClientRect(); DPR = Math.min(window.devicePixelRatio || 1, 2); hud.width = Math.round(r.width * DPR); hud.height = Math.round(r.height * DPR); W = hud.width; H = hud.height; scene.resize(); }
+  function resize() { const r = hud.getBoundingClientRect(); DPR = video ? 1 : Math.min(window.devicePixelRatio || 1, 2); hud.width = Math.round(r.width * DPR); hud.height = Math.round(r.height * DPR); W = hud.width; H = hud.height; scene.resize(); }
   resize(); window.addEventListener('resize', resize);
   let recorder = null;
   if (video && audio.recDest) {

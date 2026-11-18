@@ -123,6 +123,7 @@
   #nav button.on { color: var(--yl); background: #ffffff10; } #nav button.on span { filter: none; transform: translateY(-4px) scale(1.15); }
 
   #game { position: fixed; inset: 0; background: #000; z-index: 10; } #gl, #hud { position: absolute; inset: 0; width: 100%; height: 100%; display: block; } #hud { pointer-events: none; }
+  body.rec #game { inset: auto; left: 0; top: 0; width: 1920px; height: 1080px; }
   #overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; } #overlay > * { pointer-events: auto; }
   #pause { position: absolute; right: calc(8px + env(safe-area-inset-right)); top: calc(6px + env(safe-area-inset-top)); width: 40px; height: 40px; border-radius: 10px; background: #00000066; border: 2px solid #ffffff44; font-size: 16px; z-index: 3; }
   #pip { position: absolute; left: 10px; bottom: 16%; width: min(20vw, 190px); border-radius: 10px; border: 2px solid var(--cy); transform: scaleX(-1); opacity: .85; z-index: 2; }

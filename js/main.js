@@ -17,7 +17,7 @@ async function awake(on) { try { if (on && navigator.wakeLock && !wake) { wake =
 function beep(notes, type = 'triangle') { if (!S.settings.sound) return; try { const c = new (window.AudioContext || window.webkitAudioContext)(); notes.forEach((sm, i) => { const o = c.createOscillator(); const g = c.createGain(); o.type = type; o.frequency.value = 523 * Math.pow(2, sm / 12); const t = c.currentTime + i * 0.11; g.gain.setValueAtTime(0.18, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.28); o.connect(g).connect(c.destination); o.start(t); o.stop(t + 0.3); }); setTimeout(() => c.close(), 2500); } catch (e) { /* noop */ } }
 function show(html, t, bare) {
   try { if (unmuteEl) unmuteEl.pause(); } catch (e) { /* noop */ }
-  if (game) { game.stop(); game = null; } if (pose) { pose.stop(); pose = null; } awake(false);
+  if (game) { game.stop(); game = null; } if (pose) { pose.stop(); pose = null; } awake(false); document.body.classList.remove('rec');
   if (t) tab = t; gameEl.hidden = true; app.hidden = false; nav.hidden = !!bare; app.innerHTML = (bare ? '' : topbar()) + html; window.scrollTo(0, 0);
   nav.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
 }
@@ -139,7 +139,7 @@ async function start(o) {
   const look = { human, girl: !!p.girl, suit: SUITS.find((x) => x.id === p.suit)?.c, ball: BALLS.find((x) => x.id === p.ball), buddy: p.buddy ? friend(p.buddy)?.e : null, buddyLv: p.buddy ? budLv(p, p.buddy) : 1, grow: GROW[growOf(p)] };
   try {
     const qVid = new URLSearchParams(location.search).get('video');
-    const vid = qVid || (st.videoRec && o.mode === 'stage' && o.stage ? o.stage.id : null); videoMode = !!vid;
+    const vid = qVid || (st.videoRec && o.mode === 'stage' && o.stage ? o.stage.id : null); videoMode = !!vid; document.body.classList.toggle('rec', videoMode); // どうがは 1920×1080 で ろくが
     game = runStage({ gl, hud, overlay, ...o, video: !!vid, videoName: vid, actx, player: p, settings: st, pose, look,
       onQuit: () => { game = null; o.mode === 'dojo' ? training() : stages(); },
       onEnd: (r) => { game = null; if (pose) { pose.stop(); pose = null; } result(o, r, noCam); } });
