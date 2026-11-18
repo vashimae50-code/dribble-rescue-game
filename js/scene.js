@@ -6,7 +6,7 @@ import { makeHuman } from './character.js';
 import { buildEnv } from './env.js';
 import { spritePose, SHEETS } from './sprite.js';
 import { spritePose7, SHEETS7 } from './sprite7.js';
-const SHEET_SC = { head: [0.86, 0.92], waist: [0.86, 0.92] }; const ONE_SC = [1, 1];
+const SHEET_SC = {}; const ONE_SC = [1, 1]; // あたらしい 頭・こしまわりの 絵は 大きさを そろえて つくった const ONE_SC = [1, 1];
 import { EffectComposer } from '../vendor/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from '../vendor/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from '../vendor/addons/postprocessing/UnrealBloomPass.js';
