@@ -451,7 +451,7 @@ export function runStage(opts) {
     const spd = phase === 'safe' || phase === 'rescue' || phase === 'count' ? (phase === 'count' ? 1 : 0) : (curCue.sp || 1);
     // よこステップは ディフェンスに ぶつかる 手前で うごきはじめる（つぎのキューを 少し 先読み）
     let visLane = curLane; if (phase === 'run') { const nx = cues.find((c) => c.b0 > beat && c.b0 - beat < 0.7 && c.lane1 !== c.lane0); if (nx) visLane = nx.lane1; }
-    scene.render({ camZ, dt, beat: Math.max(0, beat), mbeat, lane: visLane, startHold: phase === 'count', cue: phase === 'count' ? null : curCue, speed: spd, cues, orbs: orbs.filter((o) => !o.got && !o.missed), boss, mid, shake, chaser: dojo ? 0 : (window.__chaser ?? chaserShow), pip: phase === 'run' || phase === 'finale' ? pipRect : null });
+    scene.render({ camZ, dt, beat: Math.max(0, beat), mbeat, lane: visLane, startHold: phase === 'count', startHand: (cues.find(c => c.skill !== 'rest' && (c.hand === 'R' || c.hand === 'L'))?.hand || 'R'), cue: phase === 'count' ? null : curCue, speed: spd, cues, orbs: orbs.filter((o) => !o.got && !o.missed), boss, mid, shake, chaser: dojo ? 0 : (window.__chaser ?? chaserShow), pip: phase === 'run' || phase === 'finale' ? pipRect : null });
     shake *= 0.86;
     drawHUD(curCue, cues[cues.indexOf(curCue) + 1]);
     if (!loaded) { g.fillStyle = 'rgba(7,11,36,.82)'; g.fillRect(0, 0, W, H); g.fillStyle = '#fff'; g.font = `900 ${Math.round(Math.min(W, H) * 0.06)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('じゅんびちゅう' + '.'.repeat(1 + Math.floor(waitT * 3) % 3), W / 2, H / 2); }
