@@ -71,6 +71,27 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   // ヘッドバンド
   const band = new THREE.MeshBasicMaterial({ color: suitC }); const tor = new THREE.TorusGeometry(1, 0.22, 8, 20);
   const attach = (bone, r, y, rx) => { if (!bone) return; const t = new THREE.Mesh(tor, band); const ws = bone.getWorldScale(new THREE.Vector3()).x || 1; t.scale.setScalar(r / ws); t.position.y = y / ws; t.rotation.x = rx; bone.add(t); meshes.push(t); };
+  // No.7 appearance prototype: reusable accessories parented to the existing rig.
+  // The original skinned mesh and all basketball motions remain unchanged.
+  const accessories = []; const accessoryMaterials = []; const accessoryGeometries = [];
+  if (opt.rich && B.Head) {
+    const curlGeo = new THREE.IcosahedronGeometry(0.055, 1);
+    const curlMat = new THREE.MeshStandardMaterial({ color: opt.hair || '#593923', roughness: 0.88 });
+    accessoryGeometries.push(curlGeo); accessoryMaterials.push(curlMat);
+    // Crown and rear curls: deliberately avoid covering the player's face.
+    for (let row = 0; row < 3; row++) {
+      const y = 0.14 + row * 0.043;
+      const count = row === 2 ? 7 : 11;
+      for (let i = 0; i < count; i++) {
+        const theta = Math.PI * 0.15 + i / (count - 1) * Math.PI * 1.7;
+        const radius = row === 2 ? 0.065 : 0.108;
+        const curl = new THREE.Mesh(curlGeo, curlMat);
+        curl.position.set(Math.cos(theta) * radius, y + Math.sin(i * 2.4 + row) * 0.012, Math.sin(theta) * radius);
+        curl.scale.set(0.82 + (i % 3) * 0.12, 0.65 + (i % 2) * 0.18, 0.85);
+        B.Head.add(curl); accessories.push(curl);
+      }
+    }
+  }
   // せばんごう（せなか と むね）
   const numMats = [];
   if (B.Spine2) { const cv = document.createElement('canvas'); cv.width = cv.height = 128; const g2 = cv.getContext('2d'); g2.font = '900 104px Arial, sans-serif'; g2.textAlign = 'center'; g2.textBaseline = 'middle'; g2.lineWidth = 10; g2.strokeStyle = 'rgba(0,0,0,.55)'; g2.strokeText(String(opt.num ?? 7), 64, 70); g2.fillStyle = '#' + TRIM.getHexString(); g2.fillText(String(opt.num ?? 7), 64, 70);
@@ -78,9 +99,9 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     const inv = new THREE.Matrix4().copy(B.Spine2.matrixWorld).invert(); const mw = new THREE.Matrix4();
     for (const [zz, ry, sz, yy] of [[-(zBack + 0.03), Math.PI, 0.25, 1.3], [zFront + 0.03, 0, 0.13, 1.36]]) { const pl = new THREE.Mesh(pg, nm); const lm = new THREE.Matrix4().compose(new THREE.Vector3(0, yy, zz), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), ry), new THREE.Vector3(sz, sz, sz)); mw.multiplyMatrices(model.matrixWorld, lm); mw.premultiply(inv); mw.decompose(pl.position, pl.quaternion, pl.scale); pl.userData.mat0 = nm; B.Spine2.add(pl); meshes.push(pl); } }
   const sil = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
-  const setSilhouette = (on, color) => { if (on) sil.color.set(color); let i = 0; for (const m of meshes) { if (m.isSkinnedMesh) m.material = on ? sil : mats[i++]; else if (m.userData.mat0) m.visible = !on; else m.material = on ? sil : band; } outlines.forEach((ol) => { ol.visible = !on; }); };
+  const setSilhouette = (on, color) => { if (on) sil.color.set(color); let i = 0; for (const m of meshes) { if (m.isSkinnedMesh) m.material = on ? sil : mats[i++]; else if (m.userData.mat0) m.visible = !on; else m.material = on ? sil : band; } outlines.forEach((ol) => { ol.visible = !on; }); accessories.forEach((a) => { a.visible = !on; }); };
   if (opt.guide !== false) meshes.forEach((m) => m.layers.enable(1));
-  const dispose = () => { geos.forEach((g) => g.dispose()); mats.forEach((m) => m.dispose()); numMats.forEach((m) => m.dispose()); band.dispose(); tor.dispose(); sil.dispose(); outlineMats.forEach((m) => m.dispose()); if (faceMat) { faceMat.dispose(); faceTex.dispose(); } };
+  const dispose = () => { geos.forEach((g) => g.dispose()); mats.forEach((m) => m.dispose()); numMats.forEach((m) => m.dispose()); band.dispose(); tor.dispose(); sil.dispose(); accessoryGeometries.forEach((g) => g.dispose()); accessoryMaterials.forEach((m) => m.dispose()); outlineMats.forEach((m) => m.dispose()); if (faceMat) { faceMat.dispose(); faceTex.dispose(); } };
   root.updateMatrixWorld(true);
   const wp = (b) => b.getWorldPosition(V());
   const L = { up: wp(B.LeftUpLeg).distanceTo(wp(B.LeftLeg)), lo: wp(B.LeftLeg).distanceTo(wp(B.LeftFoot)), ua: wp(B.LeftArm).distanceTo(wp(B.LeftForeArm)), fa: wp(B.LeftForeArm).distanceTo(wp(B.LeftHand)) };
@@ -324,6 +345,6 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     if (!faceSp) { faceTex = tex.clone(); faceTex.repeat.set(0.1, 0.2); faceTex.needsUpdate = true; faceMat = new THREE.SpriteMaterial({ map: faceTex, transparent: true, alphaTest: 0.4 }); faceSp = new THREE.Sprite(faceMat); faceSp.center.set(0.5, 0.2); faceSp.scale.set(0.66, 0.66, 1); root.add(faceSp); B.Head.scale.setScalar(0.02); }
     faceTex.offset.set((i % 10) * 0.1, 1 - (Math.floor(i / 10) + 1) * 0.2); };
   // メインの画面では かくす（お手本の 小まど だけに 出す）。絵の スプライトで プレイヤーを 出すとき用
-  const setMainVisible = (on) => { for (const m of [...meshes, ...outlines]) { if (on) m.layers.enable(0); else m.layers.disable(0); } };
+  const setMainVisible = (on) => { for (const m of [...meshes, ...outlines, ...accessories]) { if (on) m.layers.enable(0); else m.layers.disable(0); } };
   return { root, animate, setSilhouette, setFace, setMainVisible, dispose, ball2: () => (S.has2 ? S.ball2 : null), height: hipsBind / 0.53 };
 }
