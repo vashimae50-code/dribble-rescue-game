@@ -272,7 +272,8 @@ def build(cfg, out_path, blend_path=None):
         r = ax / nhw
         if r < 1:
             front = v.y < H('Neck').y
-            lim = neckZ - 0.012 - (J.get('neck_front_depth', 0.09) if front else J.get('neck_back_depth', 0.035)) * (1 - r * r)
+            shape = (1 - r) if (front and J.get('neck_shape') == 'v') else (1 - r * r)
+            lim = neckZ - 0.012 - (J.get('neck_front_depth', 0.09) if front else J.get('neck_back_depth', 0.035)) * shape
             if v.z > lim: return False
         return True
     def in_shoe(i):
@@ -466,7 +467,7 @@ def build(cfg, out_path, blend_path=None):
         if c.z > neckZ - 0.02:
             hw = sum(head_w[vi] for vi in poly.vertices) / len(poly.vertices)
             if hw > 0.6 and c.z > scalp_lim(c) and not (head_angle(c) < 60 and c.z < eyeZ + 0.05): m = 'scalp'
-            for ec in (eyeCL, eyeCR):
+            for ec in ((eyeCL, eyeCR) if not FC.get('decal', False) else ()):
                 if c.y > ec.y + 0.012: continue
                 dx = c.x - ec.x; dz = c.z - ec.z
                 bx = dx * (1 if ec.x > 0 else -1)
@@ -476,6 +477,18 @@ def build(cfg, out_path, blend_path=None):
                 if eyeR * FC.get('liner_in', 0.92) < rr < eyeR * FC.get('liner_out', 1.22) and dz > eyeR * FC.get('liner_low', 0.2) and -eyeR * 1.15 < bx < eyeR * 1.35: m = 'lash'
         poly.material_index = order.index(m)
         poly.use_smooth = True
+
+    # ゲームの ふちどりの 太さ（頂点カラー R）：顔の 前は 0（目・口・鼻の みぞに 黒い 線が 出ないように）
+    ca = me.color_attributes.new(name='Col', type='FLOAT_COLOR', domain='POINT')
+    for v in me.vertices:
+        c = v.co
+        k = 1.0
+        if c.z > neckZ:
+            a = head_angle(c)
+            inface = (1 - smoothstep(45, 70, a)) * smoothstep(eyeZ - 0.12, eyeZ - 0.10, c.z) * (1 - smoothstep(eyeZ + 0.035, eyeZ + 0.05, c.z))
+            k = 1.0 - inface
+        ca.data[v.index].color = (k, k, k, 1.0)
+    me.color_attributes.active_color = ca
 
     # 目
     everts, efaces, einv = sub_mesh(eyeF)
@@ -514,15 +527,19 @@ def build(cfg, out_path, blend_path=None):
     for f in jersey['faces']:
         a_, b_, c_ = jv[f[0]], jv[f[1]], jv[f[2]]; jfn.append((b_ - a_).cross(c_ - a_).normalized())
     NB = cfg['number']
+    jyc = sum(v.y for v in jv) / len(jv)
+    jz0 = jerseyBottom; jz1 = shZ + 0.06
     def juv(pi, vi):
         n = jfn[pi]; v = jv[vi]
         if n.y > 0.25:
             u = 0.25 - 0.5 * v.x / NB['back_span']; w = 0.5 + (v.z - NB['back_center_z']) / NB['back_span']
-            return (min(0.499, max(0.001, u)), min(0.999, max(0.001, w)))
+            return (min(0.499, max(0.001, u)), 0.5 + 0.5 * min(0.998, max(0.002, w)))
         if n.y < -0.25:
             u = 0.75 + 0.5 * v.x / NB['front_span']; w = 0.5 + (v.z - NB['front_center_z']) / NB['front_span']
-            return (min(0.999, max(0.501, u)), min(0.999, max(0.001, w)))
-        return (0.02, 0.02)
+            return (min(0.999, max(0.501, u)), 0.5 + 0.5 * min(0.998, max(0.002, w)))
+        # 横：前(0)→後ろ(1)、すそ(0)→わき(0.5)
+        u = 0.5 + (v.y - jyc) / J.get('side_span', 0.30); w = 0.5 * (v.z - jz0) / (jz1 - jz0)
+        return (min(0.999, max(0.001, u)), min(0.498, max(0.002, w)))
     jersey_ob = build_obj('No7_Jersey', jv, jersey['faces'], ['jersey'] * len(jersey['faces']), lambda vi: VW[jersey['src'][vi]], uvs=juv)
     subdivide(jersey_ob, 1)
     print('[build] jersey ribbons', add_ribbons(jersey_ob, MATS['trim'], lambda c, pts: c.z > jerseyBottom + 0.05, J.get('trim_width', 0.016)))
@@ -555,6 +572,13 @@ def build(cfg, out_path, blend_path=None):
     subdivide(shoes_ob, 1)
     print('[build] shoe ribbons', add_ribbons(shoes_ob, MATS['shoe_accent'], lambda c, pts: c.z > 0.04, SO.get('collar_width', 0.012), outset=0.002))
 
+    # 6.5) アニメ風の 目と まゆ（顔の 前に うすい シートを はって 絵を のせる）
+    decal_ob = None
+    if FC.get('decal', False):
+        decal_ob = make_face_decal(cfg, [body, eyes], eyeCL, eyeCR, coll)
+        for poly in eyes.data.polygons: poly.material_index = 0
+        eyes.data.materials[0] = MATS['skin']
+
     # 7) カーリーヘア（頭の上の部分だけ。メタボールの つぶを ならべて 1つの メッシュに）
     hair_ob = make_hair(cfg, hair_pts, H, eyeCL, eyeCR, coll, MATS['hair'], curl_lim)
 
@@ -570,7 +594,7 @@ def build(cfg, out_path, blend_path=None):
     lift = SO.get('sole_drop', 0.012)
     for eb in arm_data.edit_bones: eb.head.z += lift; eb.tail.z += lift
     bpy.ops.object.mode_set(mode='OBJECT')
-    meshes = [body, eyes, jersey_ob, shorts_ob, shoes_ob, hair_ob]
+    meshes = [body, eyes, jersey_ob, shorts_ob, shoes_ob, hair_ob] + ([decal_ob] if decal_ob else [])
     for ob in meshes: ob.data.transform(Matrix.Translation((0, 0, lift)))
     zmin_all = min((v.co.z for ob in meshes for v in ob.data.vertices))
     print('[build] lowest point (should be ~0):', round(zmin_all, 4))
@@ -586,13 +610,14 @@ def build(cfg, out_path, blend_path=None):
     bpy.context.view_layer.objects.active = arm
     bpy.ops.export_scene.gltf(filepath=out_path, export_format='GLB', use_selection=True, export_skins=True,
                               export_animations=False, export_morph=False, export_yup=True, export_apply=False,
-                              export_texcoords=True, export_normals=True, export_materials='EXPORT', export_image_format='AUTO')
+                              export_texcoords=True, export_normals=True, export_materials='EXPORT', export_image_format='AUTO',
+                              export_vertex_color='ACTIVE', export_active_vertex_color_when_no_material=True)
     if blend_path: bpy.ops.wm.save_as_mainfile(filepath=blend_path)
     stats = {ob.name: len(ob.data.vertices) for ob in meshes}
     print('[build] wrote', out_path, os.path.getsize(out_path), 'bytes', stats)
 
 
-def add_ribbons(ob, mat, keep, width, outset=0.003, lift=0.0025, smooth_iters=12):
+def add_ribbons(ob, mat, keep, width, outset=0.003, lift=0.0045, smooth_iters=12):
     """服の ふち（穴の まわり）に 細い 帯を つける。ギザギザに ならない ように ふちの 線を なめらかにしてから 帯を 作る"""
     me = ob.data
     if mat.name not in [m.name for m in me.materials]: me.materials.append(mat)
@@ -639,6 +664,10 @@ def add_ribbons(ob, mat, keep, width, outset=0.003, lift=0.0025, smooth_iters=12
             for nv in (o, i2):
                 for g, w in v[dl].items(): nv[dl][g] = w
             new_outer.append(o); new_inner.append(i2)
+        for _ in range(smooth_iters):
+            for arr in (new_outer, new_inner):
+                cs = [v_.co.copy() for v_ in arr]
+                for k in range(N): arr[k].co = cs[k].lerp((cs[k - 1] + cs[(k + 1) % N]) * 0.5, 0.5)
         for k in range(N):
             k2 = (k + 1) % N
             try:
@@ -707,7 +736,7 @@ def make_number_texture(cfg):
     from PIL import Image, ImageDraw, ImageFont
     NB = cfg['number']; W, Hh = 1024, 512
     def rgb(h): h = h.lstrip('#'); return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
-    im = Image.new('RGB', (W, Hh), rgb(cfg['colors']['jersey']))
+    im = Image.new('RGB', (W, Hh * 2), rgb(cfg['colors']['jersey']))
     d = ImageDraw.Draw(im)
     font_path = NB.get('font', '/usr/share/fonts/truetype/google-fonts/ofl/anton/Anton-Regular.ttf')
     if not os.path.isabs(font_path): font_path = os.path.join(HERE, font_path)
@@ -721,11 +750,139 @@ def make_number_texture(cfg):
         ow = max(6, size // 16)
         d.text((x, y), txt, font=fnt, fill=rgb(cfg['colors']['number_outline']), stroke_width=ow, stroke_fill=rgb(cfg['colors']['number_outline']))
         d.text((x, y), txt, font=fnt, fill=rgb(cfg['colors']['number']))
+    # 横の 切りかえパネル（下半分：横 = 前→後ろ、上 = わき）
+    J = cfg['jersey']; pw = J.get('side_panel_w', 0.05) / J.get('side_span', 0.30) * W / 2
+    if pw > 0:
+        top = Hh + 2; bot = Hh * 2
+        d.polygon([(W / 2 - pw * 0.7, top), (W / 2 + pw * 0.7, top), (W / 2 + pw, bot), (W / 2 - pw, bot)], fill=rgb(cfg['colors'].get('side_panel', cfg['colors']['trim'])))
     path = os.path.join(bpy.app.tempdir or '/tmp', 'number_tex.png')
     im.save(path)
     img = bpy.data.images.load(path); img.pack(); img.name = 'jersey_number'
     return img
 
+
+def make_face_decal(cfg, targets, eyeCL, eyeCR, coll):
+    """顔の 前に 格子の シートを 前から 投げて 顔の 表面に はりつけ、アニメ風の 目・まゆの 絵を のせる"""
+    need_pil()
+    from PIL import Image, ImageDraw
+    FC = cfg['face']; C = cfg['colors']
+    def rgb(h, a=255): h = h.lstrip('#'); return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4)) + (a,)
+    ipd = eyeCL.x - eyeCR.x                      # 目と目の 間（頭の 大きさに 合わせて 絵も 大きくなる）
+    eZ = (eyeCL.z + eyeCR.z) / 2; eY = min(eyeCL.y, eyeCR.y)
+    x0 = eyeCR.x - ipd * 0.95; x1 = eyeCL.x + ipd * 0.95
+    z0 = eZ - ipd * 1.75; z1 = eZ + ipd * 1.05
+    NX, NZ = 48, 36
+    bvhs = []
+    dg = bpy.context.evaluated_depsgraph_get()
+    for ob in targets:
+        bm = bmesh.new(); bm.from_mesh(ob.data); bm.transform(ob.matrix_world)
+        bvhs.append(BVHTree.FromBMesh(bm)); bm.free()
+    verts = []; ok = []
+    for j in range(NZ + 1):
+        for i in range(NX + 1):
+            x = x0 + (x1 - x0) * i / NX; z = z0 + (z1 - z0) * j / NZ
+            best = None
+            for bv in bvhs:
+                hit = bv.ray_cast(Vector((x, eY - 0.3, z)), Vector((0, 1, 0)), 0.6)
+                if hit[0] is not None and (best is None or hit[3] < best[3]): best = hit
+            if best is None: verts.append(Vector((x, eY, z))); ok.append(False); continue
+            nrm = best[1] if best[1].y < 0 else -best[1]
+            verts.append(best[0] + nrm * FC.get('decal_lift', 0.0012) + Vector((0, -0.0004, 0))); ok.append(True)
+    faces = []; uvs = []
+    for j in range(NZ):
+        for i in range(NX):
+            a = j * (NX + 1) + i; q = [a, a + 1, a + NX + 2, a + NX + 1]
+            if not all(ok[k] for k in q): continue
+            if max((verts[q[0]] - verts[q[2]]).length, (verts[q[1]] - verts[q[3]]).length) > 0.02: continue
+            faces.append(q)
+    me = bpy.data.meshes.new('No7_FaceDecal'); me.from_pydata([tuple(v) for v in verts], [], faces); me.update()
+    uvl = me.uv_layers.new(name='UVMap')
+    for p in me.polygons:
+        for li, vi in zip(p.loop_indices, p.vertices):
+            i = vi % (NX + 1); j = vi // (NX + 1); uvl.data[li].uv = (i / NX, j / NZ)
+        p.use_smooth = True
+    # 絵（4倍で 描いて 縮小 → なめらかな ふち）
+    TW = 1024; TH = int(TW * (z1 - z0) / (x1 - x0)); SS = 3
+    im = Image.new('RGBA', (TW * SS, TH * SS), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    def P(x, z): return ((x - x0) / (x1 - x0) * TW * SS, (1 - (z - z0) / (z1 - z0)) * TH * SS)
+    import math as m_
+    ew = ipd * FC.get('eye_w', 0.46); eh = ipd * FC.get('eye_h', 0.27)
+    for side, ec in ((1, eyeCL), (-1, eyeCR)):
+        cx = ec.x + side * ipd * FC.get('eye_out', 0.02); cz = eZ + ipd * FC.get('eye_up', 0.02)
+        def pt(t, upper):   # t: 0=目頭 1=目じり
+            xx = cx + side * (t - 0.5) * ew
+            if upper:
+                zz = cz + eh * (0.55 * m_.sin(m_.pi * min(1, t * 1.05)) ** 0.8) - eh * 0.10 * t + eh * 0.10
+            else:
+                zz = cz - eh * 0.38 * m_.sin(m_.pi * t) ** 1.2 + eh * 0.10 * (1 - t) - eh * 0.05
+            return P(xx, zz)
+        N = 40
+        up = [pt(k / N, True) for k in range(N + 1)]; lo = [pt(k / N, False) for k in range(N + 1)]
+        white = up + lo[::-1]
+        mask = Image.new('L', im.size, 0); ImageDraw.Draw(mask).polygon(white, fill=255)
+        layer = Image.new('RGBA', im.size, (0, 0, 0, 0)); dl = ImageDraw.Draw(layer)
+        dl.polygon(white, fill=rgb(C['eye_white']))
+        ir = eh * FC.get('iris_r', 0.62); ix, iz = cx + side * ew * 0.03, cz + eh * 0.02
+        (px, pz) = P(ix, iz); rx = ir / (x1 - x0) * TW * SS * 0.92; rz = ir / (z1 - z0) * TH * SS
+        dl.ellipse([px - rx, pz - rz, px + rx, pz + rz], fill=rgb(C['iris_dark']))
+        dl.ellipse([px - rx * 0.86, pz - rz * 0.80, px + rx * 0.86, pz + rz * 0.92], fill=rgb(C['iris']))
+        dl.ellipse([px - rx * 0.86, pz + rz * 0.05, px + rx * 0.86, pz + rz * 0.92], fill=rgb(C['iris_light']))
+        dl.ellipse([px - rx * 0.42, pz - rz * 0.40, px + rx * 0.42, pz + rz * 0.45], fill=rgb(C['pupil']))
+        hx, hz = px + side * -rx * 0.35, pz - rz * 0.42
+        dl.ellipse([hx - rx * 0.28, hz - rz * 0.24, hx + rx * 0.28, hz + rz * 0.24], fill=(255, 255, 255, 255))
+        dl.ellipse([px + side * rx * 0.30 - rx * 0.12, pz + rz * 0.35 - rz * 0.1, px + side * rx * 0.30 + rx * 0.12, pz + rz * 0.35 + rz * 0.1], fill=(255, 255, 255, 230))
+        layer.putalpha(Image.composite(layer.split()[3], Image.new('L', im.size, 0), mask))
+        im.alpha_composite(layer)
+        # 上まぶたの 太い 線（目じりへ 太く、はねる）
+        lw = ipd / (x1 - x0) * TW * SS
+        for k in range(N):
+            t = k / N; w = lw * (0.035 + 0.06 * t ** 1.4)
+            d.line([up[k], up[k + 1]], fill=rgb(C['lash']), width=max(2, int(w)))
+        ex, ez = up[-1]
+        d.polygon([up[-4], (ex + side * lw * 0.12, ez - lw * 0.05), (ex + side * lw * 0.02, ez + lw * 0.06)], fill=rgb(C['lash']))
+        # 下まぶた（目じりがわ だけ 細く）
+        for k in range(int(N * 0.45), N):
+            d.line([lo[k], lo[k + 1]], fill=rgb(C['lash'], 220), width=max(2, int(lw * 0.022)))
+        # 二重の 線
+        dbl = [pt(k / N, True) for k in range(int(N * 0.25), N)]
+        dbl = [(x_, z_ - eh / (z1 - z0) * TH * SS * 0.30) for x_, z_ in dbl]
+        for k in range(len(dbl) - 1): d.line([dbl[k], dbl[k + 1]], fill=rgb(C['lash'], 170), width=max(2, int(lw * 0.015)))
+        # まゆ（目頭がわ 太く、少し 下がる → きりっと）
+        bz = eZ + ipd * FC.get('brow_up_ipd', 0.40)
+        def bp(t):
+            xx = cx + side * (t - 0.55) * ew * 1.25
+            zz = bz + ipd * (0.06 * m_.sin(m_.pi * t) - FC.get('brow_slant', 0.07) * (1 - t))
+            return xx, zz
+        top = []; bot = []
+        for k in range(N + 1):
+            t = k / N; xx, zz = bp(t); th = ipd * (FC.get('brow_thick_ipd', 0.13) * (1 - t) + 0.03)
+            top.append(P(xx, zz + th * 0.5)); bot.append(P(xx, zz - th * 0.5))
+        d.polygon(top + bot[::-1], fill=rgb(C['brow']))
+    # 口：口角の みぞを 肌色で かくし、アニメ風の 口の 線を かく
+    mz = eZ - FC.get('mouth_below_eyes', 0.072)
+    mw = ipd * FC.get('mouth_w', 0.55)
+    (ax_, az_) = P(-mw * 0.75, mz + ipd * 0.07); (bx_, bz_) = P(mw * 0.75, mz - ipd * 0.07)
+    d.ellipse([ax_, az_, bx_, bz_], fill=rgb(C['skin']))
+    pts = [P(-mw / 2 + mw * k / 20, mz - ipd * 0.025 * m_.sin(m_.pi * k / 20) + ipd * 0.008) for k in range(21)]
+    lw = ipd / (x1 - x0) * TW * SS
+    for k in range(20): d.line([pts[k], pts[k + 1]], fill=rgb(C['lash'], 235), width=max(2, int(lw * FC.get('mouth_line', 0.045) * (0.5 + 0.7 * m_.sin(m_.pi * k / 20)))))
+    im = im.resize((TW, TH), Image.LANCZOS)
+    path = os.path.join(bpy.app.tempdir or '/tmp', 'face_decal.png'); im.save(path)
+    img = bpy.data.images.load(path); img.pack(); img.name = 'face_decal'
+    mat = bpy.data.materials.new('FaceDecal'); mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get('Principled BSDF')
+    tex = mat.node_tree.nodes.new('ShaderNodeTexImage'); tex.image = img
+    mat.node_tree.links.new(tex.outputs['Color'], bsdf.inputs['Base Color'])
+    mat.node_tree.links.new(tex.outputs['Alpha'], bsdf.inputs['Alpha'])
+    try: mat.blend_method = 'CLIP'
+    except Exception: pass
+    try: mat.surface_render_method = 'DITHERED'
+    except Exception: pass
+    me.materials.append(mat)
+    ob = bpy.data.objects.new('No7_FaceDecal', me); coll.objects.link(ob)
+    g = ob.vertex_groups.new(name='mixamorig:Head'); g.add(list(range(len(me.vertices))), 1.0, 'REPLACE')
+    print('[build] face decal faces', len(faces), 'tex', TW, TH)
+    return ob
 
 def make_stripe_texture(cfg):
     """ショーツの よこ ライン（u=0 が 外がわ）"""
@@ -760,7 +917,10 @@ def make_shoe_texture(cfg):
     return img
 
 def make_hair(cfg, hair_pts, H, eyeCL, eyeCR, coll, mat, curl_lim):
-    HC = cfg['hair']
+    HC = dict(cfg['hair'])
+    hs = cfg['body'].get('head_scale', 1.0)   # 頭を 大きくしたら 巻き毛の つぶも 同じ 比率で 大きく
+    for k in ('spacing', 'curl_radius', 'base_offset', 'top_volume', 'resolution'):
+        if k in HC: HC[k] = HC[k] * hs
     ys = [p.y for p in hair_pts]; zs = [p.z for p in hair_pts]
     center = Vector((0.0, (min(ys) + max(ys)) / 2, (min(zs) + max(zs)) / 2 - 0.02))
     top = max(zs)

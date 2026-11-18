@@ -21,7 +21,7 @@ function verifyRig(scene) {
 export function playerModelKey() {
   const q = new URLSearchParams(location.search); const mode = q.get('model');
   if (mode === 'legacy') return 'legacy';
-  if (mode === 'no7-v2') return 'no7-v2';
+  if (mode === 'no7-v2' || mode === 'no7-chibi') return mode;
   const preview3D = q.get('character3d') === '1' || location.pathname.includes('/preview/');
   return preview3D ? 'no7-v2' : 'legacy';
 }
@@ -34,10 +34,11 @@ async function loadLegacy() {
 }
 export async function loadHuman(key = playerModelKey()) {
   if (modelCache.has(key)) return modelCache.get(key);
-  if (key === 'no7-v2') {
+  const files = { 'no7-v2': 'models/no7-v2.glb', 'no7-chibi': 'models/no7-chibi.glb' };
+  if (files[key]) {
     try {
       // Fixed same-origin path: no untrusted user-provided model URLs.
-      const gltf = await new GLTFLoader().loadAsync('models/no7-v2.glb?v=20261119a');
+      const gltf = await new GLTFLoader().loadAsync(files[key] + '?v=20261119b');
       const model = verifyRig(gltf.scene);
       model.userData.no7Replacement = true;
       modelCache.set(key, model);
@@ -96,9 +97,13 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   model.traverse((o) => { if (!o.isSkinnedMesh) return; const g = o.geometry; geos.push(g);
     if (nativeLook) {
       // 新モデル：GLB の 色・テクスチャを そのまま 使い、アニメ風の 段々の 影（トゥーン）に する
-      const src = o.material; const m = new THREE.MeshToonMaterial({ color: src.color ? src.color.clone() : 0xffffff, map: src.map || null, gradientMap: gradientMap3(), side: src.side, emissive: 0x1a1410, emissiveIntensity: 0.12 });
+      const src = o.material; const decal = /FaceDecal/.test(src.name || '');
+      const m = new THREE.MeshToonMaterial({ color: src.color ? src.color.clone() : 0xffffff, map: src.map || null, gradientMap: gradientMap3(), side: src.side, emissive: 0x1a1410, emissiveIntensity: decal ? 0 : 0.12, alphaTest: decal ? 0.5 : src.alphaTest, transparent: false });
       m.name = src.name; o.material = m; meshes.push(o); mats.push(m);
-      const om = new THREE.MeshBasicMaterial({ color: 0x120e0c, side: THREE.BackSide }); om.onBeforeCompile = (sh) => { sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n transformed += normalize(normal) * ' + outlineW.toFixed(4) + ';'); };
+      if (decal) return; // 顔の 目・まゆの 絵には ふちどりを 付けない
+      // 頂点カラー R が ある メッシュ（体）は、R を ふちどりの 太さに 使う（顔の 前は 0 にして 目・口に 黒い みぞを 出さない）
+      const vw = !!g.attributes.color; const om = new THREE.MeshBasicMaterial({ color: 0x120e0c, side: THREE.BackSide, vertexColors: vw });
+      om.onBeforeCompile = (sh) => { sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n transformed += normalize(normal) * ' + outlineW.toFixed(4) + (vw ? ' * color.r' : '') + ';'); if (vw) sh.fragmentShader = sh.fragmentShader.replace('#include <color_fragment>', ''); };
       const ol = new THREE.SkinnedMesh(g, om); ol.bind(o.skeleton, o.bindMatrix); ol.frustumCulled = false;
       ol.userData.par = o.parent || model; outlines.push(ol); outlineMats.push(om); return; }
     const si = g.attributes.skinIndex, sw = g.attributes.skinWeight, pos = g.attributes.position, nor = g.attributes.normal; const col = new Float32Array(pos.count * 3);

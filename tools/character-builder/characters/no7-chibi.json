@@ -1,0 +1,189 @@
+{
+ "id": "no7-chibi",
+ "seed": 7,
+ "body": {
+  "hips_height": 1.0,
+  "macro": {
+   "muscle": 0.82,
+   "weight": 0.5,
+   "height": 0.75,
+   "proportions": 0.9,
+   "race": {
+    "caucasian": 0.45,
+    "asian": 0.35,
+    "african": 0.2
+   }
+  },
+  "targets": {
+   "torso/torso-vshape-incr": 0.45,
+   "torso/torso-muscle-dorsi-incr": 0.4,
+   "torso/torso-muscle-pectoral-incr": 0.3,
+   "arms/l-upperarm-muscle-incr": 0.35,
+   "arms/r-upperarm-muscle-incr": 0.35,
+   "arms/l-upperarm-shoulder-muscle-incr": 0.45,
+   "arms/r-upperarm-shoulder-muscle-incr": 0.45,
+   "arms/l-lowerarm-muscle-incr": 0.3,
+   "arms/r-lowerarm-muscle-incr": 0.3,
+   "legs/l-lowerleg-muscle-incr": 0.35,
+   "legs/r-lowerleg-muscle-incr": 0.35,
+   "legs/l-upperleg-muscle-incr": 0.3,
+   "legs/r-upperleg-muscle-incr": 0.3,
+   "stomach/stomach-tone-incr": 0.4
+  },
+  "head_scale": 1.6,
+  "subdiv": 1
+ },
+ "colors": {
+  "skin": "#d39a6e",
+  "sock": "#f4f6fb",
+  "brow": "#3a2216",
+  "lip": "#a8644c",
+  "lash": "#1a100b",
+  "eye_white": "#fbf8f2",
+  "iris": "#7a4a22",
+  "pupil": "#140b06",
+  "jersey": "#1652d8",
+  "shorts": "#1652d8",
+  "trim": "#ffd21b",
+  "number": "#ffd21b",
+  "number_outline": "#0b2a6b",
+  "shoe": "#1b5ce0",
+  "sole": "#ffc81e",
+  "shoe_accent": "#ffffff",
+  "hair": "#6b3e24",
+  "hair_short": "#4a2c1a",
+  "outsole": "#e89412",
+  "shoe_heel": "#ffd21b",
+  "side_panel": "#ffd21b",
+  "iris_dark": "#2a170c",
+  "iris_light": "#c08540"
+ },
+ "number": {
+  "text": "7",
+  "back_center_z": 1.3,
+  "back_span": 0.34,
+  "front_center_z": 1.31,
+  "front_span": 0.34,
+  "back_size": 0.62,
+  "front_size": 0.42,
+  "font": "fonts/Anton-Regular.ttf"
+ },
+ "jersey": {
+  "offset": 0.011,
+  "hem_flare": 0.016,
+  "bottom_above_hips": -0.03,
+  "strap_x": 0.15,
+  "neck_half_width": 0.068,
+  "neck_front_depth": 0.11,
+  "neck_back_depth": 0.03,
+  "armpit_drop": 0.11,
+  "smooth": 6,
+  "trim_rings": 1,
+  "trim_width": 0.016,
+  "armhole_x": 0.19,
+  "neck_shape": "v",
+  "side_span": 0.3,
+  "side_panel_w": 0.045
+ },
+ "shorts": {
+  "offset": 0.02,
+  "hem_flare": 0.045,
+  "hem_above_knee": 0.05,
+  "waist_above_hips": 0.1,
+  "smooth": 8,
+  "hem_rings": 1,
+  "stripe_x": 0.07,
+  "stripe_half": 0.014,
+  "waist_rings": 1,
+  "hem_width": 0.024,
+  "waist_width": 0.026,
+  "stripe_half_u": 0.035
+ },
+ "shoes": {
+  "offset": 0.012,
+  "collar_above_ankle": 0.05,
+  "smooth": 3,
+  "sole_thickness": 0.022,
+  "sole_drop": 0.012,
+  "sole_color_top": 0.024,
+  "collar_width": 0.012,
+  "toe_boost": 0.009,
+  "side_boost": 0.004,
+  "stripe": [
+   [
+    0.22,
+    0.04
+   ],
+   [
+    0.8,
+    0.085
+   ]
+  ],
+  "stripe_w": 0.012
+ },
+ "socks": {
+  "height_above_ankle": 0.15
+ },
+ "face": {
+  "brow_up": 0.025,
+  "brow_thick": 0.0045,
+  "brow_arch": 0.006,
+  "brow_tilt": 0.004,
+  "brow_in": -0.017,
+  "brow_out": 0.026,
+  "liner_in": 0.92,
+  "liner_out": 1.22,
+  "liner_low": 0.2,
+  "mouth_smooth": 4,
+  "mouth_half": 0.03,
+  "decal": true,
+  "eye_w": 0.74,
+  "eye_h": 0.46,
+  "eye_out": 0.06,
+  "eye_up": 0.05,
+  "iris_r": 0.58,
+  "brow_up_ipd": 0.52,
+  "brow_slant": 0.08,
+  "decal_lift": 0.0012,
+  "brow_thick_ipd": 0.15,
+  "mouth_w": 0.6
+ },
+ "eyes": {
+  "pupil_deg": 13,
+  "iris_deg": 27,
+  "ball_scale": 1.12
+ },
+ "hair": {
+  "spacing": 0.016,
+  "curl_radius": 0.0165,
+  "base_offset": 0.006,
+  "top_volume": 0.014,
+  "subcurls": 2,
+  "resolution": 0.0055,
+  "decimate": 0.35,
+  "hairline_above_eyes": 0.045,
+  "nape_above_neck": 0.045,
+  "side_above_eyes": 0.012,
+  "fade_nape_above_neck": 0.03,
+  "fade_side_above_eyes": 0.014,
+  "scalp_dist": 0.05,
+  "curl_front_above_eyes": 0.058,
+  "top_curl_grow": 0.12,
+  "curl_side_above_eyes": 0.012,
+  "curl_back_above_neck": 0.05
+ },
+ "rest_pose": {
+  "arm_down_deg": 40,
+  "finger_curl_deg": 22
+ },
+ "face_targets": {
+  "eyes/l-eye-scale-incr": 1.0,
+  "eyes/r-eye-scale-incr": 1.0,
+  "head/head-age-decr": 0.35,
+  "nose/nose-scale-horiz-decr": 0.25,
+  "nose/nose-volume-decr": 0.3,
+  "eyes/l-eye-height2-incr": 0.5,
+  "eyes/r-eye-height2-incr": 0.5,
+  "eyebrows/eyebrows-trans-up": 0.25
+ }
+}
