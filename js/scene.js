@@ -311,10 +311,11 @@ export function createScene(canvas, o) {
       if (o.sprite === false) {
         // Diagnostic guide: left panel = side profile, right panel = front profile.
         // Both render the same skeleton pose, so posture differences are visible.
-        const half = Math.floor(p.w / 2);
+        // Keep both figures fully visible: side profile shifted left and front view given more room.
+        const sideWidth = Math.floor(p.w * 0.44);
         const views = [
-          { x: p.x, w: half, eye: [laneX + 4.3, 1.15, 0], target: [laneX, 0.95, 0] },
-          { x: p.x + half, w: p.w - half, eye: [laneX, 1.15, -4.3], target: [laneX, 0.95, 0] }
+          { x: p.x, w: sideWidth, eye: [laneX + 5.1, 1.15, -0.38], target: [laneX, 0.95, -0.38] },
+          { x: p.x + sideWidth, w: p.w - sideWidth, eye: [laneX - 0.08, 1.15, -5.1], target: [laneX - 0.08, 0.95, 0] }
         ];
         for (const view of views) {
           gcam.position.set(...view.eye); gcam.lookAt(...view.target);
