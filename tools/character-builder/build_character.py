@@ -621,15 +621,23 @@ def build(cfg, out_path, blend_path=None):
     subdivide(shoes_ob, 1)
     print('[build] shoe ribbons', add_ribbons(shoes_ob, MATS['shoe_accent'], lambda c, pts: c.z > 0.04, SO.get('collar_width', 0.012), outset=0.002))
 
+    # 6.2) 頭パーツの 差しかえ（Meshy などで 作った 頭を つなぐ）
+    head_ob = None
+    HM = cfg.get('head_mesh')
+    if HM:
+        head_ob = attach_head_mesh(cfg, HM, body, head_w, eyeCL, eyeCR, eyeR, H, coll, MATS)
+        bpy.data.objects.remove(eyes); eyes = None
+
     # 6.5) アニメ風の 目と まゆ（顔の 前に うすい シートを はって 絵を のせる）
     decal_ob = None
     if FC.get('decal', False):
-        decal_ob = make_face_decal(cfg, [body, eyes], eyeCL, eyeCR, coll)
-        for poly in eyes.data.polygons: poly.material_index = 0
-        eyes.data.materials[0] = MATS['skin']
+        decal_ob = make_face_decal(cfg, [head_ob] if head_ob else [body, eyes], eyeCL, eyeCR, coll)
+        if eyes:
+            for poly in eyes.data.polygons: poly.material_index = 0
+            eyes.data.materials[0] = MATS['skin']
 
     # 7) カーリーヘア（頭の上の部分だけ。メタボールの つぶを ならべて 1つの メッシュに）
-    hair_ob = make_hair(cfg, hair_pts, H, eyeCL, eyeCR, coll, MATS['hair'], curl_lim)
+    hair_ob = None if head_ob else make_hair(cfg, hair_pts, H, eyeCL, eyeCR, coll, MATS['hair'], curl_lim)
 
     # 8) アーマチュア
     arm_data = bpy.data.armatures.new('Armature'); arm = bpy.data.objects.new('Armature', arm_data); coll.objects.link(arm)
@@ -643,7 +651,7 @@ def build(cfg, out_path, blend_path=None):
     lift = SO.get('sole_drop', 0.012)
     for eb in arm_data.edit_bones: eb.head.z += lift; eb.tail.z += lift
     bpy.ops.object.mode_set(mode='OBJECT')
-    meshes = [body, eyes, jersey_ob, shorts_ob, shoes_ob, hair_ob] + ([decal_ob] if decal_ob else [])
+    meshes = [m_ for m_ in [body, eyes, jersey_ob, shorts_ob, shoes_ob, hair_ob, head_ob, decal_ob] if m_ is not None]
     for ob in meshes: ob.data.transform(Matrix.Translation((0, 0, lift)))
     zmin_all = min((v.co.z for ob in meshes for v in ob.data.vertices))
     print('[build] lowest point (should be ~0):', round(zmin_all, 4))
@@ -925,13 +933,13 @@ def make_face_decal(cfg, targets, eyeCL, eyeCR, coll):
     mz = eZ - FC.get('mouth_below_eyes', 0.072) * HSd
     nzv = eZ - FC.get('nose_below_eyes', 0.042) * HSd
     (n1x, n1z) = P(ipd * 0.03, nzv + ipd * 0.05); (n2x, n2z) = P(ipd * 0.06, nzv); (n3x, n3z) = P(-ipd * 0.01, nzv - ipd * 0.005)
-    d.line([(n1x, n1z), (n2x, n2z), (n3x, n3z)], fill=rgb(C.get('nose_line', '#9a5a3a'), 220), width=max(2, int(ipd / (x1 - x0) * TW * SS * 0.03)))
+    if FC.get('decal_nose', True): d.line([(n1x, n1z), (n2x, n2z), (n3x, n3z)], fill=rgb(C.get('nose_line', '#9a5a3a'), 220), width=max(2, int(ipd / (x1 - x0) * TW * SS * 0.03)))
     mw = ipd * FC.get('mouth_w', 0.55)
     (ax_, az_) = P(-mw * 0.75, mz + ipd * 0.07); (bx_, bz_) = P(mw * 0.75, mz - ipd * 0.07)
-    d.ellipse([ax_, az_, bx_, bz_], fill=rgb(C['skin']))
+    if FC.get('decal_mouth', True): d.ellipse([ax_, az_, bx_, bz_], fill=rgb(C['skin']))
     pts = [P(-mw / 2 + mw * k / 20, mz - ipd * 0.025 * m_.sin(m_.pi * k / 20) + ipd * 0.008) for k in range(21)]
     lw = ipd / (x1 - x0) * TW * SS
-    for k in range(20): d.line([pts[k], pts[k + 1]], fill=rgb(C['lash'], 235), width=max(2, int(lw * FC.get('mouth_line', 0.045) * (0.5 + 0.7 * m_.sin(m_.pi * k / 20)))))
+    for k in (range(20) if FC.get('decal_mouth', True) else ()): d.line([pts[k], pts[k + 1]], fill=rgb(C['lash'], 235), width=max(2, int(lw * FC.get('mouth_line', 0.045) * (0.5 + 0.7 * m_.sin(m_.pi * k / 20)))))
     im = im.resize((TW, TH), Image.LANCZOS)
     path = os.path.join(bpy.app.tempdir or '/tmp', 'face_decal.png'); im.save(path)
     img = bpy.data.images.load(path); img.pack(); img.name = 'face_decal'
@@ -948,6 +956,71 @@ def make_face_decal(cfg, targets, eyeCL, eyeCR, coll):
     ob = bpy.data.objects.new('No7_FaceDecal', me); coll.objects.link(ob)
     g = ob.vertex_groups.new(name='mixamorig:Head'); g.add(list(range(len(me.vertices))), 1.0, 'REPLACE')
     print('[build] face decal faces', len(faces), 'tex', TW, TH)
+    return ob
+
+def attach_head_mesh(cfg, HM, body, head_w, eyeCL, eyeCR, eyeR, H, coll, MATS):
+    """頭パーツ（prepare_head_mesh.py の 出力）を 体の 首に つなぐ。目の 位置で 大きさと 場所を 合わせる"""
+    path = HM['path'] if os.path.isabs(HM['path']) else os.path.join(HERE, HM['path'])
+    info = json.load(open(os.path.splitext(path)[0] + '.json'))
+    # 体の 頭を けす（首は 残す）
+    bm = bmesh.new(); bm.from_mesh(body.data); bm.verts.ensure_lookup_table()
+    cut = HM.get('cut_head_w', 0.5)
+    zcut = H('Head').z + HM.get('cut_above_head_joint', 0.01)
+    ny = H('Neck').y
+    # 首の 上の方と、頭（顔・あご）を けす。首の 後ろと 横は 頭パーツの 首の 中に かくれる 高さまで 残す
+    dead = [f for f in bm.faces if all(v.co.z > zcut or (head_w[v.index] > cut and v.co.y < ny - 0.005) for v in f.verts)]
+    bmesh.ops.delete(bm, geom=dead, context='FACES')
+    bm.to_mesh(body.data); bm.free(); body.data.update()
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=path)
+    new = [o for o in bpy.data.objects if o not in before]
+    ob = [o for o in new if o.type == 'MESH'][0]
+    for o in new:
+        if o is not ob and o.type != 'MESH': pass
+    ob.parent = None
+    bpy.context.view_layer.update()
+    me = ob.data; me.transform(ob.matrix_world); ob.matrix_world = Matrix.Identity(4)
+    for o in new:
+        if o is not ob: bpy.data.objects.remove(o)
+    # 元データの 目の 位置（正面の 表面）
+    (ex1, ez1), (ex2, ez2) = info['eyes_xz']
+    bvh = BVHTree.FromPolygons([v.co for v in me.vertices], [p.vertices for p in me.polygons])
+    def front_y(x, z):
+        h = bvh.ray_cast(Vector((x, -5, z)), Vector((0, 1, 0)), 10)
+        return h[0].y if h[0] is not None else 0.0
+    Mc = Vector(((ex1 + ex2) / 2, (front_y(ex1, ez1) + front_y(ex2, ez2)) / 2, (ez1 + ez2) / 2))
+    ipd_src = abs(ex2 - ex1)
+    ipd_dst = eyeCL.x - eyeCR.x
+    sc = ipd_dst / ipd_src * HM.get('scale', 1.0)
+    Bc = Vector((0.0, min(eyeCL.y, eyeCR.y) - eyeR * 0.6, (eyeCL.z + eyeCR.z) / 2)) + Vector(HM.get('offset', [0, 0, 0]))
+    for v in me.vertices: v.co = (v.co - Mc) * sc + Bc
+    me.update()
+    # 材質：skin / hair
+    names = [m.name.split('.')[0] for m in me.materials]
+    kinds = [1 if names[p.material_index] == 'hair' else 0 for p in me.polygons]
+    me.materials.clear(); me.materials.append(MATS['skin']); me.materials.append(MATS['hair'])
+    for p, k in zip(me.polygons, kinds): p.material_index = k; p.use_smooth = True
+    # ウェイト：頭 1.0、首の つなぎめは 首と まぜる
+    zH = H('Head').z; zN = H('Neck').z
+    gH = ob.vertex_groups.new(name='mixamorig:Head'); gN = ob.vertex_groups.new(name='mixamorig:Neck')
+    for v in me.vertices:
+        w = smoothstep(zN, zH + 0.02, v.co.z)
+        gH.add([v.index], w, 'REPLACE')
+        if w < 0.999: gN.add([v.index], 1 - w, 'REPLACE')
+    # ふちどりの 太さ：顔の 前（肌）は 0
+    eyeZ = (eyeCL.z + eyeCR.z) / 2; HS = cfg['body'].get('head_scale', 1.0)
+    ca = me.color_attributes.new(name='Col', type='FLOAT_COLOR', domain='POINT')
+    hairv = set()
+    for p in me.polygons:
+        if p.material_index == 1: hairv.update(p.vertices)
+    for v in me.vertices:
+        c = v.co
+        inface = (v.index not in hairv) and c.y < Bc.y + 0.05 * HS and abs(c.x) < 0.075 * HS and eyeZ - 0.15 * HS < c.z < eyeZ + 0.06 * HS
+        k = 0.0 if inface else 1.0
+        ca.data[v.index].color = (k, k, k, 1.0)
+    me.color_attributes.active_color = ca
+    ob.name = 'No7_Head'; me.name = 'No7_Head'
+    print('[build] head mesh', os.path.basename(path), 'scale', round(sc, 4), 'faces', len(me.polygons))
     return ob
 
 def make_stripe_texture(cfg):

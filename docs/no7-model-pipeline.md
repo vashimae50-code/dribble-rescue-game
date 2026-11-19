@@ -19,6 +19,12 @@
 - ゲーム内の影は、新モデルだけ2段（セル画風）。
 - 設定は `tools/character-builder/characters/no7-chibi.json` の `anime` など。
 
+## 2026-11-20 Meshyの頭パーツ（試し）
+- 前橋さんがMeshyで作った全身（Mini Court Legend, FBX）から頭と髪だけを取り出し、Bの体の首につないだ版：`models/no7-meshy.glb`（`&model=no7-meshy`）。試験版の標準はBのまま。
+- 頭パーツは `tools/character-builder/prepare_head_mesh.py` で作る（首で切る→面を減らす→厚みで髪と肌を分ける）。つなぐ設定は `characters/no7-meshy.json` の `head_mesh`。
+- 元のFBXは色・UV・骨なしの形だけ（約188万面）。全身をそのまま使うのは、腰に手を当てたポーズと、胸の文字の凹凸（参考画像のチーム名）があるため見送り。
+- Meshyの無料プランで作ったものは CC BY 4.0（商用可、Meshyのクレジット表記が必要）。有料プランなら表記不要。
+
 ## 見た目
 - 体：MakeHuman のベースメッシュ（CC0）に筋肉・身長・比率のターゲットをかけた、筋肉質なバスケ選手の体型。頭は少しだけ大きめ（1.07倍）。
 - ユニフォーム：ロイヤルブルーのタンクトップ＋ひざ上のゆったりショーツ。首・そでぐり・ウエスト・すそに黄色の帯、ショーツの横に黄色のライン。

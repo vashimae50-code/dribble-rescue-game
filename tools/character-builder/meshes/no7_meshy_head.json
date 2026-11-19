@@ -1,0 +1,17 @@
+{
+ "source": "Meshy_AI_Mini_Court_Legend_20261119_generate.fbx",
+ "neck_z": 0.49,
+ "cut_z": 0.4,
+ "eyes_xz": [
+  [
+   -0.125,
+   0.618
+  ],
+  [
+   -0.0125,
+   0.618
+  ]
+ ],
+ "faces": 30479,
+ "hair_faces": 24486
+}

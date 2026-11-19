@@ -21,7 +21,7 @@ function verifyRig(scene) {
 export function playerModelKey() {
   const q = new URLSearchParams(location.search); const mode = q.get('model');
   if (mode === 'legacy') return 'legacy';
-  if (mode === 'no7-v2' || mode === 'no7-chibi') return mode;
+  if (mode === 'no7-v2' || mode === 'no7-chibi' || mode === 'no7-meshy') return mode;
   const preview3D = q.get('character3d') === '1' || location.pathname.includes('/preview/');
   return preview3D ? 'no7-chibi' : 'legacy';
 }
@@ -34,7 +34,7 @@ async function loadLegacy() {
 }
 export async function loadHuman(key = playerModelKey()) {
   if (modelCache.has(key)) return modelCache.get(key);
-  const files = { 'no7-v2': 'models/no7-v2.glb', 'no7-chibi': 'models/no7-chibi.glb' };
+  const files = { 'no7-v2': 'models/no7-v2.glb', 'no7-chibi': 'models/no7-chibi.glb', 'no7-meshy': 'models/no7-meshy.glb' };
   if (files[key]) {
     try {
       // Fixed same-origin path: no untrusted user-provided model URLs.
