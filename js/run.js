@@ -132,7 +132,7 @@ export function runStage(opts) {
   if (dojo) {
     const sk = SKILLS[opts.skill]; const foot = (sk.hand === 'hold' && !sk.handle) || sk.lane; const len = Math.min(4, sk.len);
     [[70, foot ? 'none' : undefined, 'ゆっくり'], [86, undefined, 'ふつう'], [102, undefined, 'ゲームの はやさ']].forEach(([bpm, bm, name], i) => {
-      const r = addCue('rest', { len: 4, bpm, hand: curHand }); r.setName = `${i + 1}/3　${name}${bm === 'none' ? '（ボールなしで 足だけ）' : ''}`; dojoSets.push(r);
+      const r = addCue('rest', { len: 4, bpm, hand: curHand }); r.setName = `${i + 1}/3　${name}${bm === 'none' ? '（ボールなしで あしだけ）' : ''}`; dojoSets.push(r);
       for (let j = 0; j < 4; j++) addCue(opts.skill, { len, ballMode: bm });
       if (lane !== 0) addCue(opts.skill, { len, ballMode: bm });
     });
@@ -240,9 +240,9 @@ export function runStage(opts) {
     if (video) { advance(1); return; }   // どうが モード：せんたく がめんを 出さず そのまま つづける
     phase = 'safe'; audio.bgmVol(0.35); sayBoth('セーフゾーン！', 'Safe zone! Take a break.');
     const hit = cuesAll ? cuesOk / cuesAll : 1; const defT = cam ? (hit > 0.8 ? 2 : hit > 0.5 ? 1 : 0) : 1; const secs = cam ? 6 : 5;
-    overlay.innerHTML = `<div class="safe"><div class="safe-title">🛡️ セーフゾーン <small>ボールを持って ひとやすみ</small></div>
+    overlay.innerHTML = `<div class="safe"><div class="safe-title">🛡️ セーフゾーン <small>ボールをもって ひとやすみ</small></div>
       <div class="safe-q">${cam ? `ここまで <b>${Math.round(hit * 100)}%</b> せいこう！ つぎのルートは？` : 'いまの どうだった？ つぎのルートを えらぼう'}</div>
-      <div class="safe-btns"><button data-t="2"><span>🔥</span><b>よゆう！</b><small>ちかみち（はやい・⚡多い）</small></button><button data-t="1"><span>🙂</span><b>ギリギリ</b><small>このままのルート</small></button><button data-t="0"><span>😵</span><b>むずかしい</b><small>あんぜんルート＋コツ</small></button></div>
+      <div class="safe-btns"><button data-t="2"><span>🔥</span><b>よゆう！</b><small>ちかみち（はやい・⚡おおい）</small></button><button data-t="1"><span>🙂</span><b>ギリギリ</b><small>このままのルート</small></button><button data-t="0"><span>😵</span><b>むずかしい</b><small>あんぜんルート＋コツ</small></button></div>
       <div class="safe-bar"><div id="safebar"></div></div></div>`;
     const btns = [...overlay.querySelectorAll('[data-t]')];
     const choose = (t) => { if (phase !== 'safe') return; clearTimeout(safeTimer); overlay.innerHTML = ''; advance(t); };
@@ -386,7 +386,7 @@ export function runStage(opts) {
     const danger = Math.max(redFlash, clamp((chaserShow - 0.6) * 2, 0, 0.6) * (0.6 + 0.4 * Math.sin(mbeat * TAU * 2)));
     if (danger > 0.02) { const v = g.createRadialGradient(cx, H / 2, H * 0.3, cx, H / 2, Math.max(W, H) * 0.7); v.addColorStop(0, 'rgba(255,0,60,0)'); v.addColorStop(1, `rgba(255,0,60,${danger})`); g.fillStyle = v; g.fillRect(0, 0, W, H); }
     if (flash > 0.01) { g.globalAlpha = flash * 0.35; g.fillStyle = flashCol; g.fillRect(0, 0, W, H); g.globalAlpha = 1; flash *= 0.85; }
-    if (phase === 'count' && video && -beat > 3.1) { g.globalAlpha = Math.min(1, (-beat - 3.1) * 2); txt('ドリブル練習', cx, H * 0.4, Math.min(H * 0.07, W / 15), pal.a); const vTitle = (mission.vt || mission.n) + (stage && !stage.sp ? `【レベル${wi + 1}】` : ''); txt(vTitle, cx, H * 0.53, Math.min(H * 0.13, W / 8.5), '#fff'); g.globalAlpha = 1; }
+    if (phase === 'count' && video && -beat > 3.1) { g.globalAlpha = Math.min(1, (-beat - 3.1) * 2); txt('ドリブルれんしゅう', cx, H * 0.4, Math.min(H * 0.07, W / 15), pal.a); const vTitle = (mission.vt || mission.n) + (stage && !stage.sp ? `【レベル${wi + 1}】` : ''); txt(vTitle, cx, H * 0.53, Math.min(H * 0.13, W / 8.5), '#fff'); g.globalAlpha = 1; }
     if (phase === 'count') { const n = Math.ceil(-beat); if (n > 0 && n <= 3) txt(String(n), cx, H * 0.42, H * 0.28 * (1 + frac(-beat) * 0.3), '#fff'); if (!video || -beat <= 3.1) txt(dojo ? `${SKILLS[opts.skill].i} ${SKILLS[opts.skill].n}` : test ? 'しょうきゅうテスト' : `${stage.name}　${mission.i} ${mission.n}`, cx, H * 0.17, Math.min(H * 0.065, W / 16), pal.a); }
     if (phase === 'rescue') txt(hasBoss ? 'BOSS げきは！' : dojo ? 'れんしゅう おわり！' : 'ゴール！', cx, H * 0.4, Math.min(H * 0.12, W / 9) * Math.min(1, rescueT * 3), '#ffe03d');
     for (let i = texts.length - 1; i >= 0; i--) { const t = texts[i]; t.life -= 0.013; if (t.life <= 0) { texts.splice(i, 1); continue; } g.globalAlpha = Math.min(1, t.life * 2.5); txt(t.t, cx, H * (t.y - (1 - Math.min(1, t.life)) * 0.05), Math.min(H * 0.06 * t.size, (W * 0.92) / Math.max(6, t.t.length) * 1.4), t.col); g.globalAlpha = 1; }

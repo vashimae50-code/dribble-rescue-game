@@ -39,19 +39,19 @@ function home() {
   const sk7 = streakNow(p); let nxt = sk7 + 1; while (nxt < 3 || !STREAK_RW[nxt % 7]) nxt++; const nrw = STREAK_RW[nxt % 7];
   const st = p.stamps % 7;
   const weak = poolFor(curLv(p)).slice().sort((a, b) => mastery(p, a) - mastery(p, b))[0];
-  show(`${MV.inLine() ? '<button class="banner warn" data-act="moveSafari"><b>⚠️ LINEの 中では とまることが あります</b><small>タップで Safariに ひっこし（データも いっしょに うつります）</small></button>' : ''}
+  show(`${MV.inLine() ? '<button class="banner warn" data-act="moveSafari"><b>⚠️ LINEの なかでは とまることが あります</b><small>タップで Safariに ひっこし（データも いっしょに うつります）</small></button>' : ''}
     <div class="hero">
       <div class="logo"><span>めざせ！ドリブルキング</span><b>ドリバト！</b></div>
       ${(() => { const L = curLv(p); const ls = lvStars(p, L); const nx = MAIN_STAGES.find((x) => !(ls[x.id] > 0)); return nx ? `<button class="play" data-act="stage" data-id="${nx.id}">▶ つづきから<small>${sl(nx)} ${MISSIONS[nx.mission].n}</small></button>` : '<button class="play" data-act="tab" data-tab="stages">▶ ステージへ</button>'; })()}
     </div>
     ${lvBanner(p)}
     <div class="card"><h2>📅 きょうの ミッション</h2>${ms}</div>
-    <div class="card stampcard"><h2>🗓️ スタンプカード <small>あそんだ日に 1こ。7こで カプセルけん 🎟️（とぎれても きえない）</small></h2>
+    <div class="card stampcard"><h2>🗓️ スタンプカード <small>あそんだひに 1こ。7こで カプセルけん 🎟️（とぎれても きえない）</small></h2>
       <div class="stamps">${Array.from({ length: 7 }, (_, i) => `<i class="${i < st || (st === 0 && p.stamps > 0 && p.lastDay === d.date && i < 7) ? 'on' : ''}">${i === 6 ? '🎟️' : '⭐'}</i>`).join('')}</div>
-      <div class="streak"><b>🔥 れんぞく ${sk7}日</b><small>${p.lastDay === d.date ? 'きょうも あそんだね！' : 'きょう あそぶと れんぞく ' + (sk7 + 1) + '日'}　つぎは ${nxt}日めで ${nrw.t}（3日 🪙30・5日 🎟️・7日 🪙100）</small></div>
+      <div class="streak"><b>🔥 れんぞく ${sk7}にち</b><small>${p.lastDay === d.date ? 'きょうも あそんだね！' : 'きょう あそぶと れんぞく ' + (sk7 + 1) + 'にち'}　つぎは ${nxt}にちめで ${nrw.t}（3にち 🪙30・5にち 🎟️・7にち 🪙100）</small></div>
       <small>カプセルけん：${p.tickets}まい</small></div>
     <button class="banner" data-act="dojo" data-id="${weak}"><b>💡 おすすめ れんしゅう：${SKILLS[weak].i} ${SKILLS[weak].n}</b><small>トレーニングルームで ゆっくり れんしゅうしよう</small></button>
-    <div class="row2"><button class="mini" data-act="record">📒 きろく</button><button class="mini" data-act="how">❓ あそびかた</button><button class="mini" data-act="settings">⚙️ せってい（おうちの人）</button></div>
+    <div class="row2"><button class="mini" data-act="record">📒 きろく</button><button class="mini" data-act="how">❓ あそびかた</button><button class="mini" data-act="settings">⚙️ せってい（おうちのひと）</button></div>
   `, 'home');
 }
 
@@ -87,9 +87,9 @@ function stageIntro(id) {
   const feat = pool.filter((k) => (m.w[k] || 0) > 1).slice(0, 6); const list = (m.pool && m.pool.length > 8 ? m.pool.slice(0, 8) : m.pool) || (m.plan ? [...new Set(m.plan.flat().map((x) => x[0]))].filter((k) => SKILLS[k].combo || k === m.learn) : feat.length ? feat : pool.slice(-6));
   show(`<div class="card intro" style="--a:${s.world.pal.a};--b:${s.world.pal.b}">
       <div class="intro-h"><span class="bob">${m.i}</span><div><b>${s.sp ? '' : `R${LV} ・ `}${s.world.name} ${sl(s)}</b><h1>${m.n}</h1><small>${m.d}</small></div></div>
-      <p class="hint">${m.plan ? m.steps.join('<br>') : m.pool && m.pool.some((k) => SKILLS[k].hand === 'two') ? 'ボールを 2つ よういしよう。' : m.pool ? 'うごかないで、ハンドリングの ワザだけ 出るよ。' : `きみの ランク（R${p.rank} ${RANKS[p.rank].n}）に 合わせた ワザが 出るよ。`}</p>
+      <p class="hint">${m.plan ? m.steps.join('<br>') : m.pool && m.pool.some((k) => SKILLS[k].hand === 'two') ? 'ボールを 2つ よういしよう。' : m.pool ? 'うごかないで、ハンドリングの ワザだけ でるよ。' : `きみの ランク（R${p.rank} ${RANKS[p.rank].n}）に あわせた ワザが でるよ。`}</p>
       <div class="legend">${list.map((k) => `<div class="tile" style="--c:${SKILLS[k].c}"><b>${SKILLS[k].i} ${SKILLS[k].n}</b><span>${SKILLS[k].tips[0]}</span></div>`).join('')}</div>
-      <p class="hint">${S.settings.camera ? '📷 カメラはんてい ON：全身が うつる ばしょに 立とう' : '📺 がめんの お手本に 合わせて うごこう。まわりに ぶつかる物が ないか たしかめてね'}</p>
+      <p class="hint">${S.settings.camera ? '📷 カメラはんてい ON：ぜんしんが うつる ばしょに たとう' : '📺 がめんの おてほんに あわせて うごこう。まわりに ぶつかるものが ないか たしかめてね'}</p>
       <button class="big" id="go">▶ スタート</button><p class="hint" id="msg"></p>
       <button class="mini" data-act="tab" data-tab="stages">← もどる</button></div>`, 'stages');
   $('#go').addEventListener('click', () => start({ mode: 'stage', stage: s, level: LV, speedK: s.sp ? 1 : LEVEL_SPEED(LV) }));
@@ -107,7 +107,7 @@ function dojoIntro(id) {
   const sk = SKILLS[id]; const p = player();
   show(`<div class="card intro" style="--a:${sk.c};--b:#7dffb0"><div class="intro-h"><span class="bob">${sk.i}</span><div><b>トレーニングルーム</b><h1>${sk.n}</h1>${badge(mastery(p, id))}</div></div>
     <div class="tipbox">${sk.tips.map((t, i) => `<span>💡 コツ${i + 1}：${t}</span>`).join('')}</div>
-    <p class="hint">3セット（ゆっくり → ふつう → ゲームの はやさ）。${(sk.hand === 'hold' && !sk.handle) || sk.lane ? 'さいしょの セットは ボールなしで 足だけ。' : ''}がめんの ロボの うごきを まねしよう。</p>
+    <p class="hint">3セット（ゆっくり → ふつう → ゲームの はやさ）。${(sk.hand === 'hold' && !sk.handle) || sk.lane ? 'さいしょの セットは ボールなしで あしだけ。' : ''}がめんの ロボの うごきを まねしよう。</p>
     <button class="big" id="go">▶ れんしゅう スタート</button><p class="hint" id="msg"></p><button class="mini" data-act="tab" data-tab="training">← もどる</button></div>`, 'training');
   $('#go').addEventListener('click', () => start({ mode: 'dojo', skill: id }));
 }
@@ -156,7 +156,7 @@ function applyPractice(p, r, mult = 1) {
   p.leftReps = (p.leftReps || 0) + r.leftReps; p.rightReps = (p.rightReps || 0) + r.rightReps; p.tipIdx = r.tipIdx; p.plays++; d.plays = (d.plays || 0) + 1;
   if (p.buddy) { p.bud = p.bud || {}; p.bud[p.buddy] = (p.bud[p.buddy] || 0) + 1; }
   const recs = []; if (r.cam) { const rc = p.rec = p.rec || {}; rc.camPlays = (rc.camPlays || 0) + 1; // カメラの じこベスト
-    for (const [k, v, n, u] of [['combo', r.maxCombo, 'さいだい コンボ', 'コンボ'], ['dribbles', r.dribbles, '1回の ドリブル', '回'], ['speed', Math.round((r.speed || 0) * 10) / 10, 'はやい ドリブル', '回/びょう']]) { if (v > 0 && v > (rc[k] || 0)) { if (rc[k]) recs.push({ n, from: rc[k], to: v, u }); rc[k] = v; } } }
+    for (const [k, v, n, u] of [['combo', r.maxCombo, 'さいだい コンボ', 'コンボ'], ['dribbles', r.dribbles, '1かいの ドリブル', 'かい'], ['speed', Math.round((r.speed || 0) * 10) / 10, 'はやい ドリブル', 'かい/びょう']]) { if (v > 0 && v > (rc[k] || 0)) { if (rc[k]) recs.push({ n, from: rc[k], to: v, u }); rc[k] = v; } } }
   const stamped = stamp(p); return { ups, stamped, g0, b0, recs };
 }
 const upsHtml = (ups) => `<div class="ups">${ups.sort((a, b) => (b.to - b.from) - (a.to - a.from) || b.add - a.add).slice(0, 8).map((u) => `<div class="up ${u.to > u.from ? 'lvl' : ''}" style="--c:${SKILLS[u.k].c}"><b>${SKILLS[u.k].i} ${SKILLS[u.k].n}</b><span>+${u.add}</span>${u.to > u.from ? `<em>${TIERS[u.to].i} ${TIERS[u.to].n}に アップ！</em>` : `<small>${TIERS[u.to].n}</small>`}</div>`).join('')}</div>`;
@@ -164,14 +164,14 @@ const upsHtml = (ups) => `<div class="ups">${ups.sort((a, b) => (b.to - b.from) 
 function endingHtml(p, e) {
   return `<div class="ending"><div class="rays"></div><div class="crown">👑</div><h2>おめでとう！</h2><p>R${e.L} の だいボスを たおした！<br>キミこそ <b>ドリブルキング</b>！</p>
     <div class="presents"><b>🎁 エンディング プレゼント</b>${e.friend ? `<span>${e.friend.e} なかま「${e.friend.n}」</span>` : ''}<span>👑 しょうごう「ドリブルキング」${Object.keys(p.king).length >= 6 ? '・「しんの ドリブルキング」' : ''}</span><span>🪙 200</span></div>
-    <div class="roll"><span>${esc(p.name)} の ぼうけん</span><span>あそんだ かいすう ${p.plays}回</span><span>ひだりて ${p.leftReps || 0}回 ／ みぎて ${p.rightReps || 0}回</span><span>あつめた ★ ${Object.values(p.stars || {}).reduce((a, b) => a + b, 0)}こ</span><span>${e.L < 6 ? `つぎは R${e.L + 1} の だいボスが まってるぞ！` : 'ぜんぶの だいボスを たおした でんせつの プレイヤー！'}</span><span>THANK YOU FOR PLAYING!</span></div></div>`;
+    <div class="roll"><span>${esc(p.name)} の ぼうけん</span><span>あそんだ かいすう ${p.plays}かい</span><span>ひだりて ${p.leftReps || 0}かい ／ みぎて ${p.rightReps || 0}かい</span><span>あつめた ★ ${Object.values(p.stars || {}).reduce((a, b) => a + b, 0)}こ</span><span>${e.L < 6 ? `つぎは R${e.L + 1} の だいボスが まってるぞ！` : 'ぜんぶの だいボスを たおした でんせつの プレイヤー！'}</span><span>THANK YOU FOR PLAYING!</span></div></div>`;
 }
 function extrasHtml(p, pr) {
   const out = []; const g = growOf(p); const row = (e, t, sub, cls = '') => `<div class="gift ${cls}"><span>${e}</span><div><b>${t}</b>${sub ? `<small>${sub}</small>` : ''}</div></div>`;
-  if (g > pr.g0) out.push(row('🌱', `${GROW[g].n}に せいちょう！`, 'からだが すこし 大きく なって、オーラが つよく なったよ', 'rare'));
+  if (g > pr.g0) out.push(row('🌱', `${GROW[g].n}に せいちょう！`, 'からだが すこし おおきく なって、オーラが つよく なったよ', 'rare'));
   for (const rc of pr.recs || []) out.push(row('🏆', `${rc.n} きろく こうしん！ ${rc.from} → ${rc.to} ${rc.u}`, '', 'rec'));
-  if (pr.stamped && pr.stamped.rw) out.push(row('🔥', `${pr.stamped.streak}日 れんぞく！ ${pr.stamped.rw.t} ゲット`, ''));
-  if (p.buddy && pr.b0 && budLv(p, p.buddy) > pr.b0) { const f = friend(p.buddy); out.push(row(f.e, `${f.n}が Lv${budLv(p, p.buddy)}に なった！`, 'ステージで すこし 大きく なるよ')); }
+  if (pr.stamped && pr.stamped.rw) out.push(row('🔥', `${pr.stamped.streak}にち れんぞく！ ${pr.stamped.rw.t} ゲット`, ''));
+  if (p.buddy && pr.b0 && budLv(p, p.buddy) > pr.b0) { const f = friend(p.buddy); out.push(row(f.e, `${f.n}が Lv${budLv(p, p.buddy)}に なった！`, 'ステージで すこし おおきく なるよ')); }
   for (const t of checkTitles(p)) out.push(row(t.i, `しょうごう「${t.n}」 ゲット！`, `${t.d}（ずかんで つけかえられる）`, 'rare'));
   return out.length ? `<div class="gifts">${out.join('')}</div>` : '';
 }
@@ -195,9 +195,9 @@ function result(o, r, noCam) {
       ${isBest && prevBest ? `<div class="recup big">🏆 さいこうきろく こうしん！ <b>${prevBest} → ${r.score}</b></div>` : ''}${extra}
       ${got ? `<div class="rescue rare"><div class="rays"></div><span>${got.e}</span><b>${got.n} が なかまに なった！</b><small>✨ ボスの なかま ✨</small></div>` : ''}
       <h3>れんしゅう ポイント</h3>${upsHtml(ups)}
-      <div class="res-lines">${r.cam ? `<span>せいこう ${Math.round(r.hit * 100)}%</span><span>さいだい ${r.maxCombo} コンボ</span><span>ドリブル ${r.dribbles}回</span>` : `<span>ルート：${r.tiers.map((x) => ['あんぜん', 'ふつう', 'ちかみち'][x]).join(' → ')}</span>`}${stamped ? '<span>🗓️ スタンプ +1</span>' : ''}</div>
+      <div class="res-lines">${r.cam ? `<span>せいこう ${Math.round(r.hit * 100)}%</span><span>さいだい ${r.maxCombo} コンボ</span><span>ドリブル ${r.dribbles}かい</span>` : `<span>ルート：${r.tiers.map((x) => ['あんぜん', 'ふつう', 'ちかみち'][x]).join(' → ')}</span>`}${stamped ? '<span>🗓️ スタンプ +1</span>' : ''}</div>
       ${noCam ? '<p class="hint">📷 この がめんでは カメラが つかえなかったので、カメラなしで あそびました。</p>' : ''}
-      ${r.cam && r.tracked < 0.5 ? '<p class="hint">📷 からだが あまり うつって いなかったよ。もうすこし はなれて 全身を うつしてね。</p>' : ''}
+      ${r.cam && r.tracked < 0.5 ? '<p class="hint">📷 からだが あまり うつって いなかったよ。もうすこし はなれて ぜんしんを うつしてね。</p>' : ''}
       ${hk ? `<button class="banner" data-act="dojo" data-id="${hk}"><b>💡 ${SKILLS[hk].i} ${SKILLS[hk].n} を れんしゅうする？</b><small>コツ：${SKILLS[hk].tips[0]}</small></button>` : ''}
       ${lvUp ? testBtn(p) : ''}
       <div class="btns"><button class="big" data-act="stage" data-id="${s.id}">もういちど</button>${next ? `<button class="big alt" data-act="stage" data-id="${next.id}">つぎへ ▶</button>` : ''}<button class="big ghost" data-act="tab" data-tab="home">ホーム</button></div></div>`, 'stages');
@@ -210,7 +210,7 @@ async function rankAfter(p, s, L, r) {
   try {
     await Promise.all([s.sp ? null : RK.sendBest(p, s.id, L, r.score, r.stars), RK.addPlay(p).catch(() => null)]);
     if (s.sp) return; const top = await RK.topStage(s.id, L, 100); const me = RK.myId(p); const i = top.findIndex((x) => `${x.uid}_${x.pid}` === me);
-    if (box() && i >= 0) box().innerHTML = `<div class="recup">🏆 このステージ（R${L}）の ランキング <b>${i + 1}い</b> / ${top.length}人</div>`;
+    if (box() && i >= 0) box().innerHTML = `<div class="recup">🏆 このステージ（R${L}）の ランキング <b>${i + 1}い</b> / ${top.length}にん</div>`;
   } catch (e) { console.warn('rank', e); }
 }
 function dojoResult(o, r) {
@@ -232,9 +232,9 @@ function dojoResult(o, r) {
 // ---------- しょうきゅうテスト ----------
 function testIntro() {
   const p = player(); const ks = rankSkills(p.rank);
-  show(`<div class="card intro" style="--a:${RANKS[p.rank + 1]?.c || '#fff'};--b:#ffe03d"><div class="intro-h"><span class="bob">🎓</span><div><b>しょうきゅうテスト</b><h1>R${p.rank} → R${p.rank + 1} ${RANKS[p.rank + 1].n}</h1><small>R${p.rank} の ワザだけが 出る ステージ。さいごに しけんかんと しょうぶ！</small></div></div>
+  show(`<div class="card intro" style="--a:${RANKS[p.rank + 1]?.c || '#fff'};--b:#ffe03d"><div class="intro-h"><span class="bob">🎓</span><div><b>しょうきゅうテスト</b><h1>R${p.rank} → R${p.rank + 1} ${RANKS[p.rank + 1].n}</h1><small>R${p.rank} の ワザだけが でる ステージ。さいごに しけんかんと しょうぶ！</small></div></div>
     <div class="legend">${ks.map((k) => `<div class="tile" style="--c:${SKILLS[k].c}"><b>${SKILLS[k].i} ${SKILLS[k].n}</b><span>${SKILLS[k].tips[0]}</span></div>`).join('')}</div>
-    <p class="hint">${S.settings.camera ? '📷 カメラで はんていします（70%いじょうで ごうかく）。' : '👀 カメラなしの ときは、おわったあとに おうちの人が ワザを かくにんします。おうちの人と いっしょに やろう。'}</p>
+    <p class="hint">${S.settings.camera ? '📷 カメラで はんていします（70%いじょうで ごうかく）。' : '👀 カメラなしの ときは、おわったあとに おうちのひとが ワザを かくにんします。おうちのひとと いっしょに やろう。'}</p>
     <button class="big" id="go">▶ テスト スタート</button><p class="hint" id="msg"></p><button class="mini" data-act="tab" data-tab="home">← もどる</button></div>`, 'home');
   $('#go').addEventListener('click', () => start({ mode: 'test', stage: { ...STAGES[Math.min(STAGES.length - 1, (p.rank - 1) * 6 + 5)], mission: 'dodge', sections: 2 } }));
 }
@@ -251,10 +251,10 @@ function testResult(o, r) {
   }
   const marks = {};
   const draw = () => {
-    show(`<div class="card"><h2>👀 おうちの人 チェック</h2><p class="hint">お子さんの うごきを 見て、ワザごとに えらんでください。ぜんぶ「できた」で しょうきゅうします。見られなかった日は「きょうは 見られない」で、テストは もういちど うけられます。</p>
+    show(`<div class="card"><h2>👀 おうちのひと チェック</h2><p class="hint">おこさんの うごきを みて、ワザごとに えらんでください。ぜんぶ「できた」で しょうきゅうします。みられなかったひは「きょうは みられない」で、テストは もういちど うけられます。</p>
       ${ks.map((k) => `<div class="chk" style="--c:${SKILLS[k].c}"><div><b>${SKILLS[k].i} ${SKILLS[k].n}</b><small>${SKILLS[k].tips.join(' / ')}</small></div>
         <div class="seg"><button class="${marks[k] === 1 ? 'on' : ''}" data-k="${k}" data-v="1">できた</button><button class="${marks[k] === 0 ? 'on' : ''}" data-k="${k}" data-v="0">もうすこし</button></div></div>`).join('')}
-      <div class="btns"><button class="big" id="decide" ${ks.every((k) => marks[k] != null) ? '' : 'disabled'}>けってい</button><button class="big ghost" data-act="tab" data-tab="home">きょうは 見られない</button></div></div>`, 'home');
+      <div class="btns"><button class="big" id="decide" ${ks.every((k) => marks[k] != null) ? '' : 'disabled'}>けってい</button><button class="big ghost" data-act="tab" data-tab="home">きょうは みられない</button></div></div>`, 'home');
     app.querySelectorAll('[data-k]').forEach((b) => b.addEventListener('click', () => { marks[b.dataset.k] = +b.dataset.v; draw(); }));
     $('#decide').addEventListener('click', () => {
       const weak = ks.filter((k) => marks[k] === 0); if (!weak.length) return pass();
@@ -272,8 +272,8 @@ function friends() {
   const tabs = [['friends', `🐾 なかま ${p.friends.length}/${ALL_FRIENDS.length}`], ['balls', `🏀 ボール ${p.balls.length}/${BALLS.length}`], ['boss', `🛡️ ボス ${Object.keys(p.bossDone).length}/${WORLDS.length}`], ['titles', `🏅 しょうごう ${(p.titles || []).length}/${TITLES.length}`]];
   const seg = `<div class="seg ztabs">${tabs.map(([k, t]) => `<button class="${zTab === k ? 'on' : ''}" data-act="ztab" data-id="${k}">${t}</button>`).join('')}</div>`;
   let body = '';
-  if (zTab === 'friends') body = `<p class="hint">タップすると バディに なって、ステージで いっしょに 走るよ。いっしょに あそぶほど レベルが あがって 大きく なる！（Lv2：${BUD_LV[1]}回・Lv3：${BUD_LV[2]}回・Lv4：${BUD_LV[3]}回）</p>
-    <div class="zukan">${ALL_FRIENDS.map((f) => { const lv = budLv(p, f.id); return p.friends.includes(f.id) ? `<button class="z on ${f.rare ? 'rare' : ''} ${p.buddy === f.id ? 'sel' : ''} lv${lv}" data-act="buddy" data-id="${f.id}"><span>${f.e}</span><b>${f.n}</b><small>Lv${lv}${'⭐'.repeat(lv - 1)}${p.buddy === f.id ? ' バディ' : ''}</small></button>` : `<div class="z"><span>？</span><b>？？？</b><small>${f.rare ? 'ボスを たおすと…' : 'カプセルで 出る'}</small></div>`; }).join('')}</div>`;
+  if (zTab === 'friends') body = `<p class="hint">タップすると バディに なって、ステージで いっしょに はしるよ。いっしょに あそぶほど レベルが あがって おおきく なる！（Lv2：${BUD_LV[1]}かい・Lv3：${BUD_LV[2]}かい・Lv4：${BUD_LV[3]}かい）</p>
+    <div class="zukan">${ALL_FRIENDS.map((f) => { const lv = budLv(p, f.id); return p.friends.includes(f.id) ? `<button class="z on ${f.rare ? 'rare' : ''} ${p.buddy === f.id ? 'sel' : ''} lv${lv}" data-act="buddy" data-id="${f.id}"><span>${f.e}</span><b>${f.n}</b><small>Lv${lv}${'⭐'.repeat(lv - 1)}${p.buddy === f.id ? ' バディ' : ''}</small></button>` : `<div class="z"><span>？</span><b>？？？</b><small>${f.rare ? 'ボスを たおすと…' : 'カプセルで でる'}</small></div>`; }).join('')}</div>`;
   else if (zTab === 'balls') body = `<p class="hint">ショップで かえるよ。あつめた ボールは ショップで えらんで つかえる。</p>
     <div class="zukan">${BALLS.map((b) => p.balls.includes(b.id) ? `<div class="z on"><img class="zb" src="${ballIcon(b)}" alt=""><b>${b.n}</b><small>${p.ball === b.id ? 'つかっている' : ''}</small></div>` : b.secret ? `<div class="z"><span>💎</span><b>？？？</b><small>ぜんぶ あつめると…</small></div>` : `<div class="z"><img class="zb dim" src="${ballIcon(b)}" alt=""><b>？？？</b><small>🪙 ${b.cost}</small></div>`).join('')}</div>`;
   else if (zTab === 'boss') body = `<p class="hint">コートの さいごの ボスを たおすと のるよ。</p>
@@ -287,54 +287,54 @@ function friends() {
 function shop(msg = '') {
   const p = player(); const left = FRIENDS.filter((f) => !p.friends.includes(f.id));
   const item = (kind, it, owned, sel) => `<button class="item ${sel ? 'sel' : ''}" data-act="buy" data-kind="${kind}" data-id="${it.id}">${kind === 'ball' ? `<img class="sw ball" src="${ballIcon(it)}" alt="">` : `<span class="sw" style="background:${it.c}"></span>`}<b>${it.n}</b><small>${sel ? 'つかっている' : owned ? 'もっている' : `🪙 ${it.cost}`}</small></button>`;
-  show(`${msg}<div class="card capsule"><h2>🎁 なかまカプセル</h2><p class="hint">まだ いない なかまが かならず 1人 出るよ（かぶりなし）。のこり ${left.length}人</p>
+  show(`${msg}<div class="card capsule"><h2>🎁 なかまカプセル</h2><p class="hint">まだ いない なかまが かならず ひとり でるよ（かぶりなし）。のこり ${left.length}にん</p>
       <div class="btns"><button class="big" data-act="capsule" data-pay="coin" ${left.length && p.coins >= CAPSULE_COST ? '' : 'disabled'}>🪙 ${CAPSULE_COST} で まわす</button><button class="big alt" data-act="capsule" data-pay="ticket" ${left.length && p.tickets > 0 ? '' : 'disabled'}>🎟️ けんで まわす（${p.tickets}）</button></div></div>
     <div class="card"><h2>🏀 ボール <small>${SHOP_BALLS.filter((b) => p.balls.includes(b.id)).length}/${SHOP_BALLS.length}</small></h2><p class="hint">ぜんぶ あつめると… ひみつの ボールが もらえるよ！</p><div class="items">${BALLS.filter((b) => !b.secret || p.balls.includes(b.id)).map((b) => item('ball', b, p.balls.includes(b.id), p.ball === b.id)).join('')}</div></div>
     <div class="card"><h2>✨ オーラの いろ</h2><div class="items">${SUITS.map((b) => item('suit', b, p.suits.includes(b.id), p.suit === b.id)).join('')}</div></div>
-    <p class="hint">コインで かえるのは 見た目だけ。つよさは かわらないよ。</p>`, 'shop');
+    <p class="hint">コインで かえるのは みためだけ。つよさは かわらないよ。</p>`, 'shop');
 }
 
 // ---------- そのほか ----------
 function how() {
   show(`<div class="card"><h2>❓ あそびかた</h2><ol class="how">
-    <li>テレビや iPad の前に、ボールを持って立とう。<b>まわりに ぶつかる物が ないか</b> たしかめてね。</li>
-    <li>通路の おくから <b>ゲート</b> が せまってくる。くぐるときに、その ワザに きりかえる！</li>
-    <li>がめんの <b>ロボ</b>が お手本。うごきを まねしよう。「みぎへ」「ひだりへ」は <b>1〜2歩</b> うごく。</li>
-    <li><b>セーフゾーン</b>では ボールを持って きゅうけい。つぎの ルートを えらべる。「むずかしい」を えらぶと コツが 出る。</li>
+    <li>テレビや iPad の まえに、ボールを もって たとう。<b>まわりに ぶつかるものが ないか</b> たしかめてね。</li>
+    <li>つうろの おくから <b>ゲート</b> が せまってくる。くぐるときに、その ワザに きりかえる！</li>
+    <li>がめんの <b>ロボ</b>が おてほん。うごきを まねしよう。「みぎへ」「ひだりへ」は <b>1〜2ほ</b> うごく。</li>
+    <li><b>セーフゾーン</b>では ボールをもって きゅうけい。つぎの ルートを えらべる。「むずかしい」を えらぶと コツが でる。</li>
     <li>ワザを やるたびに <b>れんしゅうポイント</b>が たまる。レベルの ステージを ぜんぶ クリアして ★が たまったら <b>しょうきゅうテスト</b>。ごうかくで つぎの レベルへ。</li>
     <li>むずかしい ワザは <b>トレーニングルーム</b>で ゆっくり れんしゅうできる。</li></ol>
     <p class="hint">🗣️ にほんごの こえ：VOICEVOX:No.7</p>
-    <p class="hint">📷 カメラはんてい：iPad・iPhone を 2〜3m はなして 全身を うつすと、手の左右・ひくさ・はやさ・持ちかえ・左右の うごき・ジャンプを 見ます。レッグスルーや ビハインドは「持ちかえたか」まで。カメラが つかえない がめんでは 自動で カメラなしに なります。</p></div>`, 'home');
+    <p class="hint">📷 カメラはんてい：iPad・iPhone を 2〜3m はなして ぜんしんを うつすと、ての さゆう・ひくさ・はやさ・もちかえ・さゆうの うごき・ジャンプを みます。レッグスルーや ビハインドは「もちかえたか」まで。カメラが つかえない がめんでは じどうで カメラなしに なります。</p></div>`, 'home');
 }
 function settings() {
   const st = S.settings; const tg = (k, l) => `<label class="toggle"><input type="checkbox" data-set="${k}" ${st[k] ? 'checked' : ''}><span>${l}</span></label>`;
-  show(`<div class="card"><h2>⚙️ せってい（おうちの人むけ）</h2>
-    ${tg('camera', '📷 カメラはんていを つかう')}<div class="prow"><b>🗣️ こえの あいず</b><div class="seg">${[['en', 'English'], ['ja', 'にほんご'], ['', 'オフ']].map(([v, l]) => `<button class="${(st.voice || '') === v || (st.voice === true && v === 'ja') ? 'on' : ''}" data-voice="${v}">${l}</button>`).join('')}</div></div>${tg('bloom', '✨ ひかりの えんしゅつ（うごきが おもい ときは オフ）')}${tg('music', '🎵 おんがく')}${tg('sound', '🔊 こうかおん')}${tg('openAll', '🔓 すべての コートを ひらく（おためし用）')}${tg('swap', '📷 右手と左手を 入れかえる（ぎゃくに 数えるとき）')}${tg('videoRec', '🎬 どうが ろくがモード（つぎに あそぶ ステージを じどうで ろくがする・セーフゾーンの せんたくも スキップ）')}
+  show(`<div class="card"><h2>⚙️ せってい（おうちのひとむけ）</h2>
+    ${tg('camera', '📷 カメラはんていを つかう')}<div class="prow"><b>🗣️ こえの あいず</b><div class="seg">${[['en', 'English'], ['ja', 'にほんご'], ['', 'オフ']].map(([v, l]) => `<button class="${(st.voice || '') === v || (st.voice === true && v === 'ja') ? 'on' : ''}" data-voice="${v}">${l}</button>`).join('')}</div></div>${tg('bloom', '✨ ひかりの えんしゅつ（うごきが おもい ときは オフ）')}${tg('music', '🎵 おんがく')}${tg('sound', '🔊 こうかおん')}${tg('openAll', '🔓 すべての コートを ひらく（おためし）')}${tg('swap', '📷 みぎてとひだりてを いれかえる（ぎゃくに かぞえるとき）')}${tg('videoRec', '🎬 どうが ろくがモード（つぎに あそぶ ステージを じどうで ろくがする・セーフゾーンの せんたくも スキップ）')}
     <div class="prow"><b>🎵 おんがくの スタイル</b><div class="seg">${[['workout', 'ダンス（アップテンポ）'], ['game', 'ゲーム（ピコピコ）']].map(([v, l]) => `<button class="${(st.musicStyle || 'workout') === v ? 'on' : ''}" data-ms="${v}">${l}</button>`).join('')}</div></div>
     <h3>🔈 おとの おおきさ</h3>
-    ${[['volMusic', '🎵 おんがく', 0.5], ['volBall', '🏀 ボールの 音', 1], ['volVoice', '🗣️ こえ', 1]].map(([k, l, d]) => `<div class="prow"><b>${l}</b><input type="range" min="0" max="100" step="5" value="${Math.round((st[k] ?? d) * 100)}" data-vol="${k}" style="flex:1;max-width:260px"><span class="volv" style="width:3em;text-align:right">${Math.round((st[k] ?? d) * 100)}</span></div>`).join('')}
-    <h3>🔊 おとの テスト</h3><p class="hint">音が 出ないときに、どの方式なら 聞こえるかを たしかめます。1つずつ おして、聞こえたものを 教えてください。</p>
-    <div class="btns"><button class="big ghost" id="ta">① 合成音</button><button class="big ghost" id="tb">② 音声ファイル</button><button class="big ghost" id="tc">③ こえ → 合成音</button></div><p class="hint" id="tout"></p>
-    <h3>プレイヤーと ランク</h3><p class="hint">いまの じつりょくに 合わせて、スタートの ランクを えらんでください。ランクが 上がるほど むずかしい ワザが 出ます。</p>
+    ${[['volMusic', '🎵 おんがく', 0.5], ['volBall', '🏀 ボールの おと', 1], ['volVoice', '🗣️ こえ', 1]].map(([k, l, d]) => `<div class="prow"><b>${l}</b><input type="range" min="0" max="100" step="5" value="${Math.round((st[k] ?? d) * 100)}" data-vol="${k}" style="flex:1;max-width:260px"><span class="volv" style="width:3em;text-align:right">${Math.round((st[k] ?? d) * 100)}</span></div>`).join('')}
+    <h3>🔊 おとの テスト</h3><p class="hint">おとが でないときに、どのほうしきなら きこえるかを たしかめます。1つずつ おして、きこえたものを おしえてください。</p>
+    <div class="btns"><button class="big ghost" id="ta">① ごうせいおん</button><button class="big ghost" id="tb">② おんせいファイル</button><button class="big ghost" id="tc">③ こえ → ごうせいおん</button></div><p class="hint" id="tout"></p>
+    <h3>プレイヤーと ランク</h3><p class="hint">いまの じつりょくに あわせて、スタートの ランクを えらんでください。ランクが あがるほど むずかしい ワザが でます。</p>
     ${S.players.map((p) => `<div class="prow"><b>${avHTML(p.avatar)}</b><input class="pname-edit" maxlength="10" value="${esc(p.name)}" data-pid="${p.id}" style="width:6em"><div class="seg">${[1, 2, 3, 4, 5, 6].map((r) => `<button class="${p.rank === r ? 'on' : ''}" data-rank="${r}" data-pid="${p.id}">R${r}</button>`).join('')}</div><button class="mini" data-girl="${p.id}" title="おとこのこ／おんなのこ">${p.girl ? '👧 おんなのこ' : '👦 おとこのこ'}</button><button class="mini danger" data-del="${p.id}">けす</button></div>`).join('')}
-    <h3>📦 ひっこし（ほかの ブラウザ・たんまつへ）</h3><p class="hint">LINEの 中から Safariへ うつるときや、ほかの iPad に うつすときに つかいます。プレイヤー・★・コイン・ボールなど ぜんぶ うつります。</p>
+    <h3>📦 ひっこし（ほかの ブラウザ・たんまつへ）</h3><p class="hint">LINEの なかから Safariへ うつるときや、ほかの iPad に うつすときに つかいます。プレイヤー・★・コイン・ボールなど ぜんぶ うつります。</p>
     <div class="btns"><button class="big" data-act="moveSafari">🧭 Safariで ひらく（データごと）</button><button class="big ghost" id="mvcopy">📋 ひっこしコードを コピー</button></div>
     <p class="hint">Safariで ひらかないときは：①「ひっこしコードを コピー」→ ② Safariで このゲームを ひらく → ③ せっていの ここに はりつけて「コードで ひっこし」</p>
     <textarea id="mvin" rows="2" placeholder="ここに ひっこしコードを はりつけ" style="width:100%"></textarea><button class="big ghost" id="mvgo">📥 コードで ひっこし</button><p class="hint" id="mvmsg"></p>
     <h3>🛠 エラーきろく</h3><p class="hint">とまった・おかしかった ときに、ここを スクショして おくってください。</p><pre class="errlog">${(() => { try { const L = JSON.parse(localStorage.getItem('dribble-errlog') || '[]'); return L.length ? L.map((x) => esc(`${x.t} [${x.w}${x.ph ? '/' + x.ph : ''}${x.st ? '/' + x.st : ''}] ${x.m}`)).join('\n\n') : 'なし'; } catch (e) { return 'なし'; } })()}</pre>
-    <h3>🏆 ランキング</h3><p class="hint">さいしょから オンです。ニックネームと スコア・れんしゅう回数が インターネットの ランキングに のります（URLを しっている 人なら だれでも 見られます）。ニックネームは さいしょ「ドリブラー＋ばんごう」に なっています。かえるときも ほんみょうは いれないでください。のせたくない ときは「さんか」を オフに してください。</p>
+    <h3>🏆 ランキング</h3><p class="hint">さいしょから オンです。ニックネームと スコア・れんしゅうかいすうが インターネットの ランキングに のります（URLを しっている ひとなら だれでも みられます）。ニックネームは さいしょ「ドリブラー＋ばんごう」に なっています。かえるときも ほんみょうは いれないでください。のせたくない ときは「さんか」を オフに してください。</p>
     ${S.players.map((p) => `<div class="prow"><b>${avHTML(p.avatar)} ${esc(p.name)}</b><label class="toggle"><input type="checkbox" data-rkon="${p.id}" ${p.rk !== false ? 'checked' : ''}><span>さんか</span></label><input class="rkname" maxlength="10" placeholder="ニックネーム" value="${esc(RK.autoName(p))}" data-rkname="${p.id}" style="width:8em"></div>`).join('')}
     <p class="hint">${[1, 2, 3, 4, 5, 6].map((r) => `R${r} ${RANKS[r].n}：${rankSkills(r).map((k) => SKILLS[k].n).join('・')}`).join('<br>')}</p>
-    <p class="hint">きろくは この たんまつの ブラウザの 中だけに ほぞんされます。</p></div>`, 'home');
+    <p class="hint">きろくは この たんまつの ブラウザの なかだけに ほぞんされます。</p></div>`, 'home');
   app.querySelectorAll('[data-set]').forEach((i) => i.addEventListener('change', () => { st[i.dataset.set] = i.checked; save(); }));
   const tout = $('#tout'); const say = (t) => { tout.textContent = t; };
   const wav = () => { const sr = 8000, n = sr * 0.6; const buf = new ArrayBuffer(44 + n); const v = new DataView(buf); const w = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); }; w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, 'data'); v.setUint32(40, n, true); for (let i = 0; i < n; i++) v.setUint8(44 + i, 128 + Math.round(Math.sin(i / sr * 6.283 * (i < n / 2 ? 660 : 880)) * 90 * (1 - i / n))); return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' })); };
   const tone = (c) => { [0, 4, 7].forEach((sm, i) => { const o = c.createOscillator(); const g = c.createGain(); o.frequency.value = 523 * Math.pow(2, sm / 12); const t = c.currentTime + i * 0.15; g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3); o.connect(g).connect(c.destination); o.start(t); o.stop(t + 0.32); }); };
-  $('#mvcopy').addEventListener('click', async () => { try { const c = await MV.makeCode(); try { await navigator.clipboard.writeText(c); alertMsg('📋 コピーしました（' + c.length + 'もじ）。Safariで ひらいて はりつけてね'); } catch (e) { $('#mvin').value = c; $('#mvin').select(); alertMsg('コピーできなかったので、上の わくの もじを ぜんぶ えらんで コピーしてね'); } } catch (e) { alertMsg('つくれませんでした'); } });
+  $('#mvcopy').addEventListener('click', async () => { try { const c = await MV.makeCode(); try { await navigator.clipboard.writeText(c); alertMsg('📋 コピーしました（' + c.length + 'もじ）。Safariで ひらいて はりつけてね'); } catch (e) { $('#mvin').value = c; $('#mvin').select(); alertMsg('コピーできなかったので、うえの わくの もじを ぜんぶ えらんで コピーしてね'); } } catch (e) { alertMsg('つくれませんでした'); } });
   $('#mvgo').addEventListener('click', () => { const v = $('#mvin').value.trim(); if (!v) return alertMsg('コードを はりつけてね'); moveIn(v); });
-  $('#ta').addEventListener('click', async () => { try { const c = new (window.AudioContext || window.webkitAudioContext)(); const s0 = c.state; try { await c.resume(); } catch (e) { /* noop */ } tone(c); say(`① 合成音：はじめ=${s0} → いま=${c.state}（ポポポと 3音 鳴るはず）`); setTimeout(() => say(`① 合成音：はじめ=${s0} → 1びょう後=${c.state} 時間=${c.currentTime.toFixed(2)}`), 1000); } catch (e) { say('① エラー：' + e.message); } });
-  $('#tb').addEventListener('click', async () => { try { const a = document.createElement('audio'); a.src = wav(); a.setAttribute('playsinline', ''); await a.play(); say('② 音声ファイル：再生できた（ピポと 鳴るはず）'); } catch (e) { say('② エラー：' + e.name + ' ' + e.message); } });
-  $('#tc').addEventListener('click', async () => { try { const c = new (window.AudioContext || window.webkitAudioContext)(); try { await c.resume(); } catch (e) { /* noop */ } const u = new SpeechSynthesisUtterance('Test'); u.lang = 'en-US'; window.speechSynthesis.speak(u); setTimeout(() => { const s1 = c.state; try { c.resume(); } catch (e) { /* noop */ } tone(c); setTimeout(() => say(`③ こえの あと：合成音=${s1} → ${c.state}（こえの あとに 3音 鳴るはず）`), 600); }, 1500); say('③ こえ → 合成音 を ためしちゅう…'); } catch (e) { say('③ エラー：' + e.message); } });
+  $('#ta').addEventListener('click', async () => { try { const c = new (window.AudioContext || window.webkitAudioContext)(); const s0 = c.state; try { await c.resume(); } catch (e) { /* noop */ } tone(c); say(`① ごうせいおん：はじめ=${s0} → いま=${c.state}（ポポポと 3おん なるはず）`); setTimeout(() => say(`① ごうせいおん：はじめ=${s0} → 1びょうご=${c.state} じかん=${c.currentTime.toFixed(2)}`), 1000); } catch (e) { say('① エラー：' + e.message); } });
+  $('#tb').addEventListener('click', async () => { try { const a = document.createElement('audio'); a.src = wav(); a.setAttribute('playsinline', ''); await a.play(); say('② おんせいファイル：さいせいできた（ピポと なるはず）'); } catch (e) { say('② エラー：' + e.name + ' ' + e.message); } });
+  $('#tc').addEventListener('click', async () => { try { const c = new (window.AudioContext || window.webkitAudioContext)(); try { await c.resume(); } catch (e) { /* noop */ } const u = new SpeechSynthesisUtterance('Test'); u.lang = 'en-US'; window.speechSynthesis.speak(u); setTimeout(() => { const s1 = c.state; try { c.resume(); } catch (e) { /* noop */ } tone(c); setTimeout(() => say(`③ こえの あと：ごうせいおん=${s1} → ${c.state}（こえの あとに 3おん なるはず）`), 600); }, 1500); say('③ こえ → ごうせいおん を ためしちゅう…'); } catch (e) { say('③ エラー：' + e.message); } });
   app.querySelectorAll('[data-vol]').forEach((i) => { i.addEventListener('input', () => { i.nextElementSibling.textContent = i.value; }); i.addEventListener('change', () => { st[i.dataset.vol] = (+i.value) / 100; save(); if (st.sound) beep([0, 7]); }); });
   app.querySelectorAll('[data-ms]').forEach((b) => b.addEventListener('click', () => { st.musicStyle = b.dataset.ms; save(); settings(); }));
   app.querySelectorAll('[data-voice]').forEach((b) => b.addEventListener('click', () => { st.voice = b.dataset.voice || false; save(); settings(); }));
@@ -347,7 +347,7 @@ function settings() {
 }
 function addLog(p, e) { const d = new Date(); p.log = p.log || []; p.log.unshift({ ...e, d: `${d.getMonth() + 1}/${d.getDate()}`, h: `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}` }); p.log = p.log.slice(0, 40); p.lastPlay = Date.now(); }
 const cleared = (p) => lvCleared(p, curLv(p));
-const ago = (ts) => { if (!ts) return 'まだ あそんでいない'; const dd = Math.floor((Date.now() - ts) / 86400000); return dd <= 0 ? 'きょう あそんだ' : dd === 1 ? 'きのう あそんだ' : `${dd}日まえに あそんだ`; };
+const ago = (ts) => { if (!ts) return 'まだ あそんでいない'; const dd = Math.floor((Date.now() - ts) / 86400000); return dd <= 0 ? 'きょう あそんだ' : dd === 1 ? 'きのう あそんだ' : `${dd}にちまえに あそんだ`; };
 // ---------- だれが あそぶ？ ----------
 function who() {
   const ps = S.players.filter((x) => !x.guest || x.plays > 0);
@@ -363,24 +363,24 @@ function who() {
 function record() {
   const p = player(); const tiers = [0, 0, 0, 0, 0]; SKILL_IDS.forEach((k) => { tiers[tierOf(mastery(p, k))]++; });
   show(`<div class="card"><h2>📒 ${avHTML(p.avatar)} ${esc(p.name)} の きろく</h2>
-      <div class="stats"><div><b>R${p.rank}</b><small>${RANKS[p.rank].n}${p.verified[p.rank - 1] ? ' ✅' : ''}</small></div><div><b>${cleared(p)}/${MAIN_STAGES.length}</b><small>R${curLv(p)} クリアした ステージ</small></div><div><b>⭐${lvTotal(p, curLv(p))}</b><small>/${MAIN_STAGES.length * 3}</small></div><div><b>${p.stamps || 0}日</b><small>あそんだ日</small></div><div><b>${p.plays || 0}回</b><small>プレイ</small></div><div><b>${p.friends.length}</b><small>なかま</small></div></div></div>
-    <div class="card"><h2>🌱 せいちょう</h2>${(() => { const g = growOf(p); const nx = GROW[g + 1]; return `<div class="res-lines"><span>いま：<b>${GROW[g].n}</b></span><span>${nx ? `${nx.n}まで あと ${nx.at - p.plays}回` : 'さいこうの すがた！'}</span><span>🔥 さいこう れんぞく ${p.streakBest || 0}日</span></div>`; })()}
-      ${p.rec && p.rec.camPlays ? `<div class="res-lines"><span>📷 カメラで ${p.rec.camPlays}回</span><span>さいだい ${p.rec.combo || 0} コンボ</span><span>1回で ドリブル ${p.rec.dribbles || 0}回</span><span>いちばん はやい ${p.rec.speed || 0}回/びょう</span></div>` : '<p class="hint">📷 カメラで あそぶと、コンボや ドリブルの はやさの きろくが のこるよ。</p>'}</div>
+      <div class="stats"><div><b>R${p.rank}</b><small>${RANKS[p.rank].n}${p.verified[p.rank - 1] ? ' ✅' : ''}</small></div><div><b>${cleared(p)}/${MAIN_STAGES.length}</b><small>R${curLv(p)} クリアした ステージ</small></div><div><b>⭐${lvTotal(p, curLv(p))}</b><small>/${MAIN_STAGES.length * 3}</small></div><div><b>${p.stamps || 0}にち</b><small>あそんだひ</small></div><div><b>${p.plays || 0}かい</b><small>プレイ</small></div><div><b>${p.friends.length}</b><small>なかま</small></div></div></div>
+    <div class="card"><h2>🌱 せいちょう</h2>${(() => { const g = growOf(p); const nx = GROW[g + 1]; return `<div class="res-lines"><span>いま：<b>${GROW[g].n}</b></span><span>${nx ? `${nx.n}まで あと ${nx.at - p.plays}かい` : 'さいこうの すがた！'}</span><span>🔥 さいこう れんぞく ${p.streakBest || 0}にち</span></div>`; })()}
+      ${p.rec && p.rec.camPlays ? `<div class="res-lines"><span>📷 カメラで ${p.rec.camPlays}かい</span><span>さいだい ${p.rec.combo || 0} コンボ</span><span>1かいで ドリブル ${p.rec.dribbles || 0}かい</span><span>いちばん はやい ${p.rec.speed || 0}かい/びょう</span></div>` : '<p class="hint">📷 カメラで あそぶと、コンボや ドリブルの はやさの きろくが のこるよ。</p>'}</div>
     <div class="card"><h2>🏆 ランキング</h2>${RK.canRank(p) ? '' : '<p class="hint">いまは ランキングに さんか していないよ（せってい で オンに できる）。</p>'}
-      <div class="seg ztabs"><button class="${rkTab === 'week' ? 'on' : ''}" data-rk="week">💪 こんしゅうの れんしゅう回数</button><button class="${rkTab === 'stage' ? 'on' : ''}" data-rk="stage">⚡ ステージの スコア</button></div>
+      <div class="seg ztabs"><button class="${rkTab === 'week' ? 'on' : ''}" data-rk="week">💪 こんしゅうの れんしゅうかいすう</button><button class="${rkTab === 'stage' ? 'on' : ''}" data-rk="stage">⚡ ステージの スコア</button></div>
       ${rkTab === 'stage' ? `<select id="rksel" class="rksel">${MAIN_STAGES.map((x) => `<option value="${x.id}" ${x.id === rkStage ? 'selected' : ''}>${sl(x)} ${MISSIONS[x.mission].n}</option>`).join('')}</select><small class="hint">（いまの レベル R${curLv(p)} の ランキング）</small>` : ''}
-      <div id="rklist" class="rklist"><p class="hint">よみこみ中…</p></div></div>
+      <div id="rklist" class="rklist"><p class="hint">よみこみちゅう…</p></div></div>
     <div class="card"><h2>🗺️ ステージ</h2>${WORLDS.map((w, wi) => `<div class="recrow"><b style="color:${w.pal.a}">${wi + 1} ${w.name}</b><span>${STAGES.filter((x) => x.wi === wi && !x.sp).map((x) => { const v = lvStars(p, curLv(p))[x.id] || 0; return `<i class="${v ? 'on' : ''}" title="${sl(x)}">${v ? '★'.repeat(v) : '・'}</i>`; }).join('')}</span></div>`).join('')}</div>
     <div class="card"><h2>🥋 れんしゅうランク</h2><div class="res-lines">${TIERS.map((t, i) => `<span style="color:${t.c}">${t.i} ${t.n} ${tiers[i]}</span>`).join('')}</div>
       <div class="ups">${SKILL_IDS.filter((k) => mastery(p, k) > 0).sort((a, b) => mastery(p, b) - mastery(p, a)).map((k) => `<div class="up" style="--c:${SKILLS[k].c}"><b>${SKILLS[k].i} ${SKILLS[k].n}</b><span>${mastery(p, k)}</span><small>${TIERS[tierOf(mastery(p, k))].n}</small></div>`).join('') || '<p class="hint">まだ ありません</p>'}</div>
-      <p class="hint">ひだりて ${p.leftReps || 0}回 ／ みぎて ${p.rightReps || 0}回</p></div>
+      <p class="hint">ひだりて ${p.leftReps || 0}かい ／ みぎて ${p.rightReps || 0}かい</p></div>
     <div class="card"><h2>🕒 さいきんの きろく</h2>${(p.log || []).map((e) => { const st = e.t === 'stage' ? STAGES.find((x) => x.id === e.id) : null; return `<div class="logrow"><small>${e.d} ${e.h}</small><b>${e.t === 'stage' && st ? `${sl(st)} ${MISSIONS[st.mission].n}` : e.t === 'dojo' ? `🥋 ${SKILLS[e.id]?.n || ''}` : `🎓 しょうきゅうテスト ${e.id}`}</b><span>${e.t === 'stage' ? '★'.repeat(e.stars) + `　⚡${e.score}` : ''}</span></div>`; }).join('') || '<p class="hint">まだ ありません</p>'}</div>
-    <p class="hint">きろくは この たんまつの 中に、プレイヤーごとに ほぞんされます。</p>`, 'home');
+    <p class="hint">きろくは この たんまつの なかに、プレイヤーごとに ほぞんされます。</p>`, 'home');
   app.querySelectorAll('[data-rk]').forEach((b) => b.addEventListener('click', () => { rkTab = b.dataset.rk; record(); }));
   const sel = $('#rksel'); if (sel) sel.addEventListener('change', () => { rkStage = sel.value; record(); });
   (async () => { const el = () => document.getElementById('rklist'); const me = RK.myId(p);
     try { const L = curLv(p); const rows = rkTab === 'stage' ? await RK.topStage(rkStage || MAIN_STAGES[0].id, L) : await RK.topWeek();
-      if (!el()) return; el().innerHTML = rows.length ? rows.map((x, i) => `<div class="rkrow ${`${x.uid}_${x.pid}` === me ? 'me' : ''}"><b>${['🥇', '🥈', '🥉'][i] || i + 1}</b><span>${esc(x.name)}</span><em>${rkTab === 'stage' ? `⚡${x.score} ${'★'.repeat(x.stars || 0)}` : `${x.plays}回`}</em></div>`).join('') : '<p class="hint">まだ だれも いないよ。いちばんのりを めざそう！</p>';
+      if (!el()) return; el().innerHTML = rows.length ? rows.map((x, i) => `<div class="rkrow ${`${x.uid}_${x.pid}` === me ? 'me' : ''}"><b>${['🥇', '🥈', '🥉'][i] || i + 1}</b><span>${esc(x.name)}</span><em>${rkTab === 'stage' ? `⚡${x.score} ${'★'.repeat(x.stars || 0)}` : `${x.plays}かい`}</em></div>`).join('') : '<p class="hint">まだ だれも いないよ。いちばんのりを めざそう！</p>';
     } catch (e) { if (el()) el().innerHTML = '<p class="hint">ランキングに つながりませんでした（インターネットを たしかめてね）。</p>'; } })();
 }
 let rkTab = 'week', rkStage = '';
