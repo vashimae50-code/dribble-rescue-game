@@ -16,14 +16,14 @@ function verifyRig(scene) {
   if (!skinned || missing.length) throw new Error('No.7 GLB incompatible rig: ' + (missing.join(', ') || 'no skinned mesh'));
   return scene;
 }
-// どのモデルを つかうか：3D試験版（?character3d=1 や /preview/）は 新しい No.7（no7-v2.glb）が 標準。
-// ?model=legacy で 旧モデル、?model=no7-v2 で どこでも 新モデル。読めない・骨が合わないときは 旧モデルに もどる
+// どのモデルを つかうか：3D試験版（?character3d=1 や /preview/）は 新しい No.7 デフォルメ版（no7-chibi.glb）が 標準。
+// ?model=legacy で 旧モデル、?model=no7-v2 で 等身版、?model=no7-chibi で どこでも デフォルメ版。読めない・骨が合わないときは 旧モデルに もどる
 export function playerModelKey() {
   const q = new URLSearchParams(location.search); const mode = q.get('model');
   if (mode === 'legacy') return 'legacy';
   if (mode === 'no7-v2' || mode === 'no7-chibi') return mode;
   const preview3D = q.get('character3d') === '1' || location.pathname.includes('/preview/');
-  return preview3D ? 'no7-v2' : 'legacy';
+  return preview3D ? 'no7-chibi' : 'legacy';
 }
 async function loadLegacy() {
   if (modelCache.has('legacy')) return modelCache.get('legacy');
@@ -38,7 +38,7 @@ export async function loadHuman(key = playerModelKey()) {
   if (files[key]) {
     try {
       // Fixed same-origin path: no untrusted user-provided model URLs.
-      const gltf = await new GLTFLoader().loadAsync(files[key] + '?v=20261119b');
+      const gltf = await new GLTFLoader().loadAsync(files[key] + '?v=20261119c');
       const model = verifyRig(gltf.scene);
       model.userData.no7Replacement = true;
       modelCache.set(key, model);
@@ -67,6 +67,13 @@ const smooth = (x) => x * x * (3 - 2 * x); const TAU2 = Math.PI * 2;
 
 // アニメ風の セルシェーディング用の グラデーション（3だんかい の あかるさ）
 let toonGrad = null;
+let toonGrad2 = null;
+// 新モデル用：アニメの セル画の ような 2段の 影
+function gradientMap2() {
+  if (toonGrad2) return toonGrad2;
+  const t = new THREE.DataTexture(new Uint8Array([150, 150, 150, 255, 255, 255, 255, 255]), 2, 1); t.needsUpdate = true; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false;
+  toonGrad2 = t; return t;
+}
 function gradientMap3() {
   if (toonGrad) return toonGrad;
   const data = new Uint8Array([80, 80, 80, 255, 175, 175, 175, 255, 255, 255, 255, 255]);
@@ -98,7 +105,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     if (nativeLook) {
       // 新モデル：GLB の 色・テクスチャを そのまま 使い、アニメ風の 段々の 影（トゥーン）に する
       const src = o.material; const decal = /FaceDecal/.test(src.name || '');
-      const m = new THREE.MeshToonMaterial({ color: src.color ? src.color.clone() : 0xffffff, map: src.map || null, gradientMap: gradientMap3(), side: src.side, emissive: 0x1a1410, emissiveIntensity: decal ? 0 : 0.12, alphaTest: decal ? 0.5 : src.alphaTest, transparent: false });
+      const m = new THREE.MeshToonMaterial({ color: src.color ? src.color.clone() : 0xffffff, map: src.map || null, gradientMap: gradientMap2(), side: src.side, emissive: 0x1a1410, emissiveIntensity: decal ? 0 : 0.12, alphaTest: decal ? 0.5 : src.alphaTest, transparent: false });
       m.name = src.name; o.material = m; meshes.push(o); mats.push(m);
       if (decal) return; // 顔の 目・まゆの 絵には ふちどりを 付けない
       // 頂点カラー R が ある メッシュ（体）は、R を ふちどりの 太さに 使う（顔の 前は 0 にして 目・口に 黒い みぞを 出さない）

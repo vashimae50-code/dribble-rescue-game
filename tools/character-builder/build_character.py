@@ -121,6 +121,20 @@ def laplacian(verts, adj, idx_set, iters, lam=0.5, keep=None):
             c /= len(nb); new[i] = verts[i].lerp(c, lam)
         for i, v in new.items(): verts[i] = v
 
+def weighted_smooth(verts, adj, weights, iters, lam=0.5, mu=None):
+    """重みつき なめらか処理（weights: 頂点→0〜1）。mu を 指定すると 体積が へりにくい Taubin 方式"""
+    idx = [i for i, w in weights.items() if w > 1e-3]
+    for _ in range(iters):
+        for f in ((lam, mu) if mu is not None else (lam,)):
+            new = {}
+            for i in idx:
+                nb = adj[i]
+                if not nb: continue
+                c = Vector((0, 0, 0))
+                for j in nb: c += verts[j]
+                c /= len(nb); new[i] = verts[i] + (c - verts[i]) * (f * weights[i])
+            for i, v in new.items(): verts[i] = v
+
 # ------------------------------------------------------------------ 本体
 def build(cfg, out_path, blend_path=None):
     random.seed(cfg.get('seed', 7))
@@ -188,6 +202,21 @@ def build(cfg, out_path, blend_path=None):
                 if n in d: d[n] = piv + (d[n] - piv) * (1 + hk)
         tails['mixamorig:Neck'] = heads['mixamorig:Head'].copy()
 
+    # 手を 少し 小さく（アニメ風）。手首を 中心に 手と 指の 骨・頂点を ちぢめる
+    hks = cfg['body'].get('hand_scale', 1.0) - 1.0
+    if abs(hks) > 1e-4:
+        for side in ('Left', 'Right'):
+            piv = heads[f'mixamorig:{side}Hand'].copy()
+            wh = defaultdict(float)
+            for bn, lst in wjson.items():
+                if bn.startswith(f'mixamorig:{side}Hand'):
+                    for vi, w in lst: wh[vi] += w
+            for vi, w in wh.items(): P[vi] = piv + (P[vi] - piv) * (1 + hks * min(1.0, w))
+            for d in (heads, tails):
+                for n in list(d.keys()):
+                    if n.startswith(f'mixamorig:{side}Hand') and n != f'mixamorig:{side}Hand':
+                        d[n] = piv + (d[n] - piv) * (1 + hks)
+            tails[f'mixamorig:{side}Hand'] = piv + (tails[f'mixamorig:{side}Hand'] - piv) * (1 + hks)
     es = cfg['eyes'].get('ball_scale', 1.0)
     if abs(es - 1) > 1e-4:
         for ids in (group_range('helper-l-eye'), group_range('helper-r-eye')):
@@ -226,9 +255,27 @@ def build(cfg, out_path, blend_path=None):
         return [x.normalized() if x.length > 1e-12 else Vector((0, 0, 1)) for x in n]
     # 口元の 深い みぞを すこし なめらかに（アニメ風の りんかく線が 口角に 出すぎない ように）
     eZ0 = sum((BV[i].z for i in range(nB) if is_eye[i]), 0.0) / max(1, sum(1 for i in range(nB) if is_eye[i]))
-    mz = eZ0 - cfg['face'].get('mouth_below_eyes', 0.072)
-    mouth_ids = {i for i in range(nB) if not is_eye[i] and abs(BV[i].x) < cfg['face'].get('mouth_half', 0.03) and abs(BV[i].z - mz) < 0.013 and BV[i].y < -0.11}
+    HS = cfg['body'].get('head_scale', 1.0)
+    mz = eZ0 - cfg['face'].get('mouth_below_eyes', 0.072) * HS
+    mouth_ids = {i for i in range(nB) if not is_eye[i] and abs(BV[i].x) < cfg['face'].get('mouth_half', 0.03) * HS and abs(BV[i].z - mz) < 0.013 * HS and BV[i].y < -0.11}
     laplacian(BV, adj, mouth_ids, cfg['face'].get('mouth_smooth', 0), 0.5)
+    # アニメ風：顔の 鼻・くちびる・ほおの 凹凸を ならす ／ 体の 筋肉の 細かい 凹凸を ならす
+    hpts = [P[i] for i in hair_ids]; headCy = (min(p.y for p in hpts) + max(p.y for p in hpts)) / 2
+    def face_w(v):
+        a = math.degrees(math.atan2(abs(v.x), -(v.y - headCy)))
+        return (1 - smoothstep(50, 80, a)) * smoothstep(eZ0 - 0.13 * HS, eZ0 - 0.10 * HS, v.z) * (1 - smoothstep(eZ0 + 0.01 * HS, eZ0 + 0.04 * HS, v.z))
+    AN = cfg.get('anime', {})
+    if AN.get('face_smooth', 0):
+        fw = {i: face_w(BV[i]) for i in range(nB) if not is_eye[i] and BV[i].z > H('Neck').z}
+        weighted_smooth(BV, adj, fw, AN['face_smooth'], 0.5)
+    if AN.get('body_smooth', 0):
+        bw = {}
+        for i in range(nB):
+            if is_eye[i]: continue
+            d = max(VW[i].items(), key=lambda kv: kv[1])[0] if VW[i] else ''
+            if any(k in d for k in ('Hand', 'Foot', 'Toe', 'Head', 'Neck')): continue
+            bw[i] = 1.0
+        weighted_smooth(BV, adj, bw, AN['body_smooth'], 0.5, -0.53)
     BN = vnormals(BV, BF)
 
     hipZ = H('Hips').z; kneeZ = H('LeftLeg').z; ankleZ = H('LeftFoot').z
@@ -439,7 +486,9 @@ def build(cfg, out_path, blend_path=None):
     for k, p in enumerate(hair_pts): kd.insert(p, k)
     kd.balance()
     hairY0 = min(p.y for p in hair_pts); hairY1 = max(p.y for p in hair_pts)
-    HC = cfg['hair']; FC = cfg['face']
+    HC = dict(cfg['hair']); FC = cfg['face']
+    for k_ in ('hairline_above_eyes', 'fade_side_above_eyes', 'curl_front_above_eyes', 'curl_side_above_eyes'):
+        if k_ in HC: HC[k_] = HC[k_] * HS
     eyeZ = (eyeCL.z + eyeCR.z) / 2
     headC = Vector((0.0, (hairY0 + hairY1) / 2, 0.0))
     def head_angle(p):
@@ -604,6 +653,19 @@ def build(cfg, out_path, blend_path=None):
 
     # 9) 立ちポーズを ゲーム向けに：腕を 少し下げた A ポーズ、指を 軽く まるめる → これを 新しい 基準姿勢に
     rest_pose(arm, meshes, cfg)
+
+    # アニメ風の 影：顔の 法線を だ円体の 向きに よせる（鼻や ほおの 細かい 影が 出ず、すっきり した 陰に なる）
+    if AN.get('face_normals', 0):
+        Cn = Vector((0, headCy + AN.get('ell_y', 0.01) * HS, eZ0 - AN.get('ell_down', 0.035) * HS))
+        ax = Vector(AN.get('ellipsoid', [0.075, 0.095, 0.11])) * HS
+        for ob in [body] + ([decal_ob] if decal_ob else []):
+            me = ob.data; vn = []
+            for v in me.vertices:
+                f = (face_w(v.co) if ob is body else 1.0) * AN['face_normals']
+                d = v.co - Cn
+                ne = Vector((d.x / ax.x ** 2, d.y / ax.y ** 2, d.z / ax.z ** 2)).normalized()
+                vn.append(v.normal.lerp(ne, f).normalized())
+            me.normals_split_custom_set_from_vertices(vn)
 
     # 10) GLB 書き出し
     for ob in bpy.data.objects: ob.select_set(ob in meshes or ob == arm)
@@ -859,7 +921,11 @@ def make_face_decal(cfg, targets, eyeCL, eyeCR, coll):
             top.append(P(xx, zz + th * 0.5)); bot.append(P(xx, zz - th * 0.5))
         d.polygon(top + bot[::-1], fill=rgb(C['brow']))
     # 口：口角の みぞを 肌色で かくし、アニメ風の 口の 線を かく
-    mz = eZ - FC.get('mouth_below_eyes', 0.072)
+    HSd = cfg['body'].get('head_scale', 1.0)
+    mz = eZ - FC.get('mouth_below_eyes', 0.072) * HSd
+    nzv = eZ - FC.get('nose_below_eyes', 0.042) * HSd
+    (n1x, n1z) = P(ipd * 0.03, nzv + ipd * 0.05); (n2x, n2z) = P(ipd * 0.06, nzv); (n3x, n3z) = P(-ipd * 0.01, nzv - ipd * 0.005)
+    d.line([(n1x, n1z), (n2x, n2z), (n3x, n3z)], fill=rgb(C.get('nose_line', '#9a5a3a'), 220), width=max(2, int(ipd / (x1 - x0) * TW * SS * 0.03)))
     mw = ipd * FC.get('mouth_w', 0.55)
     (ax_, az_) = P(-mw * 0.75, mz + ipd * 0.07); (bx_, bz_) = P(mw * 0.75, mz - ipd * 0.07)
     d.ellipse([ax_, az_, bx_, bz_], fill=rgb(C['skin']))

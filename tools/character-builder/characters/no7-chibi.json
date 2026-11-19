@@ -15,7 +15,7 @@
    }
   },
   "targets": {
-   "torso/torso-vshape-incr": 0.45,
+   "torso/torso-vshape-incr": 0.75,
    "torso/torso-muscle-dorsi-incr": 0.4,
    "torso/torso-muscle-pectoral-incr": 0.3,
    "arms/l-upperarm-muscle-incr": 0.35,
@@ -28,10 +28,14 @@
    "legs/r-lowerleg-muscle-incr": 0.35,
    "legs/l-upperleg-muscle-incr": 0.3,
    "legs/r-upperleg-muscle-incr": 0.3,
-   "stomach/stomach-tone-incr": 0.4
+   "stomach/stomach-tone-incr": 0.4,
+   "torso/measure-waist-circ-decr": 0.6,
+   "neck/measure-neck-circ-incr": 0.7,
+   "neck/neck-scale-horiz-incr": 0.4
   },
   "head_scale": 1.6,
-  "subdiv": 1
+  "subdiv": 1,
+  "hand_scale": 0.88
  },
  "colors": {
   "skin": "#d39a6e",
@@ -56,7 +60,8 @@
   "shoe_heel": "#ffd21b",
   "side_panel": "#ffd21b",
   "iris_dark": "#2a170c",
-  "iris_light": "#c08540"
+  "iris_light": "#c08540",
+  "nose_line": "#a0603c"
  },
  "number": {
   "text": "7",
@@ -87,8 +92,8 @@
  },
  "shorts": {
   "offset": 0.02,
-  "hem_flare": 0.045,
-  "hem_above_knee": 0.05,
+  "hem_flare": 0.04,
+  "hem_above_knee": 0.085,
   "waist_above_hips": 0.1,
   "smooth": 8,
   "hem_rings": 1,
@@ -137,16 +142,18 @@
   "mouth_smooth": 4,
   "mouth_half": 0.03,
   "decal": true,
-  "eye_w": 0.74,
-  "eye_h": 0.46,
+  "eye_w": 0.8,
+  "eye_h": 0.56,
   "eye_out": 0.06,
-  "eye_up": 0.05,
-  "iris_r": 0.58,
-  "brow_up_ipd": 0.52,
-  "brow_slant": 0.08,
+  "eye_up": 0.06,
+  "iris_r": 0.62,
+  "brow_up_ipd": 0.47,
+  "brow_slant": 0.05,
   "decal_lift": 0.0012,
-  "brow_thick_ipd": 0.15,
-  "mouth_w": 0.6
+  "brow_thick_ipd": 0.1,
+  "mouth_w": 0.42,
+  "mouth_line": 0.04,
+  "nose_below_eyes": 0.045
  },
  "eyes": {
   "pupil_deg": 13,
@@ -170,7 +177,7 @@
   "curl_front_above_eyes": 0.058,
   "top_curl_grow": 0.12,
   "curl_side_above_eyes": 0.012,
-  "curl_back_above_neck": 0.05
+  "curl_back_above_neck": 0.11
  },
  "rest_pose": {
   "arm_down_deg": 40,
@@ -179,11 +186,33 @@
  "face_targets": {
   "eyes/l-eye-scale-incr": 1.0,
   "eyes/r-eye-scale-incr": 1.0,
-  "head/head-age-decr": 0.35,
+  "head/head-age-decr": 0.7,
   "nose/nose-scale-horiz-decr": 0.25,
   "nose/nose-volume-decr": 0.3,
   "eyes/l-eye-height2-incr": 0.5,
   "eyes/r-eye-height2-incr": 0.5,
-  "eyebrows/eyebrows-trans-up": 0.25
+  "eyebrows/eyebrows-trans-up": 0.25,
+  "nose/nose-scale-depth-decr": 0.8,
+  "nose/nose-scale-vert-decr": 0.4,
+  "nose/nose-point-up": 0.4,
+  "head/head-invertedtriangular": 0.6,
+  "chin/chin-width-decr": 0.5,
+  "chin/chin-prominent-incr": 0.3,
+  "cheek/l-cheek-bones-decr": 0.6,
+  "cheek/r-cheek-bones-decr": 0.6,
+  "chin/chin-height-decr": 0.7,
+  "head/head-oval": 0.4
+ },
+ "anime": {
+  "face_smooth": 25,
+  "body_smooth": 10,
+  "face_normals": 0.85,
+  "ellipsoid": [
+   0.075,
+   0.095,
+   0.11
+  ],
+  "ell_y": 0.01,
+  "ell_down": 0.035
  }
 }
