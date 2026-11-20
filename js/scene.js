@@ -28,6 +28,20 @@ function canvasTex(w, h, draw, repeat) {
 }
 const glowTex = () => canvasTex(128, 128, (g) => { const r = g.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.25, 'rgba(255,255,255,.55)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, 128, 128); });
 
+// バッシュ：ふつうの プレイの 絵（うしろすがた）の くつを ぬる。コマの 下の ほうの 暗い ところ＝くつ。
+// コマの 左はんぶん＝左足、右はんぶん＝右足（うしろから 見ているので）。shoe が null（スタンダード）なら なにも しない
+const SPRITE_SHOE_H = { boy: 0.13, girl: 0.115 }, SPRITE_SHOE_DARK = 0.3;
+function paintSpriteShoes(mat, shoe, rows, girl) {
+  const L = shoePaint(shoe, 'L'), R = shoePaint(shoe, 'R'); if (!L || !R) return;
+  const U = { uShoeL: { value: new THREE.Color(L.up) }, uShoeR: { value: new THREE.Color(R.up) } };
+  const H = (girl ? SPRITE_SHOE_H.girl : SPRITE_SHOE_H.boy).toFixed(3);
+  mat.onBeforeCompile = (sh) => { Object.assign(sh.uniforms, U);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uShoeL; uniform vec3 uShoeR;')
+      .replace('#include <map_fragment>', `#include <map_fragment>
+ { vec2 c = fract(vMapUv * vec2(3.0, ${rows.toFixed(1)})); float lum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+   if (c.y < ${H} && lum < ${SPRITE_SHOE_DARK.toFixed(3)}) { vec3 k = c.x < 0.5 ? uShoeL : uShoeR; diffuseColor.rgb = k * clamp(0.45 + 2.2 * lum, 0.0, 1.1); } }`); };
+  mat.customProgramCacheKey = () => 'sprshoe' + rows + (girl ? 'g' : 'b');
+}
 export function createScene(canvas, o) {
   const pal = o.pal; const suit = o.suit || '#3df5ff';
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: !!o.video });
@@ -50,7 +64,7 @@ export function createScene(canvas, o) {
   const GK = (o.grow && o.grow.k) || 1; // そだつ：からだの 大きさ
   let pspr = null, psHit = false; const psMem = {}; const psT = {}; const NEW7 = !o.girl; const PSN = NEW7 ? SHEETS7 : SHEETS; const psPre = o.girl ? 'g_' : 'n_'; const PSROWS = NEW7 ? 3 : 2; const PSS = NEW7 ? 2.2 : 1.65; // おとこのこは 7ばんの あたらしい 絵（3×3）
   const impact = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.75, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })); impact.rotation.x = -Math.PI / 2; impact.visible = false; scene.add(impact); disposables.push(impact.geometry, impact.material);
-  if (human && o.sprite !== false) { let n = 0; const ld = new THREE.TextureLoader(); for (const k of PSN) { const t = ld.load(`img/player/${psPre}${k}.webp`, () => { if (++n === PSN.length) { const m = new THREE.SpriteMaterial({ map: psT[PSN[0]], transparent: true, alphaTest: 0.05 }); disposables.push(m); pspr = new THREE.Sprite(m); pspr.center.set(0.5, NEW7 ? 5 / 512 : 0.01); pspr.scale.set(PSS * GK, PSS * GK, 1); scene.add(pspr); human.setMainVisible(false); } }); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; psT[k] = t; disposables.push(t); } } // おわったら かならず すてる（メモリが ふえつづけて とまるのを ふせぐ）
+  if (human && o.sprite !== false) { let n = 0; const ld = new THREE.TextureLoader(); for (const k of PSN) { const t = ld.load(`img/player/${psPre}${k}.webp`, () => { if (++n === PSN.length) { const m = new THREE.SpriteMaterial({ map: psT[PSN[0]], transparent: true, alphaTest: 0.05 }); paintSpriteShoes(m, o.shoe, PSROWS, !!o.girl); disposables.push(m); pspr = new THREE.Sprite(m); pspr.center.set(0.5, NEW7 ? 5 / 512 : 0.01); pspr.scale.set(PSS * GK, PSS * GK, 1); scene.add(pspr); human.setMainVisible(false); } }); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; psT[k] = t; disposables.push(t); } } // おわったら かならず すてる（メモリが ふえつづけて とまるのを ふせぐ）
   const faceAtlas = o.human ? new THREE.TextureLoader().load('img/faces.png') : null; if (faceAtlas) faceAtlas.colorSpace = THREE.SRGBColorSpace;
   const mkFoe = (c, num, trim) => { const h = makeHuman(o.foeHuman || o.human, c, { num, trim, guide: false, skin: '#c98f66', shoe: '#22222a' }); h.root.visible = false; scene.add(h.root); return h; };
   const defs = o.human ? [mkFoe('#d9263c', 23, '#ffe03d'), mkFoe('#d9263c', 11, '#ffe03d'), mkFoe('#2a3a7a', 15, '#ffe03d'), mkFoe('#2a3a7a', 8, '#ffe03d')] : [];
