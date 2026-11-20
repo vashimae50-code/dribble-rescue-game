@@ -138,13 +138,13 @@ async function start(o) {
   const noCam = st.camera && !pose;
   const preview3D = new URLSearchParams(location.search).get('character3d') !== '0'; // 3D が ふだんの 表示。?character3d=0 で 絵（スプライト）
   // 3Dの ときは えらんだ かお（@c1〜@c8）の キャラクターを うごかす（絵の ときは いままでどおり）
-  let human = null, foeHuman = null, bossHuman = null; try { if (msg) msg.textContent = 'キャラクターを よみこみちゅう…'; const ch = await import('./character.js');
+  let human = null, foeHuman = null, bossHuman = null, bossChar = null; try { if (msg) msg.textContent = 'キャラクターを よみこみちゅう…'; const ch = await import('./character.js');
     // ずかんで えらんだ ボスキャラ（つかえて、ファイルが ある とき）。読めなければ えらんだ かおの キャラ
     const myBoss = preview3D && !new URLSearchParams(location.search).get('model') ? playerBossChar(p) : null; if (myBoss) human = await ch.loadBossHuman(myBoss.id);
     if (!human) human = await ch.loadHuman(preview3D ? ch.modelKeyFor(p.avatar) : undefined); foeHuman = human && human.userData.no7Replacement ? await ch.loadFoeHuman() : human;
     // ボスの ステージ：ワールドの ボス（だいボスは その レベルの ボス）を 3Dで。ファイルが なければ いままでの 見た目
-    if (preview3D && human && human.userData.no7Replacement && o.mode === 'stage' && o.stage) { const b = o.stage.king ? bossForLevel(o.level || curLv(p)) : bossForWorld(o.stage.wi); if (b && b.ready) bossHuman = await ch.loadBossHuman(b.id); } } catch (e) { human = null; }
-  const look = { human, foeHuman, bossHuman, sprite: !preview3D, girl: !!p.girl, suit: SUITS.find((x) => x.id === p.suit)?.c, ball: BALLS.find((x) => x.id === p.ball), shoe: SHOES.find((x) => x.id === p.shoe), buddy: p.buddy ? friend(p.buddy)?.e : null, buddyLv: p.buddy ? budLv(p, p.buddy) : 1, grow: GROW[growOf(p)] };
+    if (preview3D && human && human.userData.no7Replacement && o.mode === 'stage' && o.stage) { bossChar = o.stage.king ? bossForLevel(o.level || curLv(p)) : bossForWorld(o.stage.wi); if (bossChar && bossChar.ready) bossHuman = await ch.loadBossHuman(bossChar.id); } } catch (e) { human = null; }
+  const look = { human, foeHuman, bossHuman, bossChar, sprite: !preview3D, girl: !!p.girl, suit: SUITS.find((x) => x.id === p.suit)?.c, ball: BALLS.find((x) => x.id === p.ball), shoe: SHOES.find((x) => x.id === p.shoe), buddy: p.buddy ? friend(p.buddy)?.e : null, buddyLv: p.buddy ? budLv(p, p.buddy) : 1, grow: GROW[growOf(p)] };
   try {
     const qVid = new URLSearchParams(location.search).get('video');
     const vid = qVid || (st.videoRec && o.mode === 'stage' && o.stage ? o.stage.id : null); videoMode = !!vid; document.body.classList.toggle('rec', videoMode); // どうがは 1920×1080 で ろくが
