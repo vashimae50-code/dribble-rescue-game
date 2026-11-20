@@ -55,8 +55,12 @@ export function runStage(opts) {
   const has = (k) => pool.includes(k);
   const leftBias = mission.leftBias ?? ((pl.leftReps || 0) <= (pl.rightReps || 0) ? 0.6 : 0.45);
 
+  // 1つの 技は しばらく つづける（小学校 低学年が「みて → やってみて」できる ように）。
+  // パワーポジション・ジャンプストップと、レーンを うつる 技（サイドステップ・スライド・ジャブ・ドライブ）は もとの 長さ
+  const MIN_SEC = 12, HANDLE_SEC = 15;
+  const holdLen = (id, len, bpm) => { const sk = SKILLS[id]; if (dojo || id === 'rest' || id === 'stance' || id === 'jstop' || sk.lane) return len; return Math.max(len, Math.ceil((sk.handle ? HANDLE_SEC : MIN_SEC) * (bpm ? bpm / 60 : bps))); };
   function addCue(id, o = {}) {
-    const sk = SKILLS[id]; const len = o.len || sk.len; const sp = o.sp ?? sk.sp ?? 1;
+    const sk = SKILLS[id]; const len = holdLen(id, o.len || sk.len, o.bpm); const sp = o.sp ?? sk.sp ?? 1;
     const c = { skill: id, b0: endBeat, b1: endBeat + len, z0: zEnd, z1: zEnd + len * V * Math.max(sp, 0.05), sp, lane0: lane, lane1: lane, boss: !!o.boss, ballMode: o.ballMode, noGate: o.noGate, bpm: o.bpm, tier,
       st: { n: 0, R: 0, L: 0, sw: 0, last: null, late: 0, lowF: 0, f: 0, tr: 0, hx0: null, move: 0, rise: 0, hy0: null } };
     if (sk.lane) { const dir = o.dir || (lane === 0 ? (Math.random() < 0.5 ? -1 : 1) : -lane); c.dir = dir; c.lane1 = clamp(lane + dir, -1, 1); lane = c.lane1; c.guard = !!o.guard; }
@@ -121,10 +125,10 @@ export function runStage(opts) {
       if (k === 'hesi' && !has('fast')) k = pool[0];
       let len = SKILLS[k].len; if (len === 8) len = boss ? 4 : tier === 0 ? 8 : tier === 1 ? (Math.random() < 0.5 ? 8 : 4) : 4;
       len = Math.max(2, Math.min(len, left));
-      addCue(k, { len, boss, guard: !!mission.guards && !!SKILLS[k].lane }); left -= len; lastSkill = k;
+      { const c = addCue(k, { len, boss, guard: !!mission.guards && !!SKILLS[k].lane }); left -= c.b1 - c.b0; } lastSkill = k;
       // ドリブル → ハンドリング（4はく）→ ドリブル と つなぐ
-      if (!test && !boss && handles.length && mixed < 2 && left >= 8 && SKILLS[k].hand !== 'hold' && !SKILLS[k].lane && Math.random() < 0.4) { const h = handles[Math.floor(Math.random() * handles.length)]; addCue(h, { len: 4 }); left -= 4; mixed++; }
-      if (k === 'hesi' && left >= 2) { const l2 = Math.min(4, left); addCue('fast', { len: l2, boss, hand: curHand }); left -= l2; lastSkill = 'fast'; }
+      if (!test && !boss && handles.length && mixed < 2 && left >= 8 && SKILLS[k].hand !== 'hold' && !SKILLS[k].lane && Math.random() < 0.4) { const h = handles[Math.floor(Math.random() * handles.length)]; const c = addCue(h, { len: 4 }); left -= c.b1 - c.b0; mixed++; }
+      if (k === 'hesi' && left >= 2) { const l2 = Math.min(4, left); const c = addCue('fast', { len: l2, boss, hand: curHand }); left -= c.b1 - c.b0; lastSkill = 'fast'; }
     }
   }
   const SECTIONS = dojo ? 0 : test ? 2 : video ? Math.max(4, Math.round(((stage.bpm / 60) * 130 - 6) / 40)) : 3; let sectionIdx = 1; const secStarts = [0]; const hasBoss = !dojo && (test || mission.boss || mission.fin);
