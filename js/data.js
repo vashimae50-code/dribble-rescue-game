@@ -273,7 +273,7 @@ export function buyItem(p, kind, id) {
     p.coins -= it.cost; own.push(it.id); bought = true;
     if (k.done && k.done()(p)) completed = kind;
   }
-  p[kind] = it.id; checkTitles(p);
+  p[kind] = it.id; if (completed) checkTitles(p); // ほかの しょうごうは つぎの リザルトで おしらせ する
   return completed ? { ok: true, bought, completed } : { ok: true, bought };
 }
 export const CAPSULE_COST = 60;

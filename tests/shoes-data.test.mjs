@@ -1,7 +1,7 @@
-// バッシュの データと 買う しょり（node --test tests/）
+// バッシュの データと 買う しょり（node --test tests/*.test.mjs）
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SHOES, SHOP_SHOES, ensureShoes, shoePaint, buyItem, TITLES } from '../js/data.js';
+import { SHOES, SHOP_SHOES, SHOP_BALLS, ensureShoes, shoePaint, buyItem, TITLES } from '../js/data.js';
 
 const find = (id) => SHOES.find((s) => s.id === id);
 const mk = (coins) => ({ coins, balls: ['std'], ball: 'std', suits: ['cy'], suit: 'cy', shoes: ['std'], shoe: 'std', titles: [], stars: {}, best: {}, bossDone: {} });
@@ -74,4 +74,17 @@ test('ボールの 買いかたは これまでと おなじ', () => {
   const r = buyItem(p, 'ball', 'brown');
   assert.equal(r.ok, true); assert.equal(p.coins, 40); assert.equal(p.ball, 'brown');
   const s = buyItem(p, 'suit', 'cy'); assert.equal(s.ok, true); assert.equal(p.suit, 'cy');
+});
+
+test('かっても しょうごうは あとの リザルトで おしらせ（ショップでは だまって つけない）', () => {
+  const p = mk(99999); p.balls = ['std', 'brown', 'ice', 'lime', 'pink', 'rw', 'aba', 'by', 'half'];
+  buyItem(p, 'ball', 'dots'); assert.ok(!p.titles.includes('ball10'));
+  for (const id of ['lime', 'sakura', 'panda', 'redblk']) buyItem(p, 'shoe', id);
+  assert.ok(!p.titles.includes('shoe5'));
+});
+
+test('ボールを ぜんぶ かうと ダイヤと ボールマスター', () => {
+  const p = mk(99999); let last;
+  for (const b of SHOP_BALLS) last = buyItem(p, 'ball', b.id);
+  assert.equal(last.completed, 'ball'); assert.ok(p.balls.includes('diamond')); assert.ok(p.titles.includes('ballall'));
 });
