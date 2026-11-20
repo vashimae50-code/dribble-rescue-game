@@ -272,7 +272,7 @@ export function runStage(opts) {
     }
     if (t === 0) { const k = hardest(); if (k) addText(`コツ：${tipFor(k)}`, '#ffe9a8', 0.75, 0.26, 2.6); }
     else if (!mission.plan && !video) addText(['', '', 'このまま すすめ！', 'ちかみち！ とばすぞ！'][t + 1], pal.a, 1.1);
-    audio.sfx('go'); offset = Math.ceil(mbeat) - beat; phase = 'run'; audio.bgmVol(0.85);
+    audio.sfx('go'); offset = Math.ceil(mbeat) - beat; phase = 'run'; audio.bgmVol(1.0);
   }
   function enterSafe() {
     if (video) { advance(1); return; }   // どうが モード：せんたく がめんを 出さず そのまま つづける

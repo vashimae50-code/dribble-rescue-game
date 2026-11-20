@@ -2,7 +2,7 @@
 // ---------- 音 ----------
 export class Audio {
   constructor(settings, base, opt = {}) {
-    this.on = settings.sound; this.musicOn = settings.music; this.vm = settings.volMusic ?? 0.5; this.vb = settings.volBall ?? 1; this.vv = settings.volVoice ?? 1; setVoiceVol(this.vv); this.base = base; this.ctx = null; this.major = opt.major !== false; this.melody = MELODIES[(opt.riff || 0) % MELODIES.length]; this.style = settings.musicStyle || 'workout'; this.hookIdx = opt.riff || 0; this.bpm = opt.bpm || 104;
+    this.on = settings.sound; this.musicOn = settings.music; this.vm = settings.volMusic ?? 0.8; this.vb = settings.volBall ?? 1; this.vv = settings.volVoice ?? 1; setVoiceVol(this.vv); this.base = base; this.ctx = null; this.major = opt.major !== false; this.melody = MELODIES[(opt.riff || 0) % MELODIES.length]; this.style = settings.musicStyle || 'workout'; this.hookIdx = opt.riff || 0; this.bpm = opt.bpm || 104;
     try {
       this.ctx = opt.ctx || new (window.AudioContext || window.webkitAudioContext)();
       this.out = this.ctx.createDynamicsCompressor();
@@ -58,7 +58,7 @@ export class Audio {
     if (!this.ctx || !this.musicOn || !song) return null;
     const el = new window.Audio(); el.preload = 'auto'; el.src = song.file; el.playbackRate = rate; el.defaultPlaybackRate = rate;
     el.preservesPitch = true; el.mozPreservesPitch = true; el.webkitPreservesPitch = true;
-    try { const src = this.ctx.createMediaElementSource(el); const g = this.ctx.createGain(); g.gain.value = 0.85; src.connect(g).connect(this.musicVol || this.out); this.bgmGain = g; } catch (e) { /* そのまま 鳴らす */ }
+    try { const src = this.ctx.createMediaElementSource(el); const g = this.ctx.createGain(); g.gain.value = 1.0; src.connect(g).connect(this.musicVol || this.out); this.bgmGain = g; /* 曲の 音量（もとは 0.85） */ } catch (e) { /* そのまま 鳴らす */ }
     this.bgm = { el, spb: 60 / song.bpm, t0: song.t0, half, rate, K: 0, started: false };
     try { el.load(); } catch (e) { /* noop */ }
     return this.bgm;

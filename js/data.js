@@ -358,7 +358,7 @@ export const testReady = (p) => (p.rank || 1) < MAX_LV && lvDone(p, p.rank || 1)
 
 // ---------- 保存 ----------
 const KEY = 'dribble-rescue-v2';
-const def = () => ({ players: [], current: null, settings: { voice: 'en', sound: true, music: true, camera: false, sens: 'normal', swap: false, openAll: true, bloom: true, videoRec: false, volMusic: 0.5, volBall: 1, volVoice: 1, v: 4 } });
+const def = () => ({ players: [], current: null, settings: { voice: 'en', sound: true, music: true, camera: false, sens: 'normal', swap: false, openAll: true, bloom: true, videoRec: false, volMusic: 0.8, volBall: 1, volVoice: 1, v: 4 } });
 export const S = (() => {
   try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.players)) { s.players.forEach(migrateLv); const old = s.settings || {}; s.settings = { ...def().settings, ...old }; if (old.v !== 4) { s.settings.voice = 'en'; s.settings.v = 4; } return s; } } catch (e) { /* noop */ }
   return def();
