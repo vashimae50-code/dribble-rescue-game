@@ -458,7 +458,7 @@ export function runStage(opts) {
           const prevC = curCue; judge(curCue); curCue = c; if (prevC && prevC.mid && mid.on && !mid.dead) killMid(false); curLane = c.lane1; const sk = SKILLS[c.skill];
           if (c.bpm) bps = c.bpm / 60;
           if (c.skill !== 'rest') { audio.sfx(sk.sp > 1.2 ? 'whoosh' : 'gate'); flash = 0.4; flashCol = sk.c; shake = Math.max(shake, sk.sp > 1.2 ? 0.6 : 0.25); scene.burst(c.lane1 * LW, 1.5, -1, sk.c, 26, 1.3); if (sk.jump) { audio.sfx('jump'); setTimeout(() => !dead && audio.sfx('land'), 500 / bps); } if (c.skill === 'drive') slow = 0.55; }
-          if (c.stepName) { texts.length = 0; addText(c.stepName, '#ffe9a8', 0.8, 0.3, 2.4); sayBoth(c.stepName.split('　')[0], ['Step one', 'Step two', 'Step three', 'Final step'][c.stepIdx]); }
+          if (c.stepName) { texts.length = 0; addText(c.stepName, '#ffe9a8', 0.8, 0.3, 2.4); sayBoth(c.stepName.split('　')[0], ['Part one', 'Part two', 'Part three', 'Final part'][c.stepIdx]); }
           if (c.goal) { texts.length = 0; addText('🏁 ゴールは すぐそこ！', '#ffe03d', 1.1, 0.3, 1.6); sayBoth('ゴールは すぐそこ', 'Go!'); }
           if (c.setName) { addText(c.setName, '#7dffb0', 0.8, 0.4, 1.6); sayBoth(c.setName.split('　')[1] || '', ['Slow', 'Normal speed', 'Game speed'][dojoSets.indexOf(c)]); }
           if (c.bossIntro) { boss.on = true; addText(`⚠️ ${test ? 'しけんかん' : world.boss} があらわれた！`, '#ff4d6d', 1.2); audio.sfx('warn'); sayBoth('ボスだ！', 'Boss incoming!'); }
