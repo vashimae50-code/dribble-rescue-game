@@ -138,6 +138,8 @@ export function runStage(opts) {
       items.forEach(([k, len, opt], j) => { const o = { len, boss, ...(opt || {}) };
         // ゆっくり→はやく：習得ステージでは hesi と すぐ後の fast を 書いた 拍数の まま（12秒に のばすと はやさの きりかえに ならない）
         if (k === 'hesi' || (k === 'fast' && j > 0 && items[j - 1][0] === 'hesi')) o.keepLen = true;
+        // ジャブ → ドライブ：ドライブの すぐ前の ジャブも 書いた 拍数の まま（ジャブの あと すぐ ドライブ）
+        if (k === 'jab' && items[j + 1] && items[j + 1][0] === 'drive') o.keepLen = true;
         // jab → drive：jab の 向きは drive の 逆（通常ステージと 同じ）
         if (k === 'jab' && items[j + 1] && items[j + 1][0] === 'drive') { planDir = o.dir || (lane === 0 ? (Math.random() < 0.5 ? -1 : 1) : -lane); o.dir = -planDir; }
         else if (k === 'drive' && planDir && !o.dir) { o.dir = planDir; planDir = 0; }

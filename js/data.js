@@ -205,7 +205,7 @@ export const MISSIONS = {
     plan: [[['pivot', 4], ['freeze', 4], ['pivot', 4]],
       [['right', 4], ['spin', 4], ['left', 4], ['spin', 4]],
       [['back', 4], ['spin', 4], ['back', 4], ['spin', 4]],
-      [['drive', 4], ['spin', 4], ['jstop', 2]]] },
+      [['drive', 4], ['spin', 4], ['jstop', 2], ['fast', 4], ['drive', 4], ['spin', 4]]] }, // さいごは はやく → ドライブ → スピンを たして 長く
   king:    { n: 'だいボス せん', i: '👑', d: 'ぜんぶの ★3を とった キミへ。さいごの だいボスを たおせ！', w: {}, boss: 1, king: 1, vt: 'だいボス ちょうせん' },
   boss:    { n: 'ボスせん', i: '👾', d: 'ボスを たおして なかまを すくえ', w: {}, boss: 1, vt: 'しあいけいしき ちょうせん' },
 };
