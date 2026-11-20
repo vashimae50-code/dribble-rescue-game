@@ -282,13 +282,16 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   if (clipSet) {
     model.traverse((o) => { if (o.isBone) { byName[o.name] = o; allBones.push(o); ikP.push(V()); ikQ.push(Q()); ikS.push(V()); o.userData.p0 = o.position.clone(); o.userData.q0 = o.quaternion.clone(); o.userData.s0 = o.scale.clone(); } });
     for (const d of Object.values(clipSet)) { d.hb = B[d.hand + 'Hand']; d.hi = B[d.hand + 'HandIndex1'];
-      if (!clipCh.has(d.clip)) clipCh.set(d.clip, d.clip.tracks.map((tr) => { const pn = THREE.PropertyBinding.parseTrackName(tr.name); const obj = byName[pn.nodeName]; return obj && /^(position|quaternion|scale)$/.test(pn.propertyName) ? { obj, prop: pn.propertyName, interp: tr.createInterpolant() } : null; }).filter(Boolean)); }
+      if (!clipCh.has(d.clip)) clipCh.set(d.clip, d.clip.tracks.map((tr) => { const pn = THREE.PropertyBinding.parseTrackName(tr.name); const obj = byName[pn.nodeName]; // 回転と 腰の 位置だけ つかう（ほかの 骨の 位置・大きさは その キャラの ものの まま。キャラごとに 骨の 長さが ちがうので、
+        // クリップの 値で 上書きすると 体の 形が ゆがみ、足の 高さも ずれる）
+        return obj && (pn.propertyName === 'quaternion' || (pn.propertyName === 'position' && obj === B.Hips)) ? { obj, prop: pn.propertyName, interp: tr.createInterpolant() } : null; }).filter(Boolean)); }
   }
   const clipPose = (d, t) => { for (const c of clipCh.get(d.clip)) c.obj[c.prop].fromArray(c.interp.evaluate(t)); root.updateMatrixWorld(true);
     if (d.yawQ) { // 正面へ まわす（縦の 軸の まわり。中心は クリップ さいしょの 腰）
       B.Hips.getWorldQuaternion(q1).premultiply(d.yawQ); B.Hips.parent.getWorldQuaternion(q3).invert(); B.Hips.quaternion.copy(q3.multiply(q1));
       const pv = B.Hips.parent.localToWorld(t3.copy(d.pivotL)); B.Hips.getWorldPosition(t2).sub(pv).applyQuaternion(d.yawQ).add(pv); B.Hips.parent.worldToLocal(t2); B.Hips.position.copy(t2); root.updateMatrixWorld(true); }
-    const s = root.getWorldScale(t1).y; B.Hips.getWorldPosition(t2); t2.y -= (restLift - CLIP_LIFT) * s; B.Hips.parent.worldToLocal(t2); B.Hips.position.copy(t2); root.updateMatrixWorld(true); };
+    // 足を 床に のせる：レスト姿勢の 持ちあげ（restLift）を はずし、その キャラ×クリップで はかった 高さ（d.lift）を たす
+    const s = root.getWorldScale(t1).y; B.Hips.getWorldPosition(t2); t2.y += ((d.lift ?? CLIP_LIFT) - restLift) * s; B.Hips.parent.worldToLocal(t2); B.Hips.position.copy(t2); root.updateMatrixWorld(true); };
   // 手のひらの 下に ボール：手首と 人差し指の つけねの まんなかから、手首の +Z（手のひら がわ）へ ボールの 半径ぶん
   const palmBall = (d, out) => { d.hb.getWorldPosition(t1); if (d.hi) t1.lerp(d.hi.getWorldPosition(t2), 0.5); d.hb.getWorldQuaternion(q1); t3.set(0, 0, 1).applyQuaternion(q1).multiplyScalar(BALL_R * root.getWorldScale(t2).y); return root.worldToLocal(out.copy(t1).add(t3)); };
   if (clipSet) { // 体の 向きを はかって 正面へ まわす 量（straighten の クリップだけ。1回だけ 計算）
@@ -297,6 +300,12 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
       for (let i = 0; i <= 24; i++) { clipPose(d, d.t0 + (d.t1 - d.t0) * i / 24); const side = mw(B.LeftUpLeg).sub(mw(B.RightUpLeg)).add(mw(B.LeftArm).sub(mw(B.RightArm))); const a = Math.atan2(-side.z, side.x); sx += Math.cos(a); sy += Math.sin(a); }
       clipPose(d, d.t0); const pv = B.Hips.getWorldPosition(V()); d.pivotL = B.Hips.parent.worldToLocal(pv); d.yawDeg = Math.atan2(sy, sx) * 180 / Math.PI;
       d.yawQ = Math.abs(d.yawDeg) > 0.5 ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.atan2(sy, sx)) : null; }
+    // 足うらの 高さ：クリップを 通して いちばん 低い 足うらが y=0 に なる 持ちあげ量を キャラ×クリップごとに はかる（同じ クリップは 1回）
+    const skinMeshes = meshes.filter((m) => m.isSkinnedMesh); const soleMin = () => { let m = Infinity; for (const o of skinMeshes) { o.computeBoundingBox(); m = Math.min(m, o.boundingBox.clone().applyMatrix4(o.matrixWorld).min.y); } return m; };
+    const liftOf = new Map(); const sc0 = root.getWorldScale(V()).y;
+    for (const d of Object.values(clipSet)) { if (d.lift !== undefined) continue; const k = d.clip.uuid + ':' + d.t0 + ':' + d.t1;
+      if (!liftOf.has(k)) { d.lift = 0; let mn = Infinity; for (let i = 0; i <= 24; i++) { clipPose(d, d.t0 + (d.t1 - d.t0) * i / 24); mn = Math.min(mn, soleMin()); } liftOf.set(k, Number.isFinite(mn) ? -mn / sc0 : CLIP_LIFT); }
+      d.lift = liftOf.get(k); }
     // ボールが いちばん 上に くる 高さ（拍の まんなかで 手と 出会う 高さ）を 先に はかっておく
     const bb = V(); for (const d of Object.values(clipSet)) { d.top = FLOOR_Y; for (let i = 0; i <= 24; i++) { clipPose(d, d.t0 + (d.t1 - d.t0) * i / 24); d.top = Math.max(d.top, palmBall(d, bb).y); } }
     for (const b of allBones) { b.position.copy(b.userData.p0); b.quaternion.copy(b.userData.q0); b.scale.copy(b.userData.s0); } root.updateMatrixWorld(true);
