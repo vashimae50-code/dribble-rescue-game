@@ -1,6 +1,6 @@
 // ドリバト！（めざせ！ドリブルキング） メニュー・成長・ごほうび
 import { SKILLS, SKILL_IDS, RANKS, TIERS, tierOf, rankSkills, poolFor, WORLDS, MISSIONS, STAGES, sl, FRIENDS, BOSS_FRIENDS, ALL_FRIENDS, BALLS, SUITS, SHOP_BALLS, ballComplete, KING_FRIEND, kingOpen, lvStar3, CAPSULE_COST, AVATARS,
-  S, save, avHTML, MAX_LV, LEVEL_GOAL, LEVEL_SPEED, MAIN_STAGES, curLv, lvStars, lvTotal, lvCleared, lvDone, testReady, addPlayer, renamePlayer, player, totalStars, mastery, canTest, dayState, missionProgress, stamp, esc, MISSION_COIN, MISSION_ALL, missionAllDone, STREAK_RW, streakNow, GROW, growOf, budLv, BUD_LV, TITLES, checkTitles, titleOf } from './data.js';
+  S, save, avHTML, MAX_LV, LEVEL_GOAL, LEVEL_SPEED, MAIN_STAGES, curLv, lvStars, lvTotal, lvCleared, lvDone, testReady, addPlayer, renamePlayer, player, totalStars, mastery, canTest, dayState, missionProgress, stamp, esc, MISSION_COIN, MISSION_ALL, missionAllDone, STREAK_RW, streakNow, GROW, growOf, budLv, BUD_LV, TITLES, checkTitles, titleOf, SP_ORDER } from './data.js';
 import { runStage } from './run.js';
 import { preloadStage } from './env.js';
 import { ballIcon } from './balls.js';
@@ -73,7 +73,7 @@ function stages() {
       <h2>コート ${wi + 1}　${w.name} ${locked ? `<small>🔒 ⭐${w.need}こで ひらく</small>` : ''}</h2>
       <div class="sgrid">${STAGES.filter((s) => s.wi === wi && !s.sp).map((s) => { const m = MISSIONS[s.mission]; const st = ls[s.id] || 0;
         return `<button class="stage ${m.boss ? 'boss' : ''}" ${locked ? 'disabled' : ''} data-act="stage" data-id="${s.id}" title="${wi + 1}-${s.mi + 1}"><span class="s-i">${m.i}</span><b>${m.n}</b><small>${wi + 1}-${s.mi + 1}</small><span class="s-st">${[1, 2, 3].map((n) => `<i class="${n <= st ? 'on' : ''}">★</i>`).join('')}</span></button>`; }).join('')}</div>
-    </section>`; }).join('') + kingCard(p, L) + `<section class="world" style="--a:#ffb86b;--b:#ff7a1a;--bg:#2a1608"><h2>スペシャル</h2><div class="sgrid">${STAGES.filter((x) => x.sp && !x.king).map((x) => `<button class="stage" data-act="stage" data-id="${x.id}"><span class="s-i">${MISSIONS[x.mission].i}</span><b>${x.sp}</b><small>${MISSIONS[x.mission].n}</small><span class="s-st">${[1, 2, 3].map((n) => `<i class="${n <= (p.stars[x.id] || 0) ? 'on' : ''}">★</i>`).join('')}</span></button>`).join('')}</div><p class="hint">SP は ボールが 2つ いるよ。L1・L2・L3 は ワザを ステップで おぼえる ステージ。H1 は うごかずに ハンドリングだけ れんしゅう。</p></section>`, 'stages');
+    </section>`; }).join('') + kingCard(p, L) + `<section class="world" style="--a:#ffb86b;--b:#ff7a1a;--bg:#2a1608"><h2>スペシャル</h2><div class="sgrid">${STAGES.filter((x) => x.sp && !x.king).sort((a, b) => SP_ORDER.indexOf(a.sp) - SP_ORDER.indexOf(b.sp)).map((x) => `<button class="stage" data-act="stage" data-id="${x.id}"><span class="s-i">${MISSIONS[x.mission].i}</span><b>${x.sp}</b><small>${MISSIONS[x.mission].n}</small><span class="s-st">${[1, 2, 3].map((n) => `<i class="${n <= (p.stars[x.id] || 0) ? 'on' : ''}">★</i>`).join('')}</span></button>`).join('')}</div><p class="hint">L1〜L10 は ワザを ステップで おぼえる ステージ（L1 から じゅんばんに）。H1 は うごかずに ハンドリングだけ。SP は ボールが 2つ いるよ。</p></section>`, 'stages');
 }
 // だいボス：レベルの ぜんぶの ステージで ★3を とると あらわれる
 function kingCard(p, L) {

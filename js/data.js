@@ -163,6 +163,49 @@ export const MISSIONS = {
       [['c2cross', 8], ['cross', 4], ['c2cross', 8], ['dcross', 4], ['c2cross', 8], ['pound', 4], ['c2cross', 8]],
       [['c1cross', 8], ['c2cross', 4], ['c1cross', 8], ['frontv', 4], ['c1cross', 8], ['pound', 4]],
       [['cross', 4], ['c1cross', 4], ['cross', 8], ['c2cross2', 8], ['cross', 8], ['dcross', 4], ['cross', 4]]] },
+  // ↓ 習得ステージ（練習の 流れの じゅんばん。ドリブル技_習得までの練習の流れ_20261120 による）
+  lPound:  { n: 'つよく・ひくく しゅうとく', i: '💥', d: '4つの ステップで つよく・ひくく つこう', w: {}, fin: 1, learn: 'pound', vt: 'つよく・ひくく しゅうとく',
+    steps: ['ステップ1　みぎて・ひだりてで つく', 'ステップ2　ひざの たかさまで つよく', 'ステップ3　ひくく こまかく', 'さいご　つよく → ひくく → はやく'],
+    plan: [[['right', 8], ['left', 8]],
+      [['pound', 8], ['right', 4], ['pound', 8]],
+      [['low', 8], ['pound', 4], ['low', 8]],
+      [['pound', 4], ['low', 4], ['fast', 4]]] },
+  lPocket: { n: 'セミサークル＆ポケット しゅうとく', i: '🌙', d: '4つの ステップで セミサークルと ポケットを おぼえよう', w: {}, fin: 1, learn: 'pocket', vt: 'セミサークル＆ポケット しゅうとく',
+    steps: ['ステップ1　かたてで さゆう・まえうしろ', 'ステップ2　セミサークル（はんえん）', 'ステップ3　ポケットで ためる', 'さいご　セミサークル → ポケット → かたてフロント'],
+    plan: [[['frontv', 8], ['sidev', 8]],
+      [['semi', 8], ['pound', 4], ['semi', 8]],
+      [['pocket', 8], ['semi', 4], ['pocket', 8]],
+      [['semi', 4], ['pocket', 4], ['frontv', 4], ['pocket', 4]]] },
+  lHesi:   { n: 'ゆっくり→はやく しゅうとく', i: '🐢', d: '4つの ステップで はやさの きりかえを おぼえよう', w: {}, fin: 1, learn: 'hesi', vt: 'ゆっくり→はやく しゅうとく',
+    steps: ['ステップ1　はやさを かえる', 'ステップ2　ゆっくり → はやく', 'ステップ3　フロントチェンジで いっきに はやく', 'さいご　ゆっくり → はやく → フロントチェンジ'],
+    plan: [[['pound', 4], ['fast', 4], ['low', 4]],
+      [['hesi', 2], ['fast', 4], ['hesi', 2], ['fast', 4]],
+      [['cross', 4], ['fast', 4], ['cross', 4], ['fast', 4]],
+      [['hesi', 2], ['fast', 2], ['cross', 4], ['hesi', 2]]] },
+  lFig8:   { n: '8のじ ドリブル しゅうとく', i: '♾️', d: '4つの ステップで 8のじ ドリブルを おぼえよう', w: {}, fin: 1, learn: 'fig8', vt: '8のじ ドリブル しゅうとく',
+    steps: ['ステップ1　つかないで 8のじ', 'ステップ2　ついて 8のじ（ミスなく）', 'ステップ3　もっと ひくく', 'さいご　ひくく はやく 8のじ'],
+    plan: [[['wrap8', 8], ['wrapl', 8]],
+      [['fig8', 8], ['pound', 4], ['fig8', 8]],
+      [['low', 4], ['fig8', 8], ['low', 4]],
+      [['fig8', 8], ['fast', 4], ['fig8', 8]]] },
+  lInout:  { n: 'インサイドアウト しゅうとく', i: '〰️', d: '4つの ステップで インサイドアウトを おぼえよう', w: {}, fin: 1, learn: 'inout', vt: 'インサイドアウト しゅうとく',
+    steps: ['ステップ1　その場で インサイドアウト', 'ステップ2　セミサークル → インサイドアウト', 'ステップ3　インサイドアウト → フロントチェンジ', 'さいご　インサイドアウト → チェンジ・レッグスルー'],
+    plan: [[['inout', 8], ['pound', 4], ['inout', 8]],
+      [['semi', 4], ['inout', 8], ['semi', 4]],
+      [['inout', 4], ['cross', 4], ['inout', 4], ['cross', 4]],
+      [['inout', 4], ['cross', 4], ['inout', 4], ['legs', 4]]] },
+  lDrive:  { n: 'ジャブ→ドライブ しゅうとく', i: '🚀', d: '4つの ステップで ジャブから ドライブを おぼえよう', w: {}, fin: 1, learn: 'drive', vt: 'ジャブ→ドライブ しゅうとく',
+    steps: ['ステップ1　かまえて ジャブ', 'ステップ2　ジャブ → ドライブ', 'ステップ3　さがって → ドライブ', 'さいご　ディフェンスを ドライブで ぬく'],
+    plan: [[['stance', 4], ['jab', 2], ['stance', 4], ['jab', 2]],
+      [['jab', 2], ['drive', 4], ['jstop', 2]],
+      [['back', 4], ['drive', 4], ['jstop', 2]],
+      [['jab', 2], ['drive', 4, { guard: true }], ['jstop', 2], ['back', 4], ['drive', 4, { guard: true }], ['jstop', 2]]] },
+  lSpin:   { n: 'スピンムーブ しゅうとく', i: '🌪️', d: '4つの ステップで スピンムーブを おぼえよう', w: {}, fin: 1, learn: 'spin', vt: 'スピンムーブ しゅうとく',
+    steps: ['ステップ1　ボールを もって ピボット', 'ステップ2　ドリブルから スピン', 'ステップ3　さがって → スピン', 'さいご　ドライブと スピンを まぜる'],
+    plan: [[['pivot', 4], ['freeze', 4], ['pivot', 4]],
+      [['right', 4], ['spin', 4], ['left', 4], ['spin', 4]],
+      [['back', 4], ['spin', 4], ['back', 4], ['spin', 4]],
+      [['drive', 4], ['spin', 4], ['jstop', 2]]] },
   king:    { n: 'だいボス せん', i: '👑', d: 'ぜんぶの ★3を とった キミへ。さいごの だいボスを たおせ！', w: {}, boss: 1, king: 1, vt: 'だいボス ちょうせん' },
   boss:    { n: 'ボスせん', i: '👾', d: 'ボスを たおして なかまを すくえ', w: {}, boss: 1, vt: 'しあいけいしき ちょうせん' },
 };
@@ -186,12 +229,23 @@ export const STAGES = WORLDS.flatMap((w, wi) => ORDER.map((m, mi) => ({
   ...songFor(WORLD_SONG[wi][0], WORLD_SONG[wi][1] + WORLD_SONG[wi][2] * mi),
 })));
 STAGES.push({ id: 'sp-two', world: WORLDS[2], wi: 2, mi: 6, mission: 'two', name: '2ボール チャレンジ', bpm: 96, sections: 3, sp: 'SP', ...songFor('focusbeam', 1.25, 2) });
-STAGES.push({ id: 'sp-legs', world: WORLDS[1], wi: 1, mi: 7, mission: 'lLegs', name: 'レッグスルー しゅうとく', bpm: 88, sections: 3, sp: 'L1', ...songFor('nightlights', 1.15, 2) });
-STAGES.push({ id: 'sp-behind', world: WORLDS[3], wi: 3, mi: 8, mission: 'lBehind', name: 'バックチェンジ しゅうとく', bpm: 88, sections: 3, sp: 'L2', ...songFor('nightlights', 1.15, 2) });
+// 習得ステージの ラベル（L1〜L10）は 練習の 流れの じゅんばん。id は かえないので ★の 記録は のこる（もとの L1 レッグスルー → L5、L2 バックチェンジ → L6）
+STAGES.push({ id: 'sp-legs', world: WORLDS[1], wi: 1, mi: 7, mission: 'lLegs', name: 'レッグスルー しゅうとく', bpm: 88, sections: 3, sp: 'L5', ...songFor('nightlights', 1.15, 2) });
+STAGES.push({ id: 'sp-behind', world: WORLDS[3], wi: 3, mi: 8, mission: 'lBehind', name: 'バックチェンジ しゅうとく', bpm: 88, sections: 3, sp: 'L6', ...songFor('nightlights', 1.15, 2) });
 STAGES.push({ id: 'sp-handle', world: WORLDS[0], wi: 0, mi: 9, mission: 'handle', name: 'ハンドリング どうじょう', bpm: 92, sections: 3, sp: 'H1', ...songFor('focusbeam', 1.15, 2) });
 STAGES.push({ id: 'sp-cross', world: WORLDS[4], wi: 4, mi: 10, mission: 'lCross', name: 'フロントチェンジ しゅうとく', bpm: 88, sections: 3, sp: 'L3', ...songFor('nightlights', 1.15, 2) });
+const LEARN = (id, wi, mi, mission, name, sp) => STAGES.push({ id, world: WORLDS[wi], wi, mi, mission, name, bpm: 88, sections: 3, sp, ...songFor('nightlights', 1.15, 2) });
+LEARN('sp-pound', 0, 12, 'lPound', 'つよく・ひくく しゅうとく', 'L1');
+LEARN('sp-pocket', 1, 13, 'lPocket', 'セミサークル＆ポケット しゅうとく', 'L2');
+LEARN('sp-hesi', 2, 14, 'lHesi', 'ゆっくり→はやく しゅうとく', 'L4');
+LEARN('sp-fig8', 3, 15, 'lFig8', '8のじ ドリブル しゅうとく', 'L7');
+LEARN('sp-inout', 4, 16, 'lInout', 'インサイドアウト しゅうとく', 'L8');
+LEARN('sp-drive', 2, 17, 'lDrive', 'ジャブ→ドライブ しゅうとく', 'L9');
+LEARN('sp-spin', 3, 18, 'lSpin', 'スピンムーブ しゅうとく', 'L10');
 STAGES.push({ id: 'sp-king', world: WORLDS[4], wi: 4, mi: 11, mission: 'king', name: 'だいボス', bpm: 100, sections: 3, sp: 'KING', king: true, ...songFor('workhard2', 1.12, 2) }); // ぜんぶ ★3で あらわれる
 export const sl = (s) => s.sp || `${s.wi + 1}-${s.mi + 1}`;
+// スペシャルの ならび（練習の 流れの じゅんばん）：H1 → L1〜L10 → SP
+export const SP_ORDER = ['H1', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8', 'L9', 'L10', 'SP'];
 
 // ---------- なかま・みため ----------
 export const FRIENDS = ['🐶', '🐱', '🐰', '🐸', '🐼', '🦊', '🐵', '🐧', '🐯', '🦁', '🐻', '🐨', '🐹', '🦉', '🐢', '🐙', '🦖', '🦄', '🐲', '🦅'].map((e, i) => ({ id: 'f' + i, e, n: ['ポチボ', 'ニャット', 'ピョンタ', 'ケロスケ', 'パンダム', 'コンピー', 'モンキチ', 'ペンタ', 'トラジロー', 'レオン', 'クマード', 'コアラン', 'ハムタ', 'ホーさん', 'カメキチ', 'タコリン', 'レックス', 'ユニコ', 'ミニドラ', 'イーグルX'][i] }));
