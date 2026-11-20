@@ -12,10 +12,16 @@ const clipsOf = new WeakMap();
 // 0.957秒 以降は クリップの つなぎ目で 手が 小さく ゆれるので 使わない
 // じゆうに ドリブル（rest）も 右手の ときは 同じ クリップ（左手の ときは IK）
 // h：ドリブルの 高さ（waist＝こし、knee＝ひざ）、rate：1拍に なんかい つくか（0.5・1・2・3）
-const DRIBBLE_R = { name: 'mixamo.com', t0: 0.137, t1: 0.957, n: 2, hand: 'Right', cueHand: 'R' };
+// straighten：体の 向きが 正面から ずれている クリップ（mixamo.com は 約12° ずれ）を 読みこみ時に 正面へ まわす
+const DRIBBLE_R = { name: 'mixamo.com', t0: 0.137, t1: 0.957, n: 2, hand: 'Right', cueHand: 'R', straighten: true };
+// file：動きだけの GLB（Mixamo の FBX を meshy-v1 の 骨に うつし、向きを 正面に なおした もの）。once：技の あいだに 1回だけ 再生。hold＋ball 'both'：ボールを 両手で もつ
 const CLIP_DEFS = { 'meshy-v1': {
   right: { ...DRIBBLE_R, h: 'waist', rate: 1 }, rest: { ...DRIBBLE_R, h: 'waist', rate: 1 },
-  low: { ...DRIBBLE_R, h: 'knee', rate: 2 }, fast: { ...DRIBBLE_R, h: 'waist', rate: 2 }, hesi: { ...DRIBBLE_R, h: 'waist', rate: 0.5 } } };
+  low: { ...DRIBBLE_R, h: 'knee', rate: 2 }, fast: { ...DRIBBLE_R, h: 'waist', rate: 2 }, hesi: { ...DRIBBLE_R, h: 'waist', rate: 0.5 },
+  // バック：Dribble_low_back1（右手、1.6秒に 3回。さいしょと さいごが 同じ しせいで つなぎ目なし）
+  back: { file: 'models/motions/back.glb', t0: 0, t1: 1.6, n: 3, hand: 'Right', cueHand: 'R', h: 'waist', rate: 1 },
+  // ジャンプストップ：Jump_Down（空中→0.27秒で 着地→かがんで おきあがる。さいごの 1コマは 空中に もどるので 0.633秒まで）
+  jstop: { file: 'models/motions/jstop.glb', t0: 0, t1: 0.633, once: true, hold: true, ball: 'both', hand: 'Right' } } };
 // ためし用：?dh=waist|knee（高さ）、?ds=0.5|1|2|3（1拍に なんかい）で クリップの 技 すべてを 上書き
 const DRIBBLE_Q = (() => { try { const q = new URLSearchParams(location.search); const ds = Number(q.get('ds')); return { h: /^(waist|knee)$/.test(q.get('dh') || '') ? q.get('dh') : null, rate: [0.5, 1, 2, 3].includes(ds) ? ds : null }; } catch { return { h: null, rate: null }; } })();
 const REQUIRED_BONES = ['Hips', 'Spine', 'Spine1', 'Spine2', 'Head',
@@ -74,11 +80,17 @@ export async function loadHuman(key = playerModelKey()) {
   if (files[key]) {
     try {
       // Fixed same-origin path: no untrusted user-provided model URLs.
-      const gltf = await new GLTFLoader().loadAsync(files[key] + '?v=20261120d');
+      const gltf = await new GLTFLoader().loadAsync(files[key] + '?v=20261120e');
       const model = verifyRig(gltf.scene);
       model.userData.no7Replacement = true;
       if (key === 'meshy-v1') groundRestPose(model);
-      const defs = CLIP_DEFS[key]; if (defs) { const set = {}; for (const [id, d] of Object.entries(defs)) { const clip = gltf.animations.find((c) => c.name === d.name); if (clip) set[id] = { ...d, clip }; }
+      const defs = CLIP_DEFS[key]; if (defs) { const set = {}; const motionFiles = new Map();
+        for (const [id, d] of Object.entries(defs)) { let clip = null;
+          if (d.file) { // 動きだけの GLB（同じ ファイルは 1回だけ 読む。読めなければ その技は いまの IK の まま）
+            if (!motionFiles.has(d.file)) motionFiles.set(d.file, new GLTFLoader().loadAsync(d.file + '?v=20261120e').then((g) => g.animations).catch((e) => { console.warn('[No.7] motion file unavailable', d.file, e); return []; }));
+            const anims = await motionFiles.get(d.file); clip = (d.name && anims.find((c) => c.name === d.name)) || anims[0] || null; }
+          else clip = gltf.animations.find((c) => c.name === d.name);
+          if (clip) set[id] = { ...d, clip }; }
         if (key === 'meshy-v1') { Object.assign(set, await loadLocalClips()); for (const k of Object.keys(set)) if (!set[k]) delete set[k]; }
         if (Object.keys(set).length) clipsOf.set(model, set); }
       modelCache.set(key, model);
@@ -273,10 +285,19 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
       if (!clipCh.has(d.clip)) clipCh.set(d.clip, d.clip.tracks.map((tr) => { const pn = THREE.PropertyBinding.parseTrackName(tr.name); const obj = byName[pn.nodeName]; return obj && /^(position|quaternion|scale)$/.test(pn.propertyName) ? { obj, prop: pn.propertyName, interp: tr.createInterpolant() } : null; }).filter(Boolean)); }
   }
   const clipPose = (d, t) => { for (const c of clipCh.get(d.clip)) c.obj[c.prop].fromArray(c.interp.evaluate(t)); root.updateMatrixWorld(true);
+    if (d.yawQ) { // 正面へ まわす（縦の 軸の まわり。中心は クリップ さいしょの 腰）
+      B.Hips.getWorldQuaternion(q1).premultiply(d.yawQ); B.Hips.parent.getWorldQuaternion(q3).invert(); B.Hips.quaternion.copy(q3.multiply(q1));
+      const pv = B.Hips.parent.localToWorld(t3.copy(d.pivotL)); B.Hips.getWorldPosition(t2).sub(pv).applyQuaternion(d.yawQ).add(pv); B.Hips.parent.worldToLocal(t2); B.Hips.position.copy(t2); root.updateMatrixWorld(true); }
     const s = root.getWorldScale(t1).y; B.Hips.getWorldPosition(t2); t2.y -= (restLift - CLIP_LIFT) * s; B.Hips.parent.worldToLocal(t2); B.Hips.position.copy(t2); root.updateMatrixWorld(true); };
   // 手のひらの 下に ボール：手首と 人差し指の つけねの まんなかから、手首の +Z（手のひら がわ）へ ボールの 半径ぶん
   const palmBall = (d, out) => { d.hb.getWorldPosition(t1); if (d.hi) t1.lerp(d.hi.getWorldPosition(t2), 0.5); d.hb.getWorldQuaternion(q1); t3.set(0, 0, 1).applyQuaternion(q1).multiplyScalar(BALL_R * root.getWorldScale(t2).y); return root.worldToLocal(out.copy(t1).add(t3)); };
-  if (clipSet) { // ボールが いちばん 上に くる 高さ（拍の まんなかで 手と 出会う 高さ）を 先に はかっておく
+  if (clipSet) { // 体の 向きを はかって 正面へ まわす 量（straighten の クリップだけ。1回だけ 計算）
+    const mw = (b) => model.worldToLocal(b.getWorldPosition(V()));
+    for (const d of Object.values(clipSet)) { if (!d.straighten || d.yawQ !== undefined) continue; let sx = 0, sy = 0;
+      for (let i = 0; i <= 24; i++) { clipPose(d, d.t0 + (d.t1 - d.t0) * i / 24); const side = mw(B.LeftUpLeg).sub(mw(B.RightUpLeg)).add(mw(B.LeftArm).sub(mw(B.RightArm))); const a = Math.atan2(-side.z, side.x); sx += Math.cos(a); sy += Math.sin(a); }
+      clipPose(d, d.t0); const pv = B.Hips.getWorldPosition(V()); d.pivotL = B.Hips.parent.worldToLocal(pv); d.yawDeg = Math.atan2(sy, sx) * 180 / Math.PI;
+      d.yawQ = Math.abs(d.yawDeg) > 0.5 ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.atan2(sy, sx)) : null; }
+    // ボールが いちばん 上に くる 高さ（拍の まんなかで 手と 出会う 高さ）を 先に はかっておく
     const bb = V(); for (const d of Object.values(clipSet)) { d.top = FLOOR_Y; for (let i = 0; i <= 24; i++) { clipPose(d, d.t0 + (d.t1 - d.t0) * i / 24); d.top = Math.max(d.top, palmBall(d, bb).y); } }
     for (const b of allBones) { b.position.copy(b.userData.p0); b.quaternion.copy(b.userData.q0); b.scale.copy(b.userData.s0); } root.updateMatrixWorld(true);
   }
@@ -298,14 +319,24 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   }
   const footY = () => Math.min(...[B.LeftFoot, B.RightFoot, B.LeftToeBase, B.RightToeBase].filter(Boolean).map((b) => b.getWorldPosition(t3).y));
   function applyClip(S, st, id, hold, bph, bounce) {
-    const c0 = clipSet[id]; const want = !hold && !st.mode && c0 && (!c0.cueHand || (st.cue ? st.cue.hand || 'R' : 'R') === c0.cueHand) ? c0 : null; if (want) S.cdef = want;
+    const c0 = clipSet[id]; const want = (!hold || (c0 && c0.hold)) && !st.mode && c0 && (!c0.cueHand || (st.cue ? st.cue.hand || 'R' : 'R') === c0.cueHand) ? c0 : null;
+    // クリップ どうしの きりかえ（例：じゆう→ジャンプストップ）：きりかえた しゅんかんの しせいと ボールを とっておき、0.15秒で 新しい クリップへ うつす
+    if (want && S.cdef && want.clip !== S.cdef.clip && (S.cw || 0) > 0 && S.lastPose) { S.snapP = S.lastPose.p.map((x) => x.clone()); S.snapQ = S.lastPose.q.map((x) => x.clone()); S.snapS = S.lastPose.s.map((x) => x.clone()); S.snapBall = S.lastPose.ball.clone(); S.sw = 1; }
+    if (want) S.cdef = want;
     S.cw = clamp((S.cw || 0) + (want ? 1 : -1) * st.dt / CLIP_FADE, 0, 1);
     if (S.cw <= 0 || !S.cdef) return S.ball;
     const d = S.cdef; const w = smooth(S.cw);
     allBones.forEach((b, i) => { ikP[i].copy(b.position); ikQ[i].copy(b.quaternion); ikS[i].copy(b.scale); }); const fIK = footY();
     // 拍に あわせる：cnt（ついた かず）が 整数で ボールが 床、x.5 で 手も ボールも いちばん上。
     // 技の はじまり（b0）では 1拍1回の ときと 同じ 位相に そろえて、速さが かわっても 手が とばない ように する
-    const rate = DRIBBLE_Q.rate || d.rate || 1; const b0 = st.cue ? st.cue.b0 : 0; const cnt = (st.beat - b0) * rate + b0;
+    const b0 = st.cue ? st.cue.b0 : 0;
+    if (d.once) { // 技の はじまりから おわりまでで 1回だけ 再生（ジャンプストップ）。ボールは 両手の 手のひらの まんなか
+      const len = st.cue ? Math.max(0.5, st.cue.b1 - st.cue.b0) : 2; S.hk = Math.max(0, (S.hk || 0) - st.dt / 0.2);
+      clipPose(d, d.t0 + (d.t1 - d.t0) * clamp((st.beat - b0) / len, 0, 1));
+      if (d.ball === 'both') { const palm = (h) => h.getWorldPosition(V()).lerp(B[h.name.replace(/^mixamorig:?/, '') + 'Index1'].getWorldPosition(V()), 0.5); root.worldToLocal(clipBall.copy(palm(B.RightHand)).add(palm(B.LeftHand)).multiplyScalar(0.5)); }
+      else palmBall(d, clipBall);
+    } else {
+    const rate = DRIBBLE_Q.rate || d.rate || 1; const cnt = (st.beat - b0) * rate + b0;
     const db = cnt - 0.5; const u = ((db % d.n) + d.n) % d.n / d.n;
     const hk = HEIGHT_K[DRIBBLE_Q.h || d.h] || 0; S.hk = S.hk == null ? hk : S.hk + clamp(hk - S.hk, -st.dt / 0.2, st.dt / 0.2);
     clipPose(d, d.t0 + (d.t1 - d.t0) * u);
@@ -314,6 +345,11 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     // 手から はなれたら 手の 真下の 床（y=0.13）との あいだを 拍に あわせて 上下。手より 上には 行かない
     const bnc = Math.abs(Math.sin(Math.PI * (cnt - Math.floor(cnt)))); const top = d.top - KNEE_DROP * S.hk * root.getWorldScale(t1).y;
     clipBall.y = Math.max(FLOOR_Y, Math.min(clipBall.y, FLOOR_Y + bnc * (top - FLOOR_Y)));
+    }
+    if ((S.sw || 0) > 0 && S.snapP) { S.sw = Math.max(0, S.sw - st.dt / CLIP_FADE); const k = smooth(S.sw); // k：とっておいた しせいの わりあい
+      allBones.forEach((b, i) => { b.position.lerp(S.snapP[i], k); b.quaternion.slerp(S.snapQ[i], k); b.scale.lerp(S.snapS[i], k); }); root.updateMatrixWorld(true); clipBall.lerp(S.snapBall, k); }
+    if (!S.lastPose) S.lastPose = { p: allBones.map(() => V()), q: allBones.map(() => Q()), s: allBones.map(() => V()), ball: V() };
+    allBones.forEach((b, i) => { S.lastPose.p[i].copy(b.position); S.lastPose.q[i].copy(b.quaternion); S.lastPose.s[i].copy(b.scale); }); S.lastPose.ball.copy(clipBall);
     if (w < 1) { const fClip = footY();
       // ikP/ikQ/ikS（IK の しせい）に クリップの しせいを w の わりあいで まぜる（自分自身と まぜない よう ik 側を 動かしてから コピー）
       allBones.forEach((b, i) => { ikP[i].lerp(b.position, w); ikQ[i].slerp(b.quaternion, w); ikS[i].lerp(b.scale, w); b.position.copy(ikP[i]); b.quaternion.copy(ikQ[i]); b.scale.copy(ikS[i]); }); root.updateMatrixWorld(true);
