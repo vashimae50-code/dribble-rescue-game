@@ -6,6 +6,11 @@ import { comboState } from './data.js';
 // Load a replaceable, rigged GLB from our own site when present. The existing
 // embedded Mixamo model remains the safe fallback for all gameplay motions.
 const modelCache = new Map();
+// モデルごとの クリップ（技ID → 再生する はんい）。userData に 入れると clone で JSON に なって こわれるので 別に もつ
+const clipsOf = new WeakMap();
+// meshy-v1 の ドリブル（mixamo.com）：右手。0.137秒（手が いちばん上）から 0.957秒まで に 2回 ドリブル（1回 約0.41秒）。
+// 0.957秒 以降は クリップの つなぎ目で 手が 小さく ゆれるので 使わない
+const CLIP_DEFS = { 'meshy-v1': { right: { name: 'mixamo.com', t0: 0.137, t1: 0.957, n: 2, hand: 'Right' } } };
 const REQUIRED_BONES = ['Hips', 'Spine', 'Spine1', 'Spine2', 'Head',
   'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'RightUpLeg', 'RightLeg', 'RightFoot',
   'LeftArm', 'LeftForeArm', 'LeftHand', 'RightArm', 'RightForeArm', 'RightHand'];
@@ -46,10 +51,11 @@ export async function loadHuman(key = playerModelKey()) {
   if (files[key]) {
     try {
       // Fixed same-origin path: no untrusted user-provided model URLs.
-      const gltf = await new GLTFLoader().loadAsync(files[key] + '?v=20261120a');
+      const gltf = await new GLTFLoader().loadAsync(files[key] + '?v=20261120b');
       const model = verifyRig(gltf.scene);
       model.userData.no7Replacement = true;
       if (key === 'meshy-v1') groundRestPose(model);
+      const defs = CLIP_DEFS[key]; if (defs) { const set = {}; for (const [id, d] of Object.entries(defs)) { const clip = gltf.animations.find((c) => c.name === d.name); if (clip) set[id] = { ...d, clip }; } if (Object.keys(set).length) clipsOf.set(model, set); }
       modelCache.set(key, model);
       console.info('[No.7] Rigged replacement GLB loaded');
       return model;
@@ -228,6 +234,45 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   // 新モデル：床に ついている 足は 足うらを 床と 平行に たもつ（つま先が しずんだり 浮いたり しない）
   const flatQ = new Map(); if (nativeLook) { const rq0 = root.getWorldQuaternion(new THREE.Quaternion()).invert(); for (const f of [B.LeftFoot, B.RightFoot]) if (f) flatQ.set(f, rq0.clone().multiply(f.getWorldQuaternion(new THREE.Quaternion()))); }
   const t1 = V(), t2 = V(), t3 = V(), q1 = Q(), q2 = Q(), q3 = Q();
+  // --- クリップ再生（Meshy/Mixamo の 動きが ある 技だけ。ほかは IK） ---
+  const clipSet = clipsOf.get(template) || null; const CLIP_FADE = 0.15, BALL_R = 0.17, FLOOR_Y = 0.13;
+  // クリップは Hips の 動きで 体を 持ちあげている（足うら y≈-0.019）。レスト姿勢の 持ちあげ（restLift）と 入れかえて +0.019 に する
+  const CLIP_LIFT = 0.019; const restLift = template.userData.restLift || 0;
+  let mixer = null; const allBones = []; const ikP = [], ikQ = [], ikS = [];
+  if (clipSet) {
+    mixer = new THREE.AnimationMixer(model);
+    model.traverse((o) => { if (o.isBone) { allBones.push(o); ikP.push(V()); ikQ.push(Q()); ikS.push(V()); o.userData.p0 = o.position.clone(); o.userData.q0 = o.quaternion.clone(); o.userData.s0 = o.scale.clone(); } });
+    for (const d of Object.values(clipSet)) { d.action = mixer.clipAction(d.clip); d.action.play(); d.hb = B[d.hand + 'Hand']; d.hi = B[d.hand + 'HandIndex1']; }
+  }
+  const clipPose = (d, t) => { d.action.time = t; mixer.update(0); root.updateMatrixWorld(true);
+    const s = root.getWorldScale(t1).y; B.Hips.getWorldPosition(t2); t2.y -= (restLift - CLIP_LIFT) * s; B.Hips.parent.worldToLocal(t2); B.Hips.position.copy(t2); root.updateMatrixWorld(true); };
+  // 手のひらの 下に ボール：手首と 人差し指の つけねの まんなかから、手首の +Z（手のひら がわ）へ ボールの 半径ぶん
+  const palmBall = (d, out) => { d.hb.getWorldPosition(t1); if (d.hi) t1.lerp(d.hi.getWorldPosition(t2), 0.5); d.hb.getWorldQuaternion(q1); t3.set(0, 0, 1).applyQuaternion(q1).multiplyScalar(BALL_R * root.getWorldScale(t2).y); return root.worldToLocal(out.copy(t1).add(t3)); };
+  if (clipSet) { // ボールが いちばん 上に くる 高さ（拍の まんなかで 手と 出会う 高さ）を 先に はかっておく
+    const bb = V(); for (const d of Object.values(clipSet)) { d.top = FLOOR_Y; for (let i = 0; i <= 24; i++) { clipPose(d, d.t0 + (d.t1 - d.t0) * i / 24); d.top = Math.max(d.top, palmBall(d, bb).y); } d.action.time = d.t0; }
+    for (const b of allBones) { b.position.copy(b.userData.p0); b.quaternion.copy(b.userData.q0); b.scale.copy(b.userData.s0); } root.updateMatrixWorld(true);
+  }
+  const clipBall = V(), outBall = V();
+  const footY = () => Math.min(...[B.LeftFoot, B.RightFoot, B.LeftToeBase, B.RightToeBase].filter(Boolean).map((b) => b.getWorldPosition(t3).y));
+  function applyClip(S, st, id, hold, bph, bounce) {
+    const want = !hold && !st.mode && clipSet[id] ? clipSet[id] : null; if (want) S.cdef = want;
+    S.cw = clamp((S.cw || 0) + (want ? 1 : -1) * st.dt / CLIP_FADE, 0, 1);
+    if (S.cw <= 0 || !S.cdef) return S.ball;
+    const d = S.cdef; const w = smooth(S.cw);
+    allBones.forEach((b, i) => { ikP[i].copy(b.position); ikQ[i].copy(b.quaternion); ikS[i].copy(b.scale); }); const fIK = footY();
+    // 拍に あわせる：bph=0.5（ボールが いちばん上）で 手も いちばん上。1拍で 1回 ドリブル
+    const db = st.beat * (st.sk.dbl ? 2 : 1) - 0.5; const u = ((db % d.n) + d.n) % d.n / d.n;
+    clipPose(d, d.t0 + (d.t1 - d.t0) * u);
+    palmBall(d, clipBall);
+    // 手から はなれたら 手の 真下の 床（y=0.13）との あいだを 拍に あわせて 上下。手より 上には 行かない
+    clipBall.y = Math.max(FLOOR_Y, Math.min(clipBall.y, FLOOR_Y + bounce * (d.top - FLOOR_Y)));
+    if (w < 1) { const fClip = footY();
+      // ikP/ikQ/ikS（IK の しせい）に クリップの しせいを w の わりあいで まぜる（自分自身と まぜない よう ik 側を 動かしてから コピー）
+      allBones.forEach((b, i) => { ikP[i].lerp(b.position, w); ikQ[i].slerp(b.quaternion, w); ikS[i].lerp(b.scale, w); b.position.copy(ikP[i]); b.quaternion.copy(ikQ[i]); b.scale.copy(ikS[i]); }); root.updateMatrixWorld(true);
+      // まぜている あいだは 脚の まがりが 中途半端に なって 足が しずむので、足の 高さが 2つの しせいの あいだに なるよう 腰で なおす
+      const fix = lerp(fIK, fClip, w) - footY(); if (fix) { B.Hips.getWorldPosition(t2); t2.y += fix; B.Hips.parent.worldToLocal(t2); B.Hips.position.copy(t2); root.updateMatrixWorld(true); } }
+    return outBall.lerpVectors(S.ball, clipBall, w);
+  }
 
   function preWorld(bone, qW) { bone.getWorldQuaternion(q2); q2.premultiply(qW); bone.parent.getWorldQuaternion(q3).invert(); bone.quaternion.copy(q3.multiply(q2)); bone.updateMatrixWorld(true); }
   function aim(bone, child, target) { bone.getWorldPosition(t1); child.getWorldPosition(t2); t2.sub(t1).normalize(); t3.copy(target).sub(t1).normalize(); q1.setFromUnitVectors(t2, t3); preWorld(bone, q1); }
@@ -439,7 +484,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     { const run = moving && stride > 0 && !guard && !hold && !st.mode && crouch < 0.6; S.knee = lerp(S.knee ?? 1, run ? 0 : 1, 1 - Math.exp(-dt * 8)); }
 
     // --- 骨に あてはめる ---
-    model.traverse((o) => { if (o.isBone) { o.position.copy(o.userData.p0 || (o.userData.p0 = o.position.clone())); o.quaternion.copy(o.userData.q0 || (o.userData.q0 = o.quaternion.clone())); } });
+    model.traverse((o) => { if (o.isBone) { o.position.copy(o.userData.p0 || (o.userData.p0 = o.position.clone())); o.quaternion.copy(o.userData.q0 || (o.userData.q0 = o.quaternion.clone())); if (o.userData.s0) o.scale.copy(o.userData.s0); } });
     root.updateMatrixWorld(true);
     const yq = Q().setFromAxisAngle(Y, spinA); const rq = root.getWorldQuaternion(Q()).multiply(yq); const toW = (v) => root.localToWorld(w.copy(v).applyQuaternion(yq)); const dirW = (x, y, z) => pole.set(x, y, z).applyQuaternion(rq);
     B.Hips.parent.worldToLocal(toW(S.hip)); B.Hips.position.copy(w); B.Hips.updateMatrixWorld(true);
@@ -458,6 +503,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     ik(B.LeftArm, B.LeftForeArm, B.LeftHand, toW(S.hl).clone(), dirW(-0.8, -0.3, behind ? -0.6 : 0.7), L.ua, L.fa);
     ik(B.RightArm, B.RightForeArm, B.RightHand, toW(S.hr).clone(), dirW(0.8, -0.3, behind ? -0.6 : 0.7), L.ua, L.fa);
     if (faceSp) { B.Head.getWorldPosition(t1); root.worldToLocal(t1); faceSp.position.copy(t1); }
+    if (clipSet) return applyClip(S, st, id, hold, bph, bounce);
     return S.ball;
   }
   // かお：イラストの スプライトを 頭の 位置に のせる（もとの 頭は 小さく たたむ）
