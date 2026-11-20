@@ -344,8 +344,14 @@ export const MAX_LV = 6;
 // ---------- ボスキャラ（Meshy の 3Dキャラ。ボスキャラ_Meshy作成指示書 rev1） ----------
 // R1〜R6 の だいボスに 1人ずつ。W1〜W5 の ボスは R1〜R5 と 同じ キャラ（ワールドごとに きまった ボス）。R6 は だいボスだけ
 // ファイル：models/foes/boss-rN.glb（3D）、img/avatar/boss-rN.jpg（ずかんの 絵）。届いたら ready を true に する
-// 名前は かり（W1〜W5 の ボスの 名前。R6 は だいボス）
-export const BOSS_CHARS = [1, 2, 3, 4, 5, 6].map((L) => ({ id: `boss-r${L}`, L, n: L <= 5 ? WORLDS[L - 1].boss : 'だいボス', world: L <= 5 ? L - 1 : null, ready: true }));
+// 名前は かり（W1〜W5 の ボスの 名前。R6 は だいボス）。face：顔の イラスト（img/faces.png の 番号。前橋さんが えらんだ）。
+// color・trim：ユニフォーム（濃い色。3Dキャラが できるまでの 旧モデルにも つかう）
+const BOSS_FACE = [48, 41, 49, 16, 24, 0];
+const BOSS_COLOR = [['#1c2450', '#ffe03d'], ['#0f3d2e', '#ffe03d'], ['#2e1a4f', '#ffe03d'], ['#4a1020', '#ffe03d'], ['#24272e', '#ffe03d'], ['#141414', '#ffd23f']];
+export const BOSS_CHARS = [1, 2, 3, 4, 5, 6].map((L) => ({ id: `boss-r${L}`, L, n: L <= 5 ? WORLDS[L - 1].boss : 'だいボス', world: L <= 5 ? L - 1 : null, face: BOSS_FACE[L - 1], color: BOSS_COLOR[L - 1][0], trim: BOSS_COLOR[L - 1][1], ready: true })); // #41 で 6人 とも とどいた
+// 中ボスの 顔（前橋さんが えらんだ 14人）。ディフェンスは 大ボス・中ボス いがいの 顔から ランダム、おいかけて くる 相手は 50人から ランダム
+export const MID_FACES = [44, 40, 46, 35, 21, 30, 10, 6, 1, 31, 22, 14, 17, 9];
+export const DEF_FACES = Array.from({ length: 50 }, (_, i) => i).filter((i) => !MID_FACES.includes(i) && !BOSS_FACE.includes(i));
 export const bossForWorld = (wi) => BOSS_CHARS.find((b) => b.world === wi) || null;
 export const bossForLevel = (L) => BOSS_CHARS.find((b) => b.L === L) || null;
 // つかえる：レベル L の だいボスを たおした、かつ いまの レベルが L+1 いじょう（R6 の ボスは たおしたら すぐ）
