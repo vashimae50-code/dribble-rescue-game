@@ -8,7 +8,7 @@ export const THEMES = {
   village: { sky: ['#2f8fff', '#8fd0ff', '#e8f6ff'], fog: '#dff1ff', sun: '#fff6c8', sunY: 46, moon: false, stars: false, cloud: '#ffffff', road: 'dirt', side: '#5fb84a', side2: '#4a9e3a', hill: ['#6cc46a', '#4aa85a'],
     walls: ['#fff4e0', '#ffe9c9', '#f6f0ff'], roofs: ['#d9432f', '#2f6fd9', '#e08a2a'], house: 'plaster', tree: ['#3fae4a', '#59c85a'], trunk: '#7a5230', hemi: ['#cfe8ff', '#7fae6a', 1.25], dir: ['#fff2d0', 2.0], bloom: [0.22, 0.92], lamp: false, glow: 0 },
   night: { sky: ['#0d0a2e', '#2c2270', '#6a58b8'], fog: '#3a3180', sun: '#f4f0ff', sunY: 40, moon: true, stars: true, cloud: '#8a7bd6', road: 'cobble', side: '#2a2a52', side2: '#23234a', hill: ['#221c55', '#191442'],
-    walls: ['#8a5a3c', '#6f6a8a', '#9a7b5a'], roofs: ['#3a2f6a', '#5a2f3a', '#2f4a6a'], house: 'timber', tree: ['#2a2450', '#3a2f66'], trunk: '#241c3a', hemi: ['#8f86ff', '#2a2050', 1.0], dir: ['#b8b0ff', 1.3], bloom: [0.6, 0.72], lamp: true, glow: 1 },
+    walls: ['#8a5a3c', '#6f6a8a', '#9a7b5a'], roofs: ['#3a2f6a', '#5a2f3a', '#2f4a6a'], house: 'timber', tree: ['#2a2450', '#3a2f66'], trunk: '#241c3a', hemi: ['#8f86ff', '#2a2050', 1.0], dir: ['#b8b0ff', 1.3], bloom: [0.18, 0.9], lamp: true, glow: 1, amb: 0.8 }, // まぶしいので 光の にじみ（もとは [0.6, 0.72]）と 全体の 光（もとは 1.5）を 落とす
   sunset: { sky: ['#3a2a7a', '#e0608a', '#ffc36a'], fog: '#f2a57a', sun: '#ffe08a', sunY: 12, moon: false, stars: false, cloud: '#ffb3a0', road: 'plank', side: '#2f7fb8', side2: '#2a6fa8', hill: ['#7a3f7a', '#5a2f6a'], water: true,
     walls: ['#ffe2c4', '#f7c9a0', '#fff0dc'], roofs: ['#b8402f', '#7a3f8a', '#2f7a8a'], house: 'plaster', tree: ['#2f8a5a', '#3fa06a'], trunk: '#6a4028', hemi: ['#ffd0b0', '#6a5a9a', 1.15], dir: ['#ffb070', 1.9], bloom: [0.4, 0.82], lamp: true, glow: 0.5 },
   snow: { sky: ['#5f9fe0', '#bfe0ff', '#f4fbff'], fog: '#eaf5ff', sun: '#ffffff', sunY: 34, moon: false, stars: false, cloud: '#ffffff', road: 'stone', side: '#f4f9ff', side2: '#e2eefc', hill: ['#dbe9f8', '#c4d8f0'],
@@ -96,7 +96,7 @@ function buildCourtEnv(scene, o, th, D, n) {
     if (bgT) bgT.dispose(); bgT = new THREE.CanvasTexture(cv); bgT.colorSpace = THREE.SRGBColorSpace; scene.background = bgT; };
   img = null; scene.background = new THREE.Color(th.indoor || th.glow > 0.4 ? '#141a30' : '#5a6f8a'); const im = courtImg(o.themeName, idx); if (im.complete && im.naturalWidth) { img = im; draw(); } else im.addEventListener('load', () => { img = im; draw(); });
   scene.fog.near = 70; scene.fog.far = 135;
-  scene.add(new THREE.AmbientLight(0xffffff, th.glow > 0.4 ? 1.5 : 0.35)); // 暗いコートでも 人が はっきり 見えるように
+  scene.add(new THREE.AmbientLight(0xffffff, th.amb ?? (th.glow > 0.4 ? 1.5 : 0.35))); // 暗いコートでも 人が はっきり 見えるように
   // 雪 と ひのこ
   let pts = null; const PN = 260; const snowy = false, lava = false; // 雪・火のこの えんしゅつは なし
   if (snowy || lava) { const pg = new THREE.BufferGeometry(); const pp = new Float32Array(PN * 3); for (let i = 0; i < PN; i++) { pp[i * 3] = (Math.random() - 0.5) * 30; pp[i * 3 + 1] = Math.random() * 12; pp[i * 3 + 2] = 3 - Math.random() * 34; } pg.setAttribute('position', new THREE.BufferAttribute(pp, 3)); const pm = new THREE.PointsMaterial({ color: snowy ? 0xffffff : 0xff8a2a, size: snowy ? 0.16 : 0.12, map: o.glow, transparent: true, depthWrite: false, fog: false, blending: lava ? THREE.AdditiveBlending : THREE.NormalBlending }); D.push(pg, pm); pts = new THREE.Points(pg, pm); pts.frustumCulled = false; scene.add(pts); }

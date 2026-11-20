@@ -58,7 +58,10 @@ export function runStage(opts) {
   // 1つの 技は しばらく つづける（小学校 低学年が「みて → やってみて」できる ように）。
   // パワーポジション・ジャンプストップと、レーンを うつる 技（サイドステップ・スライド・ジャブ・ドライブ）は もとの 長さ
   const MIN_SEC = 12, HANDLE_SEC = 15;
-  const holdLen = (id, len, bpm) => { const sk = SKILLS[id]; if (dojo || id === 'rest' || id === 'stance' || id === 'jstop' || sk.lane) return len; return Math.max(len, Math.ceil((sk.handle ? HANDLE_SEC : MIN_SEC) * (bpm ? bpm / 60 : bps))); };
+  const holdLen = (id, len, bpm) => { const sk = SKILLS[id]; if (dojo || id === 'rest' || id === 'stance' || id === 'jstop' || sk.lane) return len;
+    // ピタッ！は 2秒（12秒に のばさない）
+    if (id === 'freeze') return Math.max(1, Math.round(2 * (bpm ? bpm / 60 : bps)));
+    return Math.max(len, Math.ceil((sk.handle ? HANDLE_SEC : MIN_SEC) * (bpm ? bpm / 60 : bps))); };
   function addCue(id, o = {}) {
     const sk = SKILLS[id]; const len = o.keepLen ? (o.len || sk.len) : holdLen(id, o.len || sk.len, o.bpm); const sp = o.sp ?? sk.sp ?? 1;
     const c = { skill: id, b0: endBeat, b1: endBeat + len, z0: zEnd, z1: zEnd + len * V * Math.max(sp, 0.05), sp, lane0: lane, lane1: lane, boss: !!o.boss, ballMode: o.ballMode, noGate: o.noGate, bpm: o.bpm, tier,
