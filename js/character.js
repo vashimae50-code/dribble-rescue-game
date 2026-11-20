@@ -40,6 +40,20 @@ function groundRestPose(model) {
   model.traverse((o) => { if (!o.isSkinnedMesh) return; o.computeBoundingBox(); const b = o.boundingBox.clone().applyMatrix4(o.matrixWorld); minY = Math.min(minY, b.min.y); });
   if (Number.isFinite(minY)) { model.position.y = -minY; model.userData.restLift = -minY; model.updateMatrixWorld(true); }
 }
+// PCの 中だけに おく 動きの パック（models/local/。有料アセット 由来なので リポジトリには 入れない＝.gitignore）。
+// models/local/clips.json が あれば、そこに 書いた GLB の クリップを 技IDに わりあてる。なければ 何もしない（いまの 動きの まま）
+// clips.json の 形：{ "file": "aa-anim.glb", "defs": { "right": { "name": "クリップ名", "t0": 0.1, "t1": 1.2, "n": 2, "hand": "Right", "cueHand": "R" }, ... } }
+async function loadLocalClips() {
+  try {
+    const res = await fetch('models/local/clips.json', { cache: 'no-store' }); if (!res.ok) return {};
+    const pack = await res.json(); if (!pack || !pack.file || !pack.defs) return {};
+    const g = await new GLTFLoader().loadAsync('models/local/' + String(pack.file).replace(/[^\w.\-]/g, '') + '?t=' + (pack.v || ''));
+    const set = {};
+    for (const [id, d] of Object.entries(pack.defs)) { const clip = g.animations.find((c) => c.name === d.name); if (clip && d.t1 > d.t0 && d.n > 0 && /^(Right|Left)$/.test(d.hand)) set[id] = { ...d, clip }; }
+    console.info('[No.7] Local clip pack loaded:', Object.keys(set).join(', '));
+    return set;
+  } catch (error) { return {}; }
+}
 async function loadLegacy() {
   if (modelCache.has('legacy')) return modelCache.get('legacy');
   const b64 = (await import('../models/human_model.js')).default;
@@ -57,7 +71,9 @@ export async function loadHuman(key = playerModelKey()) {
       const model = verifyRig(gltf.scene);
       model.userData.no7Replacement = true;
       if (key === 'meshy-v1') groundRestPose(model);
-      const defs = CLIP_DEFS[key]; if (defs) { const set = {}; for (const [id, d] of Object.entries(defs)) { const clip = gltf.animations.find((c) => c.name === d.name); if (clip) set[id] = { ...d, clip }; } if (Object.keys(set).length) clipsOf.set(model, set); }
+      const defs = CLIP_DEFS[key]; if (defs) { const set = {}; for (const [id, d] of Object.entries(defs)) { const clip = gltf.animations.find((c) => c.name === d.name); if (clip) set[id] = { ...d, clip }; }
+        if (key === 'meshy-v1') Object.assign(set, await loadLocalClips());
+        if (Object.keys(set).length) clipsOf.set(model, set); }
       modelCache.set(key, model);
       console.info('[No.7] Rigged replacement GLB loaded');
       return model;
