@@ -1,6 +1,6 @@
 // ドリバト！（めざせ！ドリブルキング） 3Dの世界（three.js）
 import * as THREE from '../vendor/three.module.min.js';
-import { SKILLS } from './data.js';
+import { SKILLS, shoePaint } from './data.js';
 import { ballCanvas } from './balls.js';
 import { makeHuman } from './character.js';
 import { buildEnv } from './env.js';
@@ -43,8 +43,8 @@ export function createScene(canvas, o) {
   const env = buildEnv(scene, { themeName: o.theme, stageId: o.stageId, HW, LW, glow: shared.glow });
   // ---- プレイヤー（人型モデル） ----
   const human = o.human ? makeHuman(o.human, o.sprite === false ? '#0f4cd6' : suit, o.sprite === false
-    ? { num: 7, bigHead: 1.12, trim: '#ffd200', skin: '#c99068', shoe: '#122a65', hair: '#593923', practicePose: true, rich: new URLSearchParams(location.search).get('rich') !== '0', sculpt: new URLSearchParams(location.search).get('visual') === 'sculpt' }
-    : { num: 7, bigHead: 1.65 }) : null;
+    ? { num: 7, bigHead: 1.12, trim: '#ffd200', skin: '#c99068', shoe: '#122a65', hair: '#593923', shoeL: shoePaint(o.shoe, 'L'), shoeR: shoePaint(o.shoe, 'R'), practicePose: true, rich: new URLSearchParams(location.search).get('rich') !== '0', sculpt: new URLSearchParams(location.search).get('visual') === 'sculpt' }
+    : { num: 7, bigHead: 1.65, shoeL: shoePaint(o.shoe, 'L'), shoeR: shoePaint(o.shoe, 'R') }) : null;
   // 敵も バスケットマン：ディフェンス 2人、おいかけてくる 1人、ボス 1人（べつの チームの ユニフォーム）
   // プレイヤーを 絵（スプライト）で 出す：右手ドリブル と パワーポジション
   const GK = (o.grow && o.grow.k) || 1; // そだつ：からだの 大きさ

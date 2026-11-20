@@ -138,7 +138,7 @@ async function start(o) {
   const noCam = st.camera && !pose;
   let human = null, foeHuman = null; try { if (msg) msg.textContent = 'キャラクターを よみこみちゅう…'; const ch = await import('./character.js'); human = await ch.loadHuman(); foeHuman = human && human.userData.no7Replacement ? await ch.loadFoeHuman() : human; } catch (e) { human = null; }
   const preview3D = new URLSearchParams(location.search).get('character3d') === '1' || location.pathname.includes('/preview/');
-  const look = { human, foeHuman, sprite: !preview3D, girl: !!p.girl, suit: SUITS.find((x) => x.id === p.suit)?.c, ball: BALLS.find((x) => x.id === p.ball), buddy: p.buddy ? friend(p.buddy)?.e : null, buddyLv: p.buddy ? budLv(p, p.buddy) : 1, grow: GROW[growOf(p)] };
+  const look = { human, foeHuman, sprite: !preview3D, girl: !!p.girl, suit: SUITS.find((x) => x.id === p.suit)?.c, ball: BALLS.find((x) => x.id === p.ball), shoe: SHOES.find((x) => x.id === p.shoe), buddy: p.buddy ? friend(p.buddy)?.e : null, buddyLv: p.buddy ? budLv(p, p.buddy) : 1, grow: GROW[growOf(p)] };
   try {
     const qVid = new URLSearchParams(location.search).get('video');
     const vid = qVid || (st.videoRec && o.mode === 'stage' && o.stage ? o.stage.id : null); videoMode = !!vid; document.body.classList.toggle('rec', videoMode); // どうがは 1920×1080 で ろくが
