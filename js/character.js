@@ -26,7 +26,9 @@ const CLIP_DEFS = { 'meshy-v1': {
 // meshy-v1 と まったく 同じに した もの（models/players/）。だから meshy-v1 用の クリップ・IK の 数値を そのまま つかう
 export const PLAYER_MODELS = ['player-01', 'player-02', 'player-03', 'player-04', 'player-05', 'player-06', 'player-07', 'player-08'];
 const MESHY_ANIMS = 'models/motions/dribble_r.glb';
-const meshyFamily = (k) => k === 'meshy-v1' || PLAYER_MODELS.includes(k);
+// ボスキャラ（R1〜R6 の だいボス。models/foes/。主人公 8人と 同じ 作りなので 同じ クリップ・IK を つかう）
+export const BOSS_MODELS = ['boss-r1', 'boss-r2', 'boss-r3', 'boss-r4', 'boss-r5', 'boss-r6'];
+const meshyFamily = (k) => k === 'meshy-v1' || PLAYER_MODELS.includes(k) || BOSS_MODELS.includes(k);
 // プレイヤーの かお（@c1〜@c8）から つかう モデル。?model= の 指定が あれば そちらが 先
 export function modelKeyFor(avatar) {
   if (new URLSearchParams(location.search).get('model')) return playerModelKey();
@@ -50,7 +52,7 @@ function verifyRig(scene) {
 export function playerModelKey() {
   const q = new URLSearchParams(location.search); const mode = q.get('model');
   if (mode === 'legacy') return 'legacy';
-  if (mode === 'no7-v2' || mode === 'no7-chibi' || mode === 'no7-meshy' || mode === 'meshy-v1' || PLAYER_MODELS.includes(mode)) return mode;
+  if (mode === 'no7-v2' || mode === 'no7-chibi' || mode === 'no7-meshy' || mode === 'meshy-v1' || PLAYER_MODELS.includes(mode) || BOSS_MODELS.includes(mode)) return mode;
   // 3D が ふだんの 表示（2026-11-20〜）。?character3d=0 の ときだけ 絵（スプライト）用の 旧モデル
   return q.get('character3d') === '0' ? 'legacy' : 'player-01';
 }
@@ -85,10 +87,12 @@ async function loadLegacy() {
   const gltf = await new GLTFLoader().parseAsync(buf.buffer, '');
   modelCache.set('legacy', gltf.scene); return gltf.scene;
 }
-export async function loadHuman(key = playerModelKey()) {
+// opt.noFallback：読めないときは 旧モデルに もどさず null（ボスキャラ用。呼ぶ がわで もとの 見た目に もどす）
+export async function loadHuman(key = playerModelKey(), opt = {}) {
   if (modelCache.has(key)) return modelCache.get(key);
   const files = { 'no7-v2': 'models/no7-v2.glb', 'no7-chibi': 'models/no7-chibi.glb', 'no7-meshy': 'models/no7-meshy.glb', 'meshy-v1': 'models/meshy-v1.glb' };
   for (const k of PLAYER_MODELS) files[k] = `models/players/${k}.glb`; // player-01＝meshy-v1 の テクスチャだけ 1024px に した かるい版（骨・アニメは 同じ）
+  for (const k of BOSS_MODELS) files[k] = `models/foes/${k}.glb`;
   if (files[key]) {
     try {
       // Fixed same-origin path: no untrusted user-provided model URLs.
@@ -115,8 +119,10 @@ export async function loadHuman(key = playerModelKey()) {
       console.warn('[No.7] Replacement GLB unavailable or incompatible; using original', error);
     }
   }
-  return loadLegacy();
+  return opt.noFallback ? null : loadLegacy();
 }
+// ボスキャラの 3D（なければ null）
+export function loadBossHuman(id) { return BOSS_MODELS.includes(id) ? loadHuman(id, { noFallback: true }) : Promise.resolve(null); }
 // 敵（ディフェンスなど）は いつも 旧モデル（ユニフォームの 色を かえて つかう）
 export function loadFoeHuman() { return loadLegacy(); }
 
