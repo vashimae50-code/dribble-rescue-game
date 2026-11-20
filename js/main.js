@@ -1,9 +1,10 @@
 // ドリバト！（めざせ！ドリブルキング） メニュー・成長・ごほうび
-import { SKILLS, SKILL_IDS, RANKS, TIERS, tierOf, rankSkills, poolFor, WORLDS, MISSIONS, STAGES, sl, FRIENDS, BOSS_FRIENDS, ALL_FRIENDS, BALLS, SUITS, SHOP_BALLS, ballComplete, KING_FRIEND, kingOpen, lvStar3, CAPSULE_COST, AVATARS,
+import { SKILLS, SKILL_IDS, RANKS, TIERS, tierOf, rankSkills, poolFor, WORLDS, MISSIONS, STAGES, sl, FRIENDS, BOSS_FRIENDS, ALL_FRIENDS, BALLS, SUITS, SHOP_BALLS, ballComplete, SHOES, SHOP_SHOES, buyItem, KING_FRIEND, kingOpen, lvStar3, CAPSULE_COST, AVATARS,
   S, save, avHTML, MAX_LV, LEVEL_GOAL, LEVEL_SPEED, MAIN_STAGES, curLv, lvStars, lvTotal, lvCleared, lvDone, testReady, addPlayer, renamePlayer, player, totalStars, mastery, canTest, dayState, missionProgress, stamp, esc, MISSION_COIN, MISSION_ALL, missionAllDone, STREAK_RW, streakNow, GROW, growOf, budLv, BUD_LV, TITLES, checkTitles, titleOf } from './data.js';
 import { runStage } from './run.js';
 import { preloadStage } from './env.js';
 import { ballIcon } from './balls.js';
+import { shoeIcon } from './shoes.js';
 import * as RK from './rank.js';
 import * as MV from './move.js';
 
@@ -269,13 +270,15 @@ function testResult(o, r) {
 let zTab = 'friends';
 function friends() {
   const p = player(); checkTitles(p);
-  const tabs = [['friends', `🐾 なかま ${p.friends.length}/${ALL_FRIENDS.length}`], ['balls', `🏀 ボール ${p.balls.length}/${BALLS.length}`], ['boss', `🛡️ ボス ${Object.keys(p.bossDone).length}/${WORLDS.length}`], ['titles', `🏅 しょうごう ${(p.titles || []).length}/${TITLES.length}`]];
+  const tabs = [['friends', `🐾 なかま ${p.friends.length}/${ALL_FRIENDS.length}`], ['balls', `🏀 ボール ${p.balls.length}/${BALLS.length}`], ['shoes', `👟 バッシュ ${p.shoes.length}/${SHOES.length}`], ['boss', `🛡️ ボス ${Object.keys(p.bossDone).length}/${WORLDS.length}`], ['titles', `🏅 しょうごう ${(p.titles || []).length}/${TITLES.length}`]];
   const seg = `<div class="seg ztabs">${tabs.map(([k, t]) => `<button class="${zTab === k ? 'on' : ''}" data-act="ztab" data-id="${k}">${t}</button>`).join('')}</div>`;
   let body = '';
   if (zTab === 'friends') body = `<p class="hint">タップすると バディに なって、ステージで いっしょに はしるよ。いっしょに あそぶほど レベルが あがって おおきく なる！（Lv2：${BUD_LV[1]}かい・Lv3：${BUD_LV[2]}かい・Lv4：${BUD_LV[3]}かい）</p>
     <div class="zukan">${ALL_FRIENDS.map((f) => { const lv = budLv(p, f.id); return p.friends.includes(f.id) ? `<button class="z on ${f.rare ? 'rare' : ''} ${p.buddy === f.id ? 'sel' : ''} lv${lv}" data-act="buddy" data-id="${f.id}"><span>${f.e}</span><b>${f.n}</b><small>Lv${lv}${'⭐'.repeat(lv - 1)}${p.buddy === f.id ? ' バディ' : ''}</small></button>` : `<div class="z"><span>？</span><b>？？？</b><small>${f.rare ? 'ボスを たおすと…' : 'カプセルで でる'}</small></div>`; }).join('')}</div>`;
   else if (zTab === 'balls') body = `<p class="hint">ショップで かえるよ。あつめた ボールは ショップで えらんで つかえる。</p>
     <div class="zukan">${BALLS.map((b) => p.balls.includes(b.id) ? `<div class="z on"><img class="zb" src="${ballIcon(b)}" alt=""><b>${b.n}</b><small>${p.ball === b.id ? 'つかっている' : ''}</small></div>` : b.secret ? `<div class="z"><span>💎</span><b>？？？</b><small>ぜんぶ あつめると…</small></div>` : `<div class="z"><img class="zb dim" src="${ballIcon(b)}" alt=""><b>？？？</b><small>🪙 ${b.cost}</small></div>`).join('')}</div>`;
+  else if (zTab === 'shoes') body = `<p class="hint">ショップで かえるよ。あつめた バッシュは ショップで えらんで はける。</p>
+    <div class="zukan">${SHOES.map((b) => p.shoes.includes(b.id) ? `<div class="z on"><img class="zs" src="${shoeIcon(b)}" alt=""><b>${b.n}</b><small>${p.shoe === b.id ? 'はいている' : ''}</small></div>` : b.secret ? `<div class="z"><span>👟</span><b>？？？</b><small>ぜんぶ あつめると…</small></div>` : `<div class="z"><img class="zs dim" src="${shoeIcon(b)}" alt=""><b>？？？</b><small>🪙 ${b.cost}</small></div>`).join('')}</div>`;
   else if (zTab === 'boss') body = `<p class="hint">コートの さいごの ボスを たおすと のるよ。</p>
     <div class="zukan">${WORLDS.map((w, i) => p.bossDone[w.id] ? `<div class="z on rare" style="--a:${w.pal.a}"><span>${BOSS_FRIENDS[i].e}</span><b>${w.boss}</b><small>コート ${i + 1}　たおした！</small></div>` : `<div class="z"><span>？</span><b>？？？</b><small>コート ${i + 1} の ボス</small></div>`).join('')}</div>`;
   else body = `<p class="hint">とった しょうごうを タップすると、なまえの よこに つくよ。</p>
@@ -286,10 +289,11 @@ function friends() {
 // ---------- ショップ ----------
 function shop(msg = '') {
   const p = player(); const left = FRIENDS.filter((f) => !p.friends.includes(f.id));
-  const item = (kind, it, owned, sel) => `<button class="item ${sel ? 'sel' : ''}" data-act="buy" data-kind="${kind}" data-id="${it.id}">${kind === 'ball' ? `<img class="sw ball" src="${ballIcon(it)}" alt="">` : `<span class="sw" style="background:${it.c}"></span>`}<b>${it.n}</b><small>${sel ? 'つかっている' : owned ? 'もっている' : `🪙 ${it.cost}`}</small></button>`;
+  const item = (kind, it, owned, sel) => `<button class="item ${sel ? 'sel' : ''}" data-act="buy" data-kind="${kind}" data-id="${it.id}">${kind === 'ball' ? `<img class="sw ball" src="${ballIcon(it)}" alt="">` : kind === 'shoe' ? `<img class="sw shoe" src="${shoeIcon(it)}" alt="">` : `<span class="sw" style="background:${it.c}"></span>`}<b>${it.n}</b><small>${sel ? 'つかっている' : owned ? 'もっている' : `🪙 ${it.cost}`}</small></button>`;
   show(`${msg}<div class="card capsule"><h2>🎁 なかまカプセル</h2><p class="hint">まだ いない なかまが かならず ひとり でるよ（かぶりなし）。のこり ${left.length}にん</p>
       <div class="btns"><button class="big" data-act="capsule" data-pay="coin" ${left.length && p.coins >= CAPSULE_COST ? '' : 'disabled'}>🪙 ${CAPSULE_COST} で まわす</button><button class="big alt" data-act="capsule" data-pay="ticket" ${left.length && p.tickets > 0 ? '' : 'disabled'}>🎟️ けんで まわす（${p.tickets}）</button></div></div>
     <div class="card"><h2>🏀 ボール <small>${SHOP_BALLS.filter((b) => p.balls.includes(b.id)).length}/${SHOP_BALLS.length}</small></h2><p class="hint">ぜんぶ あつめると… ひみつの ボールが もらえるよ！</p><div class="items">${BALLS.filter((b) => !b.secret || p.balls.includes(b.id)).map((b) => item('ball', b, p.balls.includes(b.id), p.ball === b.id)).join('')}</div></div>
+    <div class="card"><h2>👟 バッシュ <small>${SHOP_SHOES.filter((b) => p.shoes.includes(b.id)).length}/${SHOP_SHOES.length}</small></h2><p class="hint">ぜんぶ あつめると… ひみつの バッシュが もらえるよ！</p><div class="items">${SHOES.filter((b) => !b.secret || p.shoes.includes(b.id)).map((b) => item('shoe', b, p.shoes.includes(b.id), p.shoe === b.id)).join('')}</div></div>
     <div class="card"><h2>✨ オーラの いろ</h2><div class="items">${SUITS.map((b) => item('suit', b, p.suits.includes(b.id), p.suit === b.id)).join('')}</div></div>
     <p class="hint">コインで かえるのは みためだけ。つよさは かわらないよ。</p>`, 'shop');
 }
@@ -414,10 +418,12 @@ const acts = {
     if (d.pay === 'ticket') { if (p.tickets < 1) return; p.tickets--; } else { if (p.coins < CAPSULE_COST) return; p.coins -= CAPSULE_COST; }
     const f = left[Math.floor(Math.random() * left.length)]; p.friends.push(f.id); if (!p.buddy) p.buddy = f.id; save(); beep([0, 4, 7, 12, 16]);
     shop(`<div class="card result"><div class="rescue"><div class="rays"></div><span>${f.e}</span><b>${f.n} が なかまに なった！</b><small>なかまの タブで バディに できるよ</small></div></div>`); },
-  buy: (d) => { const p = player(); const list = d.kind === 'ball' ? BALLS : SUITS; const own = d.kind === 'ball' ? p.balls : p.suits; const it = list.find((x) => x.id === d.id);
-    if (!own.includes(it.id)) { if (p.coins < it.cost) return shop('<div class="card"><p class="hint">🪙 コインが たりないよ。ミッションや ステージで あつめよう。</p></div>'); p.coins -= it.cost; own.push(it.id); beep([7, 12]);
-      if (d.kind === 'ball' && ballComplete(p)) { checkTitles(p); save(); return shop(`<div class="card result" style="--a:#9ee7ff;--b:#c8b8ff"><div class="rescue rare"><div class="rays"></div><img class="zb" src="${ballIcon(BALLS.find((b) => b.id === 'diamond'))}" alt="" style="width:5em;height:5em"><b>ボール コンプリート！ ひみつの「ダイヤモンド」ボールを ゲット！</b><small>しょうごう「ボールマスター」も ゲット</small></div></div>`); } }
-    p[d.kind] = it.id; save(); shop(); },
+  buy: (d) => { const p = player(); const r = buyItem(p, d.kind, d.id);
+    if (!r.ok) return r.reason === 'coins' ? shop('<div class="card"><p class="hint">🪙 コインが たりないよ。ミッションや ステージで あつめよう。</p></div>') : shop();
+    if (r.bought) beep([7, 12]); save();
+    if (r.completed === 'ball') return shop(`<div class="card result" style="--a:#9ee7ff;--b:#c8b8ff"><div class="rescue rare"><div class="rays"></div><img class="zb" src="${ballIcon(BALLS.find((b) => b.id === 'diamond'))}" alt="" style="width:5em;height:5em"><b>ボール コンプリート！ ひみつの「ダイヤモンド」ボールを ゲット！</b><small>しょうごう「ボールマスター」も ゲット</small></div></div>`);
+    if (r.completed === 'shoe') return shop(`<div class="card result" style="--a:#ffe680;--b:#ffb13d"><div class="rescue rare"><div class="rays"></div><img class="zs" src="${shoeIcon(SHOES.find((b) => b.id === 'gold'))}" alt="" style="width:9em;height:auto"><b>バッシュ コンプリート！ ひみつの「ゴールド」を ゲット！</b><small>しょうごう「バッシュマスター」も ゲット</small></div></div>`);
+    shop(); },
 };
 document.addEventListener('click', (e) => { const b = e.target.closest('[data-act]'); if (b && !b.disabled && acts[b.dataset.act] && (app.contains(b) || nav.contains(b))) acts[b.dataset.act](b.dataset); });
 document.getElementById('pause').addEventListener('click', () => game && !videoMode && game.pause());
