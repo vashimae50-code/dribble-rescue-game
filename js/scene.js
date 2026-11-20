@@ -203,6 +203,9 @@ export function createScene(canvas, o) {
   const gcam = new THREE.PerspectiveCamera(30, 1, 0.1, 30); gcam.layers.set(1);
   const gfloor = new THREE.Mesh(new THREE.PlaneGeometry(40, 3), new THREE.MeshBasicMaterial({ color: 0x24347a, side: THREE.DoubleSide })); gfloor.rotation.x = -Math.PI / 2; gfloor.position.y = -0.005; gfloor.layers.set(1); scene.add(gfloor); disposables.push(gfloor.geometry, gfloor.material);
   const pipBall = new THREE.MeshBasicMaterial({ color: 0xff8a2a, side: THREE.DoubleSide }); disposables.push(pipBall);
+  // うごきガイド用の ライト（レイヤー1 だけ。本画面には あたらない）：色つきの モデルを ガイドに そのまま 出すため
+  const gHemi = new THREE.HemisphereLight(0xffffff, 0x3a4470, 2.2); gHemi.layers.set(1); scene.add(gHemi);
+  const gDir = new THREE.DirectionalLight(0xffffff, 1.8); gDir.position.set(1.5, 4, -6); gDir.layers.set(1); scene.add(gDir);
   let composer = null;
   if (o.bloom !== false) { try { composer = new EffectComposer(renderer); composer.addPass(new RenderPass(scene, cam)); const bl = new UnrealBloomPass(new THREE.Vector2(640, 360), env.bloom[0], 0.55, env.bloom[1]); composer.addPass(bl); composer.addPass(new OutputPass()); disposables.push(bl, composer); } catch (e) { composer = null; } }
   function resize() {
@@ -304,11 +307,11 @@ export function createScene(canvas, o) {
     cam.position.set(laneX * 0.72 + (Math.random() - 0.5) * camShake * 0.2, 1.2 + Math.sin(beat * Math.PI) * 0.025 + (Math.random() - 0.5) * camShake * 0.2, portrait ? 4.3 : 2.95);
     cam.lookAt(laneX * 0.85, portrait ? 0.19 : 0.17, -8);
     if (composer) composer.render(); else renderer.render(scene, cam);
-    // うごきガイド：同じ人を 正面から（かがみのように 左右そのまま）かげ絵で うつす
+    // うごきガイド：同じ人を 正面から（かがみのように 左右そのまま）うつす。もとの モデルは かげ絵、色つきの モデルは 色の まま
     if (st.pip && human) {
       const p = st.pip; const back = sk.behind || sk.handle === 'swing' || sk.combo === 'behind'; const legv = sk.legs || sk.combo === 'legs'; gfloor.scale.y = legv ? 14 : 1; if (legv) { const hz = human.root.position.z; gcam.position.set(laneX - 4.3, 0.95, hz - 1.5); gcam.lookAt(laneX, 0.78, hz); } else { const sd = !back && cue && (cue.hand === 'R' || cue.hand === 'L') && !sk.lane ? (cue.hand === 'L' ? -1 : 1) : 0; gcam.position.set(laneX + sd * 2.3, sd ? 0.85 : 1.0, back ? 4.3 : sd ? -3.7 : -4.3); gcam.lookAt(laneX, sd ? 0.8 : 0.92, 0); if (sd) gfloor.scale.y = 14; } gcam.updateProjectionMatrix(); // お手本は かがみに しない（右手は 右手の ほうに 見える）
       const bp0 = ball.position.clone(), b20 = ball2.position.clone(); const gb = human.animate({ dt, beat, cue, sk, vx: 0, guide: true, startHold: !!st.startHold, startHand: st.startHand }); ball.position.set(laneX + gb.x, gb.y, gb.z); { const g2 = human.ball2(); if (g2) ball2.position.set(laneX + g2.x, g2.y, g2.z); } trail.visible = false;
-      const bg = scene.background; const fg = scene.fog; scene.background = null; scene.fog = null; human.setSilhouette(true, sk.c); const bm = ball.material; ball.material = pipBall; ball2.material = pipBall;
+      const bg = scene.background; const fg = scene.fog; scene.background = null; scene.fog = null; const colorPip = !!human.colorGuide; if (!colorPip) human.setSilhouette(true, sk.c); const bm = ball.material; if (!colorPip) { ball.material = pipBall; ball2.material = pipBall; } // 色つきの モデル（meshy-v1 など）は かげ絵に しないで そのまま
       renderer.setRenderTarget(null); renderer.autoClear = false; renderer.setScissorTest(true); renderer.setScissor(p.x, H - p.y - p.h, p.w, p.h); renderer.setViewport(p.x, H - p.y - p.h, p.w, p.h); renderer.setClearColor(0x050a22, 1); renderer.clear(true, true, false);
       if (o.sprite === false) {
         // Diagnostic guide: left panel = side profile, right panel = front profile.

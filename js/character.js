@@ -11,8 +11,13 @@ const clipsOf = new WeakMap();
 // meshy-v1 の ドリブル（mixamo.com）：右手。0.137秒（手が いちばん上）から 0.957秒まで に 2回 ドリブル（1回 約0.41秒）。
 // 0.957秒 以降は クリップの つなぎ目で 手が 小さく ゆれるので 使わない
 // じゆうに ドリブル（rest）も 右手の ときは 同じ クリップ（左手の ときは IK）
+// h：ドリブルの 高さ（waist＝こし、knee＝ひざ）、rate：1拍に なんかい つくか（0.5・1・2・3）
 const DRIBBLE_R = { name: 'mixamo.com', t0: 0.137, t1: 0.957, n: 2, hand: 'Right', cueHand: 'R' };
-const CLIP_DEFS = { 'meshy-v1': { right: DRIBBLE_R, rest: DRIBBLE_R } };
+const CLIP_DEFS = { 'meshy-v1': {
+  right: { ...DRIBBLE_R, h: 'waist', rate: 1 }, rest: { ...DRIBBLE_R, h: 'waist', rate: 1 },
+  low: { ...DRIBBLE_R, h: 'knee', rate: 2 }, fast: { ...DRIBBLE_R, h: 'waist', rate: 2 }, hesi: { ...DRIBBLE_R, h: 'waist', rate: 0.5 } } };
+// ためし用：?dh=waist|knee（高さ）、?ds=0.5|1|2|3（1拍に なんかい）で クリップの 技 すべてを 上書き
+const DRIBBLE_Q = (() => { try { const q = new URLSearchParams(location.search); const ds = Number(q.get('ds')); return { h: /^(waist|knee)$/.test(q.get('dh') || '') ? q.get('dh') : null, rate: [0.5, 1, 2, 3].includes(ds) ? ds : null }; } catch { return { h: null, rate: null }; } })();
 const REQUIRED_BONES = ['Hips', 'Spine', 'Spine1', 'Spine2', 'Head',
   'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'RightUpLeg', 'RightLeg', 'RightFoot',
   'LeftArm', 'LeftForeArm', 'LeftHand', 'RightArm', 'RightForeArm', 'RightHand'];
@@ -40,6 +45,22 @@ function groundRestPose(model) {
   model.traverse((o) => { if (!o.isSkinnedMesh) return; o.computeBoundingBox(); const b = o.boundingBox.clone().applyMatrix4(o.matrixWorld); minY = Math.min(minY, b.min.y); });
   if (Number.isFinite(minY)) { model.position.y = -minY; model.userData.restLift = -minY; model.updateMatrixWorld(true); }
 }
+// PCの 中だけに おく 動きの パック（models/local/。有料アセット 由来なので リポジトリには 入れない＝.gitignore）。
+// models/local/clips.json が あれば、そこに 書いた GLB の クリップを 技IDに わりあてる。なければ 何もしない（いまの 動きの まま）
+// clips.json の 形：{ "file": "aa-anim.glb", "defs": { "right": { "name": "クリップ名", "t0": 0.1, "t1": 1.2, "n": 2, "hand": "Right", "cueHand": "R" }, ... } }
+// "right": null の ように 書くと、その技は 内蔵の クリップも つかわず IK で 動かす
+async function loadLocalClips() {
+  try {
+    const res = await fetch('models/local/clips.json', { cache: 'no-store' }); if (!res.ok) return {};
+    const pack = await res.json(); if (!pack || !pack.file || !pack.defs) return {};
+    const g = await new GLTFLoader().loadAsync('models/local/' + String(pack.file).replace(/[^\w.\-]/g, '') + '?t=' + (pack.v || ''));
+    const set = {};
+    for (const [id, d] of Object.entries(pack.defs)) { if (d === null) { set[id] = null; continue; } // null＝その技は クリップを つかわない（IK で 動かす）
+      const clip = g.animations.find((c) => c.name === d.name); if (clip && d.t1 > d.t0 && d.n > 0 && /^(Right|Left)$/.test(d.hand)) set[id] = { ...d, clip }; }
+    console.info('[No.7] Local clip pack loaded:', Object.keys(set).join(', '));
+    return set;
+  } catch (error) { return {}; }
+}
 async function loadLegacy() {
   if (modelCache.has('legacy')) return modelCache.get('legacy');
   const b64 = (await import('../models/human_model.js')).default;
@@ -53,11 +74,13 @@ export async function loadHuman(key = playerModelKey()) {
   if (files[key]) {
     try {
       // Fixed same-origin path: no untrusted user-provided model URLs.
-      const gltf = await new GLTFLoader().loadAsync(files[key] + '?v=20261120c');
+      const gltf = await new GLTFLoader().loadAsync(files[key] + '?v=20261120d');
       const model = verifyRig(gltf.scene);
       model.userData.no7Replacement = true;
       if (key === 'meshy-v1') groundRestPose(model);
-      const defs = CLIP_DEFS[key]; if (defs) { const set = {}; for (const [id, d] of Object.entries(defs)) { const clip = gltf.animations.find((c) => c.name === d.name); if (clip) set[id] = { ...d, clip }; } if (Object.keys(set).length) clipsOf.set(model, set); }
+      const defs = CLIP_DEFS[key]; if (defs) { const set = {}; for (const [id, d] of Object.entries(defs)) { const clip = gltf.animations.find((c) => c.name === d.name); if (clip) set[id] = { ...d, clip }; }
+        if (key === 'meshy-v1') { Object.assign(set, await loadLocalClips()); for (const k of Object.keys(set)) if (!set[k]) delete set[k]; }
+        if (Object.keys(set).length) clipsOf.set(model, set); }
       modelCache.set(key, model);
       console.info('[No.7] Rigged replacement GLB loaded');
       return model;
@@ -258,6 +281,21 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     for (const b of allBones) { b.position.copy(b.userData.p0); b.quaternion.copy(b.userData.q0); b.scale.copy(b.userData.s0); } root.updateMatrixWorld(true);
   }
   const clipBall = V(), outBall = V();
+  // ひざの 高さの ドリブル：こしを 落として 上体を 前に たおし（足は 床に つけたまま）、右うでを 下げる
+  const KNEE_DROP = 0.26, KNEE_CROUCH = 0.13, KNEE_LEAN = 0.38; const HEIGHT_K = { waist: 0, knee: 1 };
+  const setWorldQ = (bone, qW) => { bone.parent.getWorldQuaternion(q3).invert(); bone.quaternion.copy(q3.multiply(qW)); bone.updateMatrixWorld(true); };
+  const lp = { hand: V(), handQ: Q(), pole: V(), feet: [0, 1].map(() => ({ p: V(), q: Q(), pole: V() })) };
+  function lowPose(d, k) {
+    const sc = root.getWorldScale(t1).y; const hand = d.hb, fore = hand.parent, arm = fore.parent;
+    hand.getWorldPosition(lp.hand); hand.getWorldQuaternion(lp.handQ); arm.getWorldPosition(t1); fore.getWorldPosition(t2); lp.pole.copy(t2).sub(t1.add(lp.hand).multiplyScalar(0.5)).normalize();
+    const legs = [[B.LeftUpLeg, B.LeftLeg, B.LeftFoot], [B.RightUpLeg, B.RightLeg, B.RightFoot]];
+    legs.forEach(([u, l, f], i) => { const F = lp.feet[i]; f.getWorldPosition(F.p); f.getWorldQuaternion(F.q); u.getWorldPosition(t1); l.getWorldPosition(t2); F.pole.copy(t2).sub(t1.add(F.p).multiplyScalar(0.5)).normalize(); });
+    B.Hips.getWorldPosition(t2); t2.y -= KNEE_CROUCH * k * sc; B.Hips.parent.worldToLocal(t2); B.Hips.position.copy(t2); root.updateMatrixWorld(true);
+    const rxv = t3.set(1, 0, 0).applyQuaternion(root.getWorldQuaternion(q1)).clone();
+    preWorld(B.Spine, axisQ(rxv, -KNEE_LEAN * k * 0.5)); preWorld(B.Spine1, axisQ(rxv, -KNEE_LEAN * k * 0.5)); preWorld(B.Neck, axisQ(rxv, KNEE_LEAN * k * 0.7));
+    legs.forEach(([u, l, f], i) => { const F = lp.feet[i]; ik(u, l, f, F.p, F.pole, L.up, L.lo); setWorldQ(f, F.q); });
+    lp.hand.y -= KNEE_DROP * k * sc; ik(arm, fore, hand, lp.hand, lp.pole, L.ua, L.fa); setWorldQ(hand, lp.handQ); root.updateMatrixWorld(true);
+  }
   const footY = () => Math.min(...[B.LeftFoot, B.RightFoot, B.LeftToeBase, B.RightToeBase].filter(Boolean).map((b) => b.getWorldPosition(t3).y));
   function applyClip(S, st, id, hold, bph, bounce) {
     const c0 = clipSet[id]; const want = !hold && !st.mode && c0 && (!c0.cueHand || (st.cue ? st.cue.hand || 'R' : 'R') === c0.cueHand) ? c0 : null; if (want) S.cdef = want;
@@ -265,12 +303,17 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     if (S.cw <= 0 || !S.cdef) return S.ball;
     const d = S.cdef; const w = smooth(S.cw);
     allBones.forEach((b, i) => { ikP[i].copy(b.position); ikQ[i].copy(b.quaternion); ikS[i].copy(b.scale); }); const fIK = footY();
-    // 拍に あわせる：bph=0.5（ボールが いちばん上）で 手も いちばん上。1拍で 1回 ドリブル
-    const db = st.beat * (st.sk.dbl ? 2 : 1) - 0.5; const u = ((db % d.n) + d.n) % d.n / d.n;
+    // 拍に あわせる：cnt（ついた かず）が 整数で ボールが 床、x.5 で 手も ボールも いちばん上。
+    // 技の はじまり（b0）では 1拍1回の ときと 同じ 位相に そろえて、速さが かわっても 手が とばない ように する
+    const rate = DRIBBLE_Q.rate || d.rate || 1; const b0 = st.cue ? st.cue.b0 : 0; const cnt = (st.beat - b0) * rate + b0;
+    const db = cnt - 0.5; const u = ((db % d.n) + d.n) % d.n / d.n;
+    const hk = HEIGHT_K[DRIBBLE_Q.h || d.h] || 0; S.hk = S.hk == null ? hk : S.hk + clamp(hk - S.hk, -st.dt / 0.2, st.dt / 0.2);
     clipPose(d, d.t0 + (d.t1 - d.t0) * u);
+    if (S.hk > 0.001) lowPose(d, S.hk);
     palmBall(d, clipBall);
     // 手から はなれたら 手の 真下の 床（y=0.13）との あいだを 拍に あわせて 上下。手より 上には 行かない
-    clipBall.y = Math.max(FLOOR_Y, Math.min(clipBall.y, FLOOR_Y + bounce * (d.top - FLOOR_Y)));
+    const bnc = Math.abs(Math.sin(Math.PI * (cnt - Math.floor(cnt)))); const top = d.top - KNEE_DROP * S.hk * root.getWorldScale(t1).y;
+    clipBall.y = Math.max(FLOOR_Y, Math.min(clipBall.y, FLOOR_Y + bnc * (top - FLOOR_Y)));
     if (w < 1) { const fClip = footY();
       // ikP/ikQ/ikS（IK の しせい）に クリップの しせいを w の わりあいで まぜる（自分自身と まぜない よう ik 側を 動かしてから コピー）
       allBones.forEach((b, i) => { ikP[i].lerp(b.position, w); ikQ[i].slerp(b.quaternion, w); ikS[i].lerp(b.scale, w); b.position.copy(ikP[i]); b.quaternion.copy(ikQ[i]); b.scale.copy(ikS[i]); }); root.updateMatrixWorld(true);
@@ -279,6 +322,35 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     return outBall.lerpVectors(S.ball, clipBall, w);
   }
 
+  // 片手で つく 技の 手の 形（clips.json の _layerR / _layerL が あるとき）：
+  // ボールを もたない 手は 体の 横に ひらき、つく手は 手首と 指を クリップの 形に する。体・脚・ボールの 位置は いまの IK の まま
+  const LAYER_FADE = 0.2;
+  const chain = (side, names) => names.map((n) => B[side + n]).filter(Boolean);
+  const ARM = ['Shoulder', 'Arm', 'ForeArm', 'Hand', 'HandIndex1', 'HandIndex2', 'HandIndex3'], WRIST = ['Hand', 'HandIndex1', 'HandIndex2', 'HandIndex3'];
+  const layerBones = { Right: [...chain('Left', ARM), ...chain('Right', WRIST)], Left: [...chain('Right', ARM), ...chain('Left', WRIST)] }; // 親が 先
+  const qL = Q(), qP = Q(), layerW = new Map();
+  function applyArmLayer(S, st, side) {
+    const lay = side ? clipSet[side > 0 ? '_layerR' : '_layerL'] : null;
+    if (lay && S.ldef !== lay && (S.lw || 0) > 0.05) { S.lw = Math.max(0, S.lw - st.dt / LAYER_FADE); } // 手を かえる ときは いったん ぬいてから
+    else if (lay) S.ldef = lay;
+    const on = !!lay && S.ldef === lay;
+    S.lw = clamp((S.lw || 0) + (on ? 1 : -1) * st.dt / LAYER_FADE, 0, 1);
+    const d = S.ldef; if (!d || S.lw <= 0) return;
+    const w = smooth(S.lw) * (1 - smooth(S.cw || 0)); if (w <= 0) return;
+    const bones = layerBones[d.hand];
+    const db = st.beat * (st.sk.dbl ? 2 : 1) - 0.5; const u = ((db % d.n) + d.n) % d.n / d.n; const t = d.t0 + (d.t1 - d.t0) * u;
+    // クリップの しせいで 腕の 向き（体ぜんたいから 見た 向き）を はかる。クリップは 前かがみが 強いので、胸から 見た 角度で うつすと 腕が 前に まわりこむ
+    allBones.forEach((b, i) => { ikP[i].copy(b.position); ikQ[i].copy(b.quaternion); ikS[i].copy(b.scale); });
+    clipPose(d, t);
+    const rq = root.getWorldQuaternion(qP).invert();
+    for (const b of bones) { if (!layerW.has(b)) layerW.set(b, Q()); layerW.get(b).copy(rq).multiply(b.getWorldQuaternion(qL)); }
+    allBones.forEach((b, i) => { b.position.copy(ikP[i]); b.quaternion.copy(ikQ[i]); b.scale.copy(ikS[i]); }); root.updateMatrixWorld(true);
+    // IK の 体に、その 向きを あてる（親の 向きを はずして ローカルに なおす）
+    const rw = root.getWorldQuaternion(Q());
+    for (const b of bones) { b.parent.getWorldQuaternion(qP).invert(); qL.copy(qP).multiply(rw).multiply(layerW.get(b)); b.quaternion.slerp(qL, w); b.updateMatrixWorld(true); }
+  }
+
+  const PP_CROUCH = 0.69, PP_PITCH = 0.97, PP_WD = 0.245; // パワーポジションの 下限（上体 35°・腰 0.70m に なる 値を はかって きめた）
   function preWorld(bone, qW) { bone.getWorldQuaternion(q2); q2.premultiply(qW); bone.parent.getWorldQuaternion(q3).invert(); bone.quaternion.copy(q3.multiply(q2)); bone.updateMatrixWorld(true); }
   function aim(bone, child, target) { bone.getWorldPosition(t1); child.getWorldPosition(t2); t2.sub(t1).normalize(); t3.copy(target).sub(t1).normalize(); q1.setFromUnitVectors(t2, t3); preWorld(bone, q1); }
   const ka = V(), kd = V(), kp = V(), kj = V();
@@ -455,6 +527,8 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
       hipX += handSide * 0.012 * drive;
       twist += handSide * 0.045 * drive;
     }
+    // パワーポジション：どの 技でも 前傾を くずさない（基準は AA アセットの かまえ：上体 約35°、腰は 足うらから 約0.70m、足はば 約0.49m）
+    if (!st.mode) { crouch = Math.max(crouch, PP_CROUCH); pitch = Math.max(pitch, PP_PITCH); Wd = Math.max(Wd, PP_WD); if (rootY < 0.05) { T.fl.x = Math.min(T.fl.x, -PP_WD); T.fr.x = Math.max(T.fr.x, PP_WD); } }
     const hipY = hipsBind - crouch * 0.24 + rootY;
     if (by < 0) by = hipY - 0.06;
     T.hip.set(hipX, hipY, hipZ - (pitch - 0.2) * 0.12);
@@ -508,7 +582,13 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     ik(B.LeftArm, B.LeftForeArm, B.LeftHand, toW(S.hl).clone(), dirW(-0.8, -0.3, behind ? -0.6 : 0.7), L.ua, L.fa);
     ik(B.RightArm, B.RightForeArm, B.RightHand, toW(S.hr).clone(), dirW(0.8, -0.3, behind ? -0.6 : 0.7), L.ua, L.fa);
     if (faceSp) { B.Head.getWorldPosition(t1); root.worldToLocal(t1); faceSp.position.copy(t1); }
-    if (clipSet) return applyClip(S, st, id, hold, bph, bounce);
+    if (clipSet) {
+      const r = applyClip(S, st, id, hold, bph, bounce);
+      // 片手で つく とき（両手・持つ・ハンドリング・2ボール・ディフェンスなどを のぞく）
+      const oneHand = !hold && !st.mode && !st.startHold && !both && !twoHands && !handleMode && handSide ? handSide : 0;
+      applyArmLayer(S, st, oneHand);
+      return r;
+    }
     return S.ball;
   }
   // かお：イラストの スプライトを 頭の 位置に のせる（もとの 頭は 小さく たたむ）
@@ -519,5 +599,5 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     faceTex.offset.set((i % 10) * 0.1, 1 - (Math.floor(i / 10) + 1) * 0.2); };
   // メインの画面では かくす（お手本の 小まど だけに 出す）。絵の スプライトで プレイヤーを 出すとき用
   const setMainVisible = (on) => { for (const m of [...meshes, ...outlines, ...accessories]) { if (on) m.layers.enable(0); else m.layers.disable(0); } };
-  return { root, animate, setSilhouette, setFace, setMainVisible, dispose, ball2: () => (S.has2 ? S.ball2 : null), height: hipsBind / 0.53 };
+  return { root, animate, setSilhouette, setFace, setMainVisible, dispose, ball2: () => (S.has2 ? S.ball2 : null), height: hipsBind / 0.53, colorGuide: nativeLook };
 }
