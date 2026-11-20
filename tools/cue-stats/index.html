@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>進行表しらべ（開発用）</title>
+<!-- 画面と音を からっぽの 部品に かえて、ゲームと 同じ コード（js/run.js）で 進行表だけを 作る -->
+<script type="importmap">{ "imports": { "../../js/scene.js": "./stub-scene.js", "../../js/audio.js": "./stub-audio.js" } }</script>
+<style>body{font:14px/1.5 sans-serif;margin:16px;background:#fff;color:#111}table{border-collapse:collapse;margin:8px 0 20px}td,th{border:1px solid #bbb;padding:2px 6px;text-align:right}th{background:#eef}td:first-child,th:first-child{text-align:left}small{color:#666}</style>
+</head><body>
+<h1>進行表しらべ（開発用）</h1>
+<p><small>?mode=plan … 習得ステージの 区間ごとの 技と 長さ ／ ?mode=stats&amp;ranks=3,4&amp;runs=20&amp;mission=dodge … 通常ステージで 技が 出た 回数（区間ごと）</small></p>
+<div id="out">けいさんちゅう…</div>
+<script type="module">
+import { runStage } from '../../js/run.js';
+import { STAGES, MISSIONS, SKILLS, SONGS } from '../../js/data.js';
+const q = new URLSearchParams(location.search); const mode = q.get('mode') || 'plan';
+const el = (t) => document.createElement(t);
+const player = (rank) => ({ id: 'dev', name: 'dev', rank, m: {}, stars: {}, best: {}, tipIdx: {}, leftReps: 0, rightReps: 0, ls: {}, lv: rank });
+const secOf = (stage) => { const s = SONGS[stage.song]; return s ? 60 / (s.bpm * (stage.rate || 1) / (stage.half || 1)) : 60 / stage.bpm; };
+// 1ステージぶんの 進行表を 作る（ゲームと 同じく 区間1＝36拍、区間2＝44拍、区間3＝36拍、ボス区間＝40拍。tier は 1 の まま）
+function build(stage, rank) {
+  let api = null; const hud = el('canvas'); hud.style.cssText = 'width:320px;height:180px;position:absolute;left:-9999px'; document.body.appendChild(hud);
+  const h = runStage({ gl: el('canvas'), hud, overlay: el('div'), mode: 'stage', stage, player: player(rank), settings: {}, level: rank, speedK: 1, onPlan: (a) => { api = a; }, onEnd: () => {}, onQuit: () => {} });
+  const secs = [[...api.cues]]; let n = api.cues.length;
+  for (let i = 2; i <= api.SECTIONS; i++) { api.addSection(i === 2 ? 44 : 36); secs.push(api.cues.slice(n)); n = api.cues.length; }
+  if (api.hasBoss) { api.addSection(40, true); secs.push(api.cues.slice(n)); }
+  h.stop(); hud.remove(); return secs;
+}
+const out = document.getElementById('out'); out.textContent = ''; const res = {};
+if (mode === 'plan') {
+  for (const st of STAGES.filter((s) => MISSIONS[s.mission].plan)) { const secs = build(st, 6); const spb = secOf(st); const r = res[st.sp] = [];
+    const h = el('h2'); h.textContent = `${st.sp} ${MISSIONS[st.mission].n}（1拍 ${spb.toFixed(2)}秒）`; out.appendChild(h);
+    const tb = el('table'); tb.innerHTML = '<tr><th>区間</th><th>ステップの 文字</th><th>技（拍数・ディフェンス・向き）</th><th>拍</th><th>秒</th></tr>';
+    secs.forEach((cs, i) => { const body = cs.filter((c) => c.skill !== 'rest' || i > 0); const beats = body.reduce((a, c) => a + (c.b1 - c.b0), 0);
+      const row = { sec: i === secs.length - 1 && i >= 3 ? 'ボス' : String(i + 1), step: (cs.find((c) => c.stepName) || {}).stepName || '', cues: body.map((c) => [c.skill, c.b1 - c.b0, !!c.guard, c.dir || 0]), beats, sec_s: +(beats * spb).toFixed(1) }; r.push(row);
+      const tr = el('tr'); tr.innerHTML = `<td>${row.sec}</td><td>${row.step}</td><td style="text-align:left">${row.cues.map(([k, b, g, d]) => `${k}(${b}${g ? '・DF' : ''}${d ? (d > 0 ? '・→' : '・←') : ''})`).join(' ')}</td><td>${beats}</td><td>${row.sec_s}</td>`; tb.appendChild(tr); });
+    out.appendChild(tb); }
+} else {
+  const ranks = (q.get('ranks') || '3,4').split(',').map(Number), runs = +(q.get('runs') || 20), mission = q.get('mission') || 'dodge';
+  for (const rank of ranks) for (const st of STAGES.filter((s) => !s.sp && s.mission === mission)) {
+    const cnt = {}; for (let i = 0; i < runs; i++) build(st, rank).forEach((cs, si) => cs.forEach((c) => { if (c.skill === 'rest') return; const k = `${c.skill}`; cnt[k] = cnt[k] || [0, 0, 0, 0, 0]; cnt[k][si]++; cnt[k][4]++; }));
+    res[`R${rank} ${st.id}`] = cnt;
+    const h = el('h2'); h.textContent = `R${rank}　${st.id}（${st.world.name}・${MISSIONS[st.mission].n}）　${runs}回ぶん`; out.appendChild(h);
+    const tb = el('table'); tb.innerHTML = '<tr><th>技</th><th>区間1</th><th>区間2</th><th>区間3</th><th>ボス</th><th>合計</th></tr>';
+    Object.entries(cnt).sort((a, b) => b[1][4] - a[1][4]).forEach(([k, v]) => { const tr = el('tr'); tr.innerHTML = `<td>${k} <small>${SKILLS[k].n}</small></td>${v.map((x) => `<td>${x}</td>`).join('')}`; tb.appendChild(tr); });
+    out.appendChild(tb); }
+}
+window.__res = res;
+</script></body></html>

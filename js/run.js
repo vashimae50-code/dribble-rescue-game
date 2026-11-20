@@ -60,7 +60,7 @@ export function runStage(opts) {
   const MIN_SEC = 12, HANDLE_SEC = 15;
   const holdLen = (id, len, bpm) => { const sk = SKILLS[id]; if (dojo || id === 'rest' || id === 'stance' || id === 'jstop' || sk.lane) return len; return Math.max(len, Math.ceil((sk.handle ? HANDLE_SEC : MIN_SEC) * (bpm ? bpm / 60 : bps))); };
   function addCue(id, o = {}) {
-    const sk = SKILLS[id]; const len = holdLen(id, o.len || sk.len, o.bpm); const sp = o.sp ?? sk.sp ?? 1;
+    const sk = SKILLS[id]; const len = o.keepLen ? (o.len || sk.len) : holdLen(id, o.len || sk.len, o.bpm); const sp = o.sp ?? sk.sp ?? 1;
     const c = { skill: id, b0: endBeat, b1: endBeat + len, z0: zEnd, z1: zEnd + len * V * Math.max(sp, 0.05), sp, lane0: lane, lane1: lane, boss: !!o.boss, ballMode: o.ballMode, noGate: o.noGate, bpm: o.bpm, tier,
       st: { n: 0, R: 0, L: 0, sw: 0, last: null, late: 0, lowF: 0, f: 0, tr: 0, hx0: null, move: 0, rise: 0, hy0: null } };
     if (sk.lane) { const dir = o.dir || (lane === 0 ? (Math.random() < 0.5 ? -1 : 1) : -lane); c.dir = dir; c.lane1 = clamp(lane + dir, -1, 1); lane = c.lane1; c.guard = !!o.guard; }
@@ -92,8 +92,27 @@ export function runStage(opts) {
     }
     return c;
   }
+  // 通常ステージ（ワールド 1〜5 の 30こ）だけ：練習の 流れ「その場 → 移動 → 相手」「2-1-0」に あわせて 技の 出やすさを かえる
+  // （昇級テスト・トレーニングルーム・スペシャル〈習得・ハンドリング・2ボール〉は かえない）
+  const flowW = !dojo && !test && !!stage && !stage.sp && !mission.plan && !mission.pool;
+  const FLOW_K = 2; // 倍率（遊んでみて 調整する）
+  // ワールドごとの ねらい：W1 きほんの つき方／W2 その場の 持ちかえ／W3 横へ 動く／W4 速さ・高さを かえる／W5 かたよりなし
+  const WORLD_FOCUS = [
+    (k) => ['right', 'left', 'low', 'pound', 'fast'].includes(k),
+    (k, sk) => sk.hand === 'combo' || sk.hand === 'alt' || !!(sk.vmove || sk.semi || sk.pocket || sk.inout),
+    (k, sk) => !!sk.lane,
+    (k) => ['low', 'pound', 'fast', 'hesi', 'back', 'freeze', 'jstop'].includes(k),
+    () => false,
+  ];
+  // 2-1-0：区間1＝2ドリ → 技、区間2＝1ドリ → 技、区間3＝その技（3つとも 選べる はんいに ある ときだけ。ボス区間は かえない）
+  const DRILL_210 = [['c2cross', 'c1cross', 'cross'], ['c2legs', 'c1legs', 'legs'], ['c2behind', 'c1behind', 'behind']];
+  let secNo = 0; // いまの 区間（1〜3。ボス区間は 0）
   function weightOf(k) {
     let w = mission.w[k] ?? 1; const sk = SKILLS[k];
+    if (flowW) {
+      const f = WORLD_FOCUS[wi]; if (f && f(k, sk)) w *= FLOW_K;
+      if (secNo >= 1 && secNo <= 3) for (const set of DRILL_210) if (set[secNo - 1] === k && set.every(has)) w *= FLOW_K;
+    }
     if (tierOf(pl.m[k] || 0) < 2) w *= 1.4;
     if (sk.r === RK && RK > 1) w *= tier === 0 ? 0.5 : tier === 2 ? 1.6 : 1;
     if (sk.handle && !test) w = 0;               // ハンドリングは ドリブルの あいだに はさむ
@@ -111,10 +130,18 @@ export function runStage(opts) {
     return list[list.length - 1];
   }
   function addSection(beats, boss = false) {
-    let left = beats; tiers.push(tier);
+    let left = beats; tiers.push(tier); secNo = boss ? 0 : tiers.length; // 区間の 番号は tier（できばえ）では なく 何こめの 区間か
     if (mission.plan) {
       const idx = boss ? 3 : Math.min(2, tiers.length - 1); const first = cues.length;
-      for (const [k, len] of mission.plan[idx]) { addCue(k, { len, boss }); lastSkill = k; }
+      // plan の 1こ：[技ID, 拍数, { guard など addCue に わたす 指定 }]
+      const items = mission.plan[idx]; let planDir = 0;
+      items.forEach(([k, len, opt], j) => { const o = { len, boss, ...(opt || {}) };
+        // ゆっくり→はやく：習得ステージでは hesi と すぐ後の fast を 書いた 拍数の まま（12秒に のばすと はやさの きりかえに ならない）
+        if (k === 'hesi' || (k === 'fast' && j > 0 && items[j - 1][0] === 'hesi')) o.keepLen = true;
+        // jab → drive：jab の 向きは drive の 逆（通常ステージと 同じ）
+        if (k === 'jab' && items[j + 1] && items[j + 1][0] === 'drive') { planDir = o.dir || (lane === 0 ? (Math.random() < 0.5 ? -1 : 1) : -lane); o.dir = -planDir; }
+        else if (k === 'drive' && planDir && !o.dir) { o.dir = planDir; planDir = 0; }
+        addCue(k, o); lastSkill = k; });
       cues[first].stepName = mission.steps[idx]; cues[first].stepIdx = idx; return;
     }
     const handles = pool.filter((k) => SKILLS[k].handle); let mixed = 0;
@@ -146,6 +173,8 @@ export function runStage(opts) {
     { const w0 = twoStage ? pool[0] : mission.pool ? mission.pool[0] : RK === 1 && !test ? 'stance' : 'right'; addCue(w0, { len: 4 }); lastSkill = w0; } // さいしょの 4はく（2ボールなら 2ボールで）
     addSection(36); safes.push(endBeat);
   }
+  // 開発用：進行表だけを 作って しらべる（tools/cue-stats）。ふだんの ゲームでは つかわない
+  if (opts.onPlan) opts.onPlan({ cues, tiers, addSection, addCue, SECTIONS, hasBoss, setTier: (t) => { tier = t; } });
   const cueAt = (b) => { for (let i = cues.length - 1; i >= 0; i--) if (b >= cues[i].b0) return cues[i]; return cues[0]; };
   const zAt = (b) => { const c = cueAt(b); return c.z0 + clamp(b - c.b0, 0, c.b1 - c.b0) * V * Math.max(c.sp, 0.05) + Math.max(0, b - c.b1) * V; };
 

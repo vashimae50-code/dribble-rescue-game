@@ -22,6 +22,16 @@ const CLIP_DEFS = { 'meshy-v1': {
   back: { file: 'models/motions/back.glb', t0: 0, t1: 1.6, n: 3, hand: 'Right', cueHand: 'R', h: 'waist', rate: 1 },
   // ジャンプストップ：Jump_Down（空中→0.27秒で 着地→かがんで おきあがる。さいごの 1コマは 空中に もどるので 0.633秒まで）
   jstop: { file: 'models/motions/jstop.glb', t0: 0, t1: 0.633, once: true, hold: true, ball: 'both', hand: 'Right' } } };
+// キャラクター 8人：player-01＝meshy-v1（No.7）。player-02〜08 は Meshy で 骨を 入れ、骨の レスト姿勢（向き）と 腰の 位置を
+// meshy-v1 と まったく 同じに した もの（models/players/）。だから meshy-v1 用の クリップ・IK の 数値を そのまま つかう
+export const PLAYER_MODELS = ['player-01', 'player-02', 'player-03', 'player-04', 'player-05', 'player-06', 'player-07', 'player-08'];
+const MESHY_ANIMS = 'models/motions/dribble_r.glb';
+const meshyFamily = (k) => k === 'meshy-v1' || PLAYER_MODELS.includes(k);
+// プレイヤーの かお（@c1〜@c8）から つかう モデル。?model= の 指定が あれば そちらが 先
+export function modelKeyFor(avatar) {
+  if (new URLSearchParams(location.search).get('model')) return playerModelKey();
+  const m = /^@c([1-8])$/.exec(avatar || ''); return m ? 'player-0' + m[1] : playerModelKey();
+}
 // ためし用：?dh=waist|knee（高さ）、?ds=0.5|1|2|3（1拍に なんかい）で クリップの 技 すべてを 上書き
 const DRIBBLE_Q = (() => { try { const q = new URLSearchParams(location.search); const ds = Number(q.get('ds')); return { h: /^(waist|knee)$/.test(q.get('dh') || '') ? q.get('dh') : null, rate: [0.5, 1, 2, 3].includes(ds) ? ds : null }; } catch { return { h: null, rate: null }; } })();
 const REQUIRED_BONES = ['Hips', 'Spine', 'Spine1', 'Spine2', 'Head',
@@ -34,15 +44,15 @@ function verifyRig(scene) {
   if (!skinned || missing.length) throw new Error('No.7 GLB incompatible rig: ' + (missing.join(', ') || 'no skinned mesh'));
   return scene;
 }
-// どのモデルを つかうか：3D試験版（?character3d=1 や /preview/）は 新しい No.7 デフォルメ版（no7-chibi.glb）が 標準。
+// どのモデルを つかうか：ふだんは 3D で、えらんだ かおの キャラ（modelKeyFor）。かおが むかしの もの なら player-01（No.7）。
 // ?model=legacy で 旧モデル、?model=no7-v2 で 等身版、?model=no7-chibi で どこでも デフォルメ版。読めない・骨が合わないときは 旧モデルに もどる
 // ?model=meshy-v1 で Meshy＋Mixamo の キャラ（ためし。標準は かえない）
 export function playerModelKey() {
   const q = new URLSearchParams(location.search); const mode = q.get('model');
   if (mode === 'legacy') return 'legacy';
-  if (mode === 'no7-v2' || mode === 'no7-chibi' || mode === 'no7-meshy' || mode === 'meshy-v1') return mode;
-  const preview3D = q.get('character3d') === '1' || location.pathname.includes('/preview/');
-  return preview3D ? 'no7-chibi' : 'legacy';
+  if (mode === 'no7-v2' || mode === 'no7-chibi' || mode === 'no7-meshy' || mode === 'meshy-v1' || PLAYER_MODELS.includes(mode)) return mode;
+  // 3D が ふだんの 表示（2026-11-20〜）。?character3d=0 の ときだけ 絵（スプライト）用の 旧モデル
+  return q.get('character3d') === '0' ? 'legacy' : 'player-01';
 }
 // Meshy＋Mixamo（Blender書き出し）の GLB は、レスト姿勢の 原点が 体の まんなか（足うら y≈-0.95）。
 // IK は レスト姿勢の 骨の 高さ（hipsBind・ankleH）を 使うので、足うらが y=0 に くるよう モデルを 持ちあげる
@@ -53,13 +63,14 @@ function groundRestPose(model) {
 }
 // PCの 中だけに おく 動きの パック（models/local/。有料アセット 由来なので リポジトリには 入れない＝.gitignore）。
 // models/local/clips.json が あれば、そこに 書いた GLB の クリップを 技IDに わりあてる。なければ 何もしない（いまの 動きの まま）
-// clips.json の 形：{ "file": "aa-anim.glb", "defs": { "right": { "name": "クリップ名", "t0": 0.1, "t1": 1.2, "n": 2, "hand": "Right", "cueHand": "R" }, ... } }
+// clips.json の 形：{ "file": "aa-anim.glb", "files": { "player-02": "aa-anim-player-02.glb" }, "defs": { "right": { "name": "クリップ名", "t0": 0.1, "t1": 1.2, "n": 2, "hand": "Right", "cueHand": "R" }, ... } }
 // "right": null の ように 書くと、その技は 内蔵の クリップも つかわず IK で 動かす
-async function loadLocalClips() {
+async function loadLocalClips(key) {
   try {
     const res = await fetch('models/local/clips.json', { cache: 'no-store' }); if (!res.ok) return {};
     const pack = await res.json(); if (!pack || !pack.file || !pack.defs) return {};
-    const g = await new GLTFLoader().loadAsync('models/local/' + String(pack.file).replace(/[^\w.\-]/g, '') + '?t=' + (pack.v || ''));
+    const file = (pack.files && pack.files[key]) || pack.file; // files：モデルごとの ファイル（{ "player-02": "aa-anim-player-02.glb" }）。なければ file
+    const g = await new GLTFLoader().loadAsync('models/local/' + String(file).replace(/[^\w.\-]/g, '') + '?t=' + (pack.v || ''));
     const set = {};
     for (const [id, d] of Object.entries(pack.defs)) { if (d === null) { set[id] = null; continue; } // null＝その技は クリップを つかわない（IK で 動かす）
       const clip = g.animations.find((c) => c.name === d.name); if (clip && d.t1 > d.t0 && d.n > 0 && /^(Right|Left)$/.test(d.hand)) set[id] = { ...d, clip }; }
@@ -77,21 +88,25 @@ async function loadLegacy() {
 export async function loadHuman(key = playerModelKey()) {
   if (modelCache.has(key)) return modelCache.get(key);
   const files = { 'no7-v2': 'models/no7-v2.glb', 'no7-chibi': 'models/no7-chibi.glb', 'no7-meshy': 'models/no7-meshy.glb', 'meshy-v1': 'models/meshy-v1.glb' };
+  for (const k of PLAYER_MODELS) files[k] = `models/players/${k}.glb`; // player-01＝meshy-v1 の テクスチャだけ 1024px に した かるい版（骨・アニメは 同じ）
   if (files[key]) {
     try {
       // Fixed same-origin path: no untrusted user-provided model URLs.
-      const gltf = await new GLTFLoader().loadAsync(files[key] + '?v=20261120e');
+      const gltf = await new GLTFLoader().loadAsync(files[key] + '?v=20261120f');
       const model = verifyRig(gltf.scene);
       model.userData.no7Replacement = true;
-      if (key === 'meshy-v1') groundRestPose(model);
-      const defs = CLIP_DEFS[key]; if (defs) { const set = {}; const motionFiles = new Map();
+      if (meshyFamily(key)) groundRestPose(model);
+      const defs = CLIP_DEFS[meshyFamily(key) ? 'meshy-v1' : key]; if (defs) { const set = {}; const motionFiles = new Map();
         for (const [id, d] of Object.entries(defs)) { let clip = null;
-          if (d.file) { // 動きだけの GLB（同じ ファイルは 1回だけ 読む。読めなければ その技は いまの IK の まま）
-            if (!motionFiles.has(d.file)) motionFiles.set(d.file, new GLTFLoader().loadAsync(d.file + '?v=20261120e').then((g) => g.animations).catch((e) => { console.warn('[No.7] motion file unavailable', d.file, e); return []; }));
-            const anims = await motionFiles.get(d.file); clip = (d.name && anims.find((c) => c.name === d.name)) || anims[0] || null; }
+          // 動きの もと：d.file か、モデル自身の アニメ。player-02〜08 は 自分の アニメを もたないので、meshy-v1 の アニメ（mixamo.com）を
+          // 取りだした 動きだけの GLB（models/motions/dribble_r.glb。値は meshy-v1.glb と 同じ）を つかう
+          const src = d.file || (!gltf.animations.some((c) => c.name === d.name) && meshyFamily(key) ? MESHY_ANIMS : null);
+          if (src) { // 動きだけの GLB（同じ ファイルは 1回だけ 読む。読めなければ その技は いまの IK の まま）
+            if (!motionFiles.has(src)) motionFiles.set(src, new GLTFLoader().loadAsync(src + '?v=20261120f').then((g) => g.animations).catch((e) => { console.warn('[No.7] motion file unavailable', src, e); return []; }));
+            const anims = await motionFiles.get(src); clip = (d.name && anims.find((c) => c.name === d.name)) || (d.file ? anims[0] : null) || null; }
           else clip = gltf.animations.find((c) => c.name === d.name);
           if (clip) set[id] = { ...d, clip }; }
-        if (key === 'meshy-v1') { Object.assign(set, await loadLocalClips()); for (const k of Object.keys(set)) if (!set[k]) delete set[k]; }
+        if (meshyFamily(key)) { Object.assign(set, await loadLocalClips(key)); for (const k of Object.keys(set)) if (!set[k]) delete set[k]; }
         if (Object.keys(set).length) clipsOf.set(model, set); }
       modelCache.set(key, model);
       console.info('[No.7] Rigged replacement GLB loaded');
@@ -314,13 +329,16 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   if (clipSet) {
     model.traverse((o) => { if (o.isBone) { byName[o.name] = o; allBones.push(o); ikP.push(V()); ikQ.push(Q()); ikS.push(V()); o.userData.p0 = o.position.clone(); o.userData.q0 = o.quaternion.clone(); o.userData.s0 = o.scale.clone(); } });
     for (const d of Object.values(clipSet)) { d.hb = B[d.hand + 'Hand']; d.hi = B[d.hand + 'HandIndex1'];
-      if (!clipCh.has(d.clip)) clipCh.set(d.clip, d.clip.tracks.map((tr) => { const pn = THREE.PropertyBinding.parseTrackName(tr.name); const obj = byName[pn.nodeName]; return obj && /^(position|quaternion|scale)$/.test(pn.propertyName) ? { obj, prop: pn.propertyName, interp: tr.createInterpolant() } : null; }).filter(Boolean)); }
+      if (!clipCh.has(d.clip)) clipCh.set(d.clip, d.clip.tracks.map((tr) => { const pn = THREE.PropertyBinding.parseTrackName(tr.name); const obj = byName[pn.nodeName]; // 回転と 腰の 位置だけ つかう（ほかの 骨の 位置・大きさは その キャラの ものの まま。キャラごとに 骨の 長さが ちがうので、
+        // クリップの 値で 上書きすると 体の 形が ゆがみ、足の 高さも ずれる）
+        return obj && (pn.propertyName === 'quaternion' || (pn.propertyName === 'position' && obj === B.Hips)) ? { obj, prop: pn.propertyName, interp: tr.createInterpolant() } : null; }).filter(Boolean)); }
   }
   const clipPose = (d, t) => { for (const c of clipCh.get(d.clip)) c.obj[c.prop].fromArray(c.interp.evaluate(t)); root.updateMatrixWorld(true);
     if (d.yawQ) { // 正面へ まわす（縦の 軸の まわり。中心は クリップ さいしょの 腰）
       B.Hips.getWorldQuaternion(q1).premultiply(d.yawQ); B.Hips.parent.getWorldQuaternion(q3).invert(); B.Hips.quaternion.copy(q3.multiply(q1));
       const pv = B.Hips.parent.localToWorld(t3.copy(d.pivotL)); B.Hips.getWorldPosition(t2).sub(pv).applyQuaternion(d.yawQ).add(pv); B.Hips.parent.worldToLocal(t2); B.Hips.position.copy(t2); root.updateMatrixWorld(true); }
-    const s = root.getWorldScale(t1).y; B.Hips.getWorldPosition(t2); t2.y -= (restLift - CLIP_LIFT) * s; B.Hips.parent.worldToLocal(t2); B.Hips.position.copy(t2); root.updateMatrixWorld(true); };
+    // 足を 床に のせる：レスト姿勢の 持ちあげ（restLift）を はずし、その キャラ×クリップで はかった 高さ（d.lift）を たす
+    const s = root.getWorldScale(t1).y; B.Hips.getWorldPosition(t2); t2.y += ((d.lift ?? CLIP_LIFT) - restLift) * s; B.Hips.parent.worldToLocal(t2); B.Hips.position.copy(t2); root.updateMatrixWorld(true); };
   // 手のひらの 下に ボール：手首と 人差し指の つけねの まんなかから、手首の +Z（手のひら がわ）へ ボールの 半径ぶん
   const palmBall = (d, out) => { d.hb.getWorldPosition(t1); if (d.hi) t1.lerp(d.hi.getWorldPosition(t2), 0.5); d.hb.getWorldQuaternion(q1); t3.set(0, 0, 1).applyQuaternion(q1).multiplyScalar(BALL_R * root.getWorldScale(t2).y); return root.worldToLocal(out.copy(t1).add(t3)); };
   if (clipSet) { // 体の 向きを はかって 正面へ まわす 量（straighten の クリップだけ。1回だけ 計算）
@@ -329,6 +347,12 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
       for (let i = 0; i <= 24; i++) { clipPose(d, d.t0 + (d.t1 - d.t0) * i / 24); const side = mw(B.LeftUpLeg).sub(mw(B.RightUpLeg)).add(mw(B.LeftArm).sub(mw(B.RightArm))); const a = Math.atan2(-side.z, side.x); sx += Math.cos(a); sy += Math.sin(a); }
       clipPose(d, d.t0); const pv = B.Hips.getWorldPosition(V()); d.pivotL = B.Hips.parent.worldToLocal(pv); d.yawDeg = Math.atan2(sy, sx) * 180 / Math.PI;
       d.yawQ = Math.abs(d.yawDeg) > 0.5 ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.atan2(sy, sx)) : null; }
+    // 足うらの 高さ：クリップを 通して いちばん 低い 足うらが y=0 に なる 持ちあげ量を キャラ×クリップごとに はかる（同じ クリップは 1回）
+    const skinMeshes = meshes.filter((m) => m.isSkinnedMesh); const soleMin = () => { let m = Infinity; for (const o of skinMeshes) { o.computeBoundingBox(); m = Math.min(m, o.boundingBox.clone().applyMatrix4(o.matrixWorld).min.y); } return m; };
+    const liftOf = new Map(); const sc0 = root.getWorldScale(V()).y;
+    for (const d of Object.values(clipSet)) { if (d.lift !== undefined) continue; const k = d.clip.uuid + ':' + d.t0 + ':' + d.t1;
+      if (!liftOf.has(k)) { d.lift = 0; let mn = Infinity; for (let i = 0; i <= 24; i++) { clipPose(d, d.t0 + (d.t1 - d.t0) * i / 24); mn = Math.min(mn, soleMin()); } liftOf.set(k, Number.isFinite(mn) ? -mn / sc0 : CLIP_LIFT); }
+      d.lift = liftOf.get(k); }
     // ボールが いちばん 上に くる 高さ（拍の まんなかで 手と 出会う 高さ）を 先に はかっておく
     const bb = V(); for (const d of Object.values(clipSet)) { d.top = FLOOR_Y; for (let i = 0; i <= 24; i++) { clipPose(d, d.t0 + (d.t1 - d.t0) * i / 24); d.top = Math.max(d.top, palmBall(d, bb).y); } }
     for (const b of allBones) { b.position.copy(b.userData.p0); b.quaternion.copy(b.userData.q0); b.scale.copy(b.userData.s0); } root.updateMatrixWorld(true);
