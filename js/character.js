@@ -44,15 +44,15 @@ function verifyRig(scene) {
   if (!skinned || missing.length) throw new Error('No.7 GLB incompatible rig: ' + (missing.join(', ') || 'no skinned mesh'));
   return scene;
 }
-// どのモデルを つかうか：3D試験版（?character3d=1 や /preview/）は 新しい No.7 デフォルメ版（no7-chibi.glb）が 標準。
+// どのモデルを つかうか：ふだんは 3D で、えらんだ かおの キャラ（modelKeyFor）。かおが むかしの もの なら player-01（No.7）。
 // ?model=legacy で 旧モデル、?model=no7-v2 で 等身版、?model=no7-chibi で どこでも デフォルメ版。読めない・骨が合わないときは 旧モデルに もどる
 // ?model=meshy-v1 で Meshy＋Mixamo の キャラ（ためし。標準は かえない）
 export function playerModelKey() {
   const q = new URLSearchParams(location.search); const mode = q.get('model');
   if (mode === 'legacy') return 'legacy';
   if (mode === 'no7-v2' || mode === 'no7-chibi' || mode === 'no7-meshy' || mode === 'meshy-v1' || PLAYER_MODELS.includes(mode)) return mode;
-  const preview3D = q.get('character3d') === '1' || location.pathname.includes('/preview/');
-  return preview3D ? 'no7-chibi' : 'legacy';
+  // 3D が ふだんの 表示（2026-11-20〜）。?character3d=0 の ときだけ 絵（スプライト）用の 旧モデル
+  return q.get('character3d') === '0' ? 'legacy' : 'player-01';
 }
 // Meshy＋Mixamo（Blender書き出し）の GLB は、レスト姿勢の 原点が 体の まんなか（足うら y≈-0.95）。
 // IK は レスト姿勢の 骨の 高さ（hipsBind・ankleH）を 使うので、足うらが y=0 に くるよう モデルを 持ちあげる
@@ -88,7 +88,7 @@ async function loadLegacy() {
 export async function loadHuman(key = playerModelKey()) {
   if (modelCache.has(key)) return modelCache.get(key);
   const files = { 'no7-v2': 'models/no7-v2.glb', 'no7-chibi': 'models/no7-chibi.glb', 'no7-meshy': 'models/no7-meshy.glb', 'meshy-v1': 'models/meshy-v1.glb' };
-  files['player-01'] = files['meshy-v1']; for (const k of PLAYER_MODELS.slice(1)) files[k] = `models/players/${k}.glb`;
+  for (const k of PLAYER_MODELS) files[k] = `models/players/${k}.glb`; // player-01＝meshy-v1 の テクスチャだけ 1024px に した かるい版（骨・アニメは 同じ）
   if (files[key]) {
     try {
       // Fixed same-origin path: no untrusted user-provided model URLs.
