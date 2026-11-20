@@ -1,6 +1,6 @@
 // ドリバト！（めざせ！ドリブルキング） メニュー・成長・ごほうび
 import { SKILLS, SKILL_IDS, RANKS, TIERS, tierOf, rankSkills, poolFor, WORLDS, MISSIONS, STAGES, sl, FRIENDS, BOSS_FRIENDS, ALL_FRIENDS, BALLS, SUITS, SHOP_BALLS, ballComplete, SHOES, SHOP_SHOES, buyItem, KING_FRIEND, kingOpen, lvStar3, CAPSULE_COST, AVATARS,
-  S, save, avHTML, MAX_LV, LEVEL_GOAL, LEVEL_SPEED, MAIN_STAGES, curLv, lvStars, lvTotal, lvCleared, lvDone, testReady, addPlayer, renamePlayer, player, totalStars, mastery, canTest, dayState, missionProgress, stamp, esc, MISSION_COIN, MISSION_ALL, missionAllDone, STREAK_RW, streakNow, GROW, growOf, budLv, BUD_LV, TITLES, checkTitles, titleOf, SP_ORDER } from './data.js';
+  S, save, avHTML, MAX_LV, LEVEL_GOAL, LEVEL_SPEED, MAIN_STAGES, curLv, lvStars, lvTotal, lvCleared, lvDone, testReady, addPlayer, renamePlayer, player, totalStars, mastery, canTest, dayState, missionProgress, stamp, esc, MISSION_COIN, MISSION_ALL, missionAllDone, STREAK_RW, streakNow, GROW, growOf, budLv, BUD_LV, TITLES, checkTitles, titleOf, SP_ORDER, BOSS_CHARS, bossForWorld, bossForLevel, bossCharUnlocked, playerBossChar } from './data.js';
 import { runStage } from './run.js';
 import { preloadStage } from './env.js';
 import { ballIcon } from './balls.js';
@@ -138,8 +138,13 @@ async function start(o) {
   const noCam = st.camera && !pose;
   const preview3D = new URLSearchParams(location.search).get('character3d') !== '0'; // 3D が ふだんの 表示。?character3d=0 で 絵（スプライト）
   // 3Dの ときは えらんだ かお（@c1〜@c8）の キャラクターを うごかす（絵の ときは いままでどおり）
-  let human = null, foeHuman = null; try { if (msg) msg.textContent = 'キャラクターを よみこみちゅう…'; const ch = await import('./character.js'); human = await ch.loadHuman(preview3D ? ch.modelKeyFor(p.avatar) : undefined); foeHuman = human && human.userData.no7Replacement ? await ch.loadFoeHuman() : human; } catch (e) { human = null; }
-  const look = { human, foeHuman, sprite: !preview3D, girl: !!p.girl, suit: SUITS.find((x) => x.id === p.suit)?.c, ball: BALLS.find((x) => x.id === p.ball), shoe: SHOES.find((x) => x.id === p.shoe), buddy: p.buddy ? friend(p.buddy)?.e : null, buddyLv: p.buddy ? budLv(p, p.buddy) : 1, grow: GROW[growOf(p)] };
+  let human = null, foeHuman = null, bossHuman = null; try { if (msg) msg.textContent = 'キャラクターを よみこみちゅう…'; const ch = await import('./character.js');
+    // ずかんで えらんだ ボスキャラ（つかえて、ファイルが ある とき）。読めなければ えらんだ かおの キャラ
+    const myBoss = preview3D && !new URLSearchParams(location.search).get('model') ? playerBossChar(p) : null; if (myBoss) human = await ch.loadBossHuman(myBoss.id);
+    if (!human) human = await ch.loadHuman(preview3D ? ch.modelKeyFor(p.avatar) : undefined); foeHuman = human && human.userData.no7Replacement ? await ch.loadFoeHuman() : human;
+    // ボスの ステージ：ワールドの ボス（だいボスは その レベルの ボス）を 3Dで。ファイルが なければ いままでの 見た目
+    if (preview3D && human && human.userData.no7Replacement && o.mode === 'stage' && o.stage) { const b = o.stage.king ? bossForLevel(o.level || curLv(p)) : bossForWorld(o.stage.wi); if (b && b.ready) bossHuman = await ch.loadBossHuman(b.id); } } catch (e) { human = null; }
+  const look = { human, foeHuman, bossHuman, sprite: !preview3D, girl: !!p.girl, suit: SUITS.find((x) => x.id === p.suit)?.c, ball: BALLS.find((x) => x.id === p.ball), shoe: SHOES.find((x) => x.id === p.shoe), buddy: p.buddy ? friend(p.buddy)?.e : null, buddyLv: p.buddy ? budLv(p, p.buddy) : 1, grow: GROW[growOf(p)] };
   try {
     const qVid = new URLSearchParams(location.search).get('video');
     const vid = qVid || (st.videoRec && o.mode === 'stage' && o.stage ? o.stage.id : null); videoMode = !!vid; document.body.classList.toggle('rec', videoMode); // どうがは 1920×1080 で ろくが
@@ -271,7 +276,7 @@ function testResult(o, r) {
 let zTab = 'friends';
 function friends() {
   const p = player(); checkTitles(p);
-  const tabs = [['friends', `🐾 なかま ${p.friends.length}/${ALL_FRIENDS.length}`], ['balls', `🏀 ボール ${p.balls.length}/${BALLS.length}`], ['shoes', `👟 バッシュ ${p.shoes.length}/${SHOES.length}`], ['boss', `🛡️ ボス ${Object.keys(p.bossDone).length}/${WORLDS.length}`], ['titles', `🏅 しょうごう ${(p.titles || []).length}/${TITLES.length}`]];
+  const tabs = [['friends', `🐾 なかま ${p.friends.length}/${ALL_FRIENDS.length}`], ['balls', `🏀 ボール ${p.balls.length}/${BALLS.length}`], ['shoes', `👟 バッシュ ${p.shoes.length}/${SHOES.length}`], ['boss', `🛡️ ボス ${Object.keys(p.bossDone).length}/${WORLDS.length}`], ['chars', `🦸 キャラ ${BOSS_CHARS.filter((b) => bossCharUnlocked(p, b)).length}/${BOSS_CHARS.length}`], ['titles', `🏅 しょうごう ${(p.titles || []).length}/${TITLES.length}`]];
   const seg = `<div class="seg ztabs">${tabs.map(([k, t]) => `<button class="${zTab === k ? 'on' : ''}" data-act="ztab" data-id="${k}">${t}</button>`).join('')}</div>`;
   let body = '';
   if (zTab === 'friends') body = `<p class="hint">タップすると バディに なって、ステージで いっしょに はしるよ。いっしょに あそぶほど レベルが あがって おおきく なる！（Lv2：${BUD_LV[1]}かい・Lv3：${BUD_LV[2]}かい・Lv4：${BUD_LV[3]}かい）</p>
@@ -282,6 +287,13 @@ function friends() {
     <div class="zukan">${SHOES.map((b) => p.shoes.includes(b.id) ? `<div class="z on"><img class="zs" src="${shoeIcon(b)}" alt=""><b>${b.n}</b><small>${p.shoe === b.id ? 'はいている' : ''}</small></div>` : b.secret ? `<div class="z"><span>👟</span><b>？？？</b><small>ぜんぶ あつめると…</small></div>` : `<div class="z"><img class="zs dim" src="${shoeIcon(b)}" alt=""><b>？？？</b><small>🪙 ${b.cost}</small></div>`).join('')}</div>`;
   else if (zTab === 'boss') body = `<p class="hint">コートの さいごの ボスを たおすと のるよ。</p>
     <div class="zukan">${WORLDS.map((w, i) => p.bossDone[w.id] ? `<div class="z on rare" style="--a:${w.pal.a}"><span>${BOSS_FRIENDS[i].e}</span><b>${w.boss}</b><small>コート ${i + 1}　たおした！</small></div>` : `<div class="z"><span>？</span><b>？？？</b><small>コート ${i + 1} の ボス</small></div>`).join('')}</div>`;
+  else if (zTab === 'chars') body = `<p class="hint">だいボスを たおすと、つぎの レベルから その ボスで あそべるよ（R6 の だいボスは たおしたら すぐ）。「つかう」を おすと、ステージで その キャラが はしる。</p>
+    ${p.char ? '<button class="mini" data-act="useChar" data-id="">もとの キャラに もどす</button>' : ''}
+    <div class="zukan">${BOSS_CHARS.map((b) => { const ok = bossCharUnlocked(p, b); const pic = `<img class="za" src="img/avatar/${b.id}.jpg" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${b.L === 6 ? '👑' : '🛡️'}'}))">`;
+      if (ok && b.ready) return `<button class="z on rare ${p.char === b.id ? 'sel' : ''}" data-act="useChar" data-id="${b.id}">${pic}<b>${b.n}</b><small>${p.char === b.id ? 'つかっている' : 'つかう'}</small></button>`;
+      if (ok) return `<div class="z on rare">${pic}<b>${b.n}</b><small>じゅんびちゅう</small></div>`;
+      const need = (p.king || {})[b.L] ? `R${b.L + 1} に なると つかえる` : b.L >= MAX_LV ? `R${b.L} の だいボスを たおすと つかえる` : `R${b.L} の だいボスを たおすと R${b.L + 1} から つかえる`;
+      return `<div class="z"><span>🔒</span><b>？？？</b><small>${need}</small></div>`; }).join('')}</div>`;
   else body = `<p class="hint">とった しょうごうを タップすると、なまえの よこに つくよ。</p>
     <div class="titles">${TITLES.map((t) => { const has = (p.titles || []).includes(t.id); return has ? `<button class="tt on ${p.title === t.id ? 'sel' : ''}" data-act="title" data-id="${t.id}"><span>${t.i}</span><b>${t.n}</b><small>${t.d}</small></button>` : `<div class="tt"><span>🔒</span><b>？？？</b><small>${t.d}</small></div>`; }).join('')}</div>`;
   show(`<div class="card"><h2>📖 ずかん</h2>${seg}${body}</div>`, 'friends');
@@ -414,6 +426,7 @@ const acts = {
     else if (!day.claimed.includes(d.id) && missionProgress(p, day.missions.find((m) => m.id === d.id) || { id: d.id }) >= (day.missions.find((m) => m.id === d.id)?.n ?? 99)) { day.claimed.push(d.id); p.coins += MISSION_COIN; save(); beep([12, 19]); } home(); },
   ztab: (d) => { zTab = d.id; friends(); },
   title: (d) => { const p = player(); if ((p.titles || []).includes(d.id)) { p.title = d.id; save(); } friends(); },
+  useChar: (d) => { const p = player(); const b = BOSS_CHARS.find((x) => x.id === d.id); p.char = b && b.ready && bossCharUnlocked(p, b) ? b.id : null; save(); friends(); },
   buddy: (d) => { const p = player(); p.buddy = p.buddy === d.id ? null : d.id; save(); friends(); },
   capsule: (d) => { const p = player(); const left = FRIENDS.filter((f) => !p.friends.includes(f.id)); if (!left.length) return;
     if (d.pay === 'ticket') { if (p.tickets < 1) return; p.tickets--; } else { if (p.coins < CAPSULE_COST) return; p.coins -= CAPSULE_COST; }
