@@ -18,12 +18,20 @@ function verifyRig(scene) {
 }
 // どのモデルを つかうか：3D試験版（?character3d=1 や /preview/）は 新しい No.7 デフォルメ版（no7-chibi.glb）が 標準。
 // ?model=legacy で 旧モデル、?model=no7-v2 で 等身版、?model=no7-chibi で どこでも デフォルメ版。読めない・骨が合わないときは 旧モデルに もどる
+// ?model=meshy-v1 で Meshy＋Mixamo の キャラ（ためし。標準は かえない）
 export function playerModelKey() {
   const q = new URLSearchParams(location.search); const mode = q.get('model');
   if (mode === 'legacy') return 'legacy';
-  if (mode === 'no7-v2' || mode === 'no7-chibi' || mode === 'no7-meshy') return mode;
+  if (mode === 'no7-v2' || mode === 'no7-chibi' || mode === 'no7-meshy' || mode === 'meshy-v1') return mode;
   const preview3D = q.get('character3d') === '1' || location.pathname.includes('/preview/');
   return preview3D ? 'no7-chibi' : 'legacy';
+}
+// Meshy＋Mixamo（Blender書き出し）の GLB は、レスト姿勢の 原点が 体の まんなか（足うら y≈-0.95）。
+// IK は レスト姿勢の 骨の 高さ（hipsBind・ankleH）を 使うので、足うらが y=0 に くるよう モデルを 持ちあげる
+function groundRestPose(model) {
+  model.position.y = 0; model.updateMatrixWorld(true); let minY = Infinity;
+  model.traverse((o) => { if (!o.isSkinnedMesh) return; o.computeBoundingBox(); const b = o.boundingBox.clone().applyMatrix4(o.matrixWorld); minY = Math.min(minY, b.min.y); });
+  if (Number.isFinite(minY)) { model.position.y = -minY; model.userData.restLift = -minY; model.updateMatrixWorld(true); }
 }
 async function loadLegacy() {
   if (modelCache.has('legacy')) return modelCache.get('legacy');
@@ -34,13 +42,14 @@ async function loadLegacy() {
 }
 export async function loadHuman(key = playerModelKey()) {
   if (modelCache.has(key)) return modelCache.get(key);
-  const files = { 'no7-v2': 'models/no7-v2.glb', 'no7-chibi': 'models/no7-chibi.glb', 'no7-meshy': 'models/no7-meshy.glb' };
+  const files = { 'no7-v2': 'models/no7-v2.glb', 'no7-chibi': 'models/no7-chibi.glb', 'no7-meshy': 'models/no7-meshy.glb', 'meshy-v1': 'models/meshy-v1.glb' };
   if (files[key]) {
     try {
       // Fixed same-origin path: no untrusted user-provided model URLs.
-      const gltf = await new GLTFLoader().loadAsync(files[key] + '?v=20261119c');
+      const gltf = await new GLTFLoader().loadAsync(files[key] + '?v=20261120a');
       const model = verifyRig(gltf.scene);
       model.userData.no7Replacement = true;
+      if (key === 'meshy-v1') groundRestPose(model);
       modelCache.set(key, model);
       console.info('[No.7] Rigged replacement GLB loaded');
       return model;
