@@ -396,7 +396,6 @@ export function runStage(opts) {
       pipRect = { x: (gx - r) / DPR, y: (gy - r) / DPR, w: (2 * r) / DPR, h: (2 * r) / DPR };
       g.strokeStyle = SKILLS[c.skill].c; g.lineWidth = Math.max(3, r * 0.04); g.strokeRect(gx - r, gy - r, 2 * r, 2 * r);
       if (SKILLS[c.skill].lane || c.skill === 'back' || c.skill === 'fast' || c.skill === 'drive') drawArrows(c, gx, gy - r * 0.78, r, beat);
-      if (settings.voice === 'en' && SKILLS[c.skill].en) { const e = enLabel(c).toUpperCase() + '!'; txt(e, W - pad, gy - r - fs * 0.75, Math.min(fs * 1.25, (W * 0.5) / Math.max(4, e.length) * 1.7), '#fff', 'right'); }
       if (c.b1 - c.b0 >= 2) { const pr = clamp((beat - c.b0) / (c.b1 - c.b0), 0, 1); pill(gx - r, gy + r + 4 * DPR, 2 * r * pr, 5 * DPR, SKILLS[c.skill].c, 0.95); }
       // The current technique belongs above the two-view demonstration, like the 'つぎ' label.
       const s = cueLabel(c);
