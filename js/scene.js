@@ -299,8 +299,10 @@ export function createScene(canvas, o) {
     // カメラ
     fov = lerp(fov, spd > 1.2 ? 72 : spd < 0.3 ? 56 : 62, 1 - Math.exp(-dt * 4)); const portrait = cam.aspect < 1; cam.fov = fov + (portrait ? 22 : 0); cam.updateProjectionMatrix();
     camShake = Math.max(st.shake || 0, camShake * 0.86);
-    cam.position.set(laneX * 0.72 + (Math.random() - 0.5) * camShake * 0.2, 2.25 + Math.sin(beat * Math.PI) * 0.025 + (Math.random() - 0.5) * camShake * 0.2, portrait ? 5.4 : 3.7);
-    cam.lookAt(laneX * 0.85, 1.15, -8);
+    // カメラは ひくめ（高さ 1.2m）：プレイヤーの からだの うごきが 見えやすい ように（もとは 高さ 2.25m・うしろ 3.7m）。
+    // 見おろす 角度は もとと 同じ（背景の 絵の 地平線 SCREEN_VP=0.42 と 3Dの 床が ずれない ように）
+    cam.position.set(laneX * 0.72 + (Math.random() - 0.5) * camShake * 0.2, 1.2 + Math.sin(beat * Math.PI) * 0.025 + (Math.random() - 0.5) * camShake * 0.2, portrait ? 4.3 : 2.95);
+    cam.lookAt(laneX * 0.85, portrait ? 0.19 : 0.17, -8);
     if (composer) composer.render(); else renderer.render(scene, cam);
     // うごきガイド：同じ人を 正面から（かがみのように 左右そのまま）かげ絵で うつす
     if (st.pip && human) {
