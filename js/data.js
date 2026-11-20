@@ -233,7 +233,10 @@ export const SUITS = [
 export const CAPSULE_COST = 60;
 // '@hero1'〜 は イラストの かお（img/avatar/）。それいがいは 絵文字
 export const avHTML = (a) => { if (a === '🦸') a = '@hero1'; return a && a[0] === '@' ? `<img class="avimg" src="img/avatar/${a.slice(1)}.jpg" alt="">` : a; };
-export const AVATARS = ['@f1', '@f2', '@f3', '@f4', '@f5', '@f6', '@f7', '@f8', '@f9', '@f10']; // かお（img/avatar/f1〜10）。むかしの '@hero〜' や 絵文字も そのまま 表示できる
+// かお＝キャラクター（img/avatar/c1〜8。3Dモデルから 作った 絵）。えらんだ かおの キャラが 3Dで うごく（@c1＝No.7）。
+// c1〜c4 は おとこのこ、c5〜c8 は おんなのこ。むかしの '@f〜' '@hero〜' や 絵文字も そのまま 表示できる
+export const AVATARS = ['@c1', '@c2', '@c3', '@c4', '@c5', '@c6', '@c7', '@c8'];
+export const isGirlAvatar = (a) => /^@c[5-8]$/.test(a || '');
 
 // ---------- レベル（R1〜R6）：レベルごとに ステージと ★を もつ ----------
 // つぎの レベルが ひらく じょうけん：ぜんぶの ステージ（30）で ★1いじょう ＋ ★の ごうけいが LEVEL_GOAL いじょう（★2×30＝60 が めやす）
@@ -267,11 +270,11 @@ function newPlayer(name, avatar, rank = 1) {
   return { id: 'p' + Date.now().toString(36) + Math.floor(Math.random() * 1e4), name, avatar, rank, m: {}, coins: 0, friends: [], buddy: null,
     balls: ['std'], ball: 'std', suits: ['cy'], suit: 'cy', stars: {}, best: {}, verified: {}, bossDone: {}, plays: 0, stamps: 0, tickets: 0, lastDay: '', day: null, tipIdx: {}, leftReps: 0, rightReps: 0, ls: {}, lv: rank };
 }
-export function addPlayer(name, avatar, rank) { S.players = S.players.filter((x) => !(x.guest && x.plays === 0)); const p = newPlayer(name, avatar, rank); S.players.push(p); S.current = p.id; save(); return p; }
+export function addPlayer(name, avatar, rank) { S.players = S.players.filter((x) => !(x.guest && x.plays === 0)); const p = newPlayer(name, avatar, rank); if (isGirlAvatar(avatar)) p.girl = true; S.players.push(p); S.current = p.id; save(); return p; }
 export function renamePlayer(p, name) { const n = (name || '').trim().slice(0, 10); if (!n) return false; p.name = n; delete p.guest; save(); return true; }
 export function player() {
   let p = S.players.find((x) => x.id === S.current) || S.players[0];
-  if (!p) { p = newPlayer('プレイヤー', '@f1'); p.guest = true; S.players.push(p); }
+  if (!p) { p = newPlayer('プレイヤー', '@c1'); p.guest = true; S.players.push(p); }
   if (S.current !== p.id) { S.current = p.id; save(); }
   return p;
 }

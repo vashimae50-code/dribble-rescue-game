@@ -135,8 +135,9 @@ async function start(o) {
   if (st.camera) { if (msg) msg.textContent = '📷 カメラを じゅんびちゅう…'; try { const m = await import('./pose.js'); pose = await m.startPose(video, { sens: st.sens, swap: st.swap }); } catch (e) { pose = null; } }
   app.hidden = true; nav.hidden = true; gameEl.hidden = false; video.hidden = !pose; awake(true);
   const noCam = st.camera && !pose;
-  let human = null, foeHuman = null; try { if (msg) msg.textContent = 'キャラクターを よみこみちゅう…'; const ch = await import('./character.js'); human = await ch.loadHuman(); foeHuman = human && human.userData.no7Replacement ? await ch.loadFoeHuman() : human; } catch (e) { human = null; }
-  const preview3D = new URLSearchParams(location.search).get('character3d') === '1' || location.pathname.includes('/preview/');
+  const preview3D = new URLSearchParams(location.search).get('character3d') !== '0'; // 3D が ふだんの 表示。?character3d=0 で 絵（スプライト）
+  // 3Dの ときは えらんだ かお（@c1〜@c8）の キャラクターを うごかす（絵の ときは いままでどおり）
+  let human = null, foeHuman = null; try { if (msg) msg.textContent = 'キャラクターを よみこみちゅう…'; const ch = await import('./character.js'); human = await ch.loadHuman(preview3D ? ch.modelKeyFor(p.avatar) : undefined); foeHuman = human && human.userData.no7Replacement ? await ch.loadFoeHuman() : human; } catch (e) { human = null; }
   const look = { human, foeHuman, sprite: !preview3D, girl: !!p.girl, suit: SUITS.find((x) => x.id === p.suit)?.c, ball: BALLS.find((x) => x.id === p.ball), buddy: p.buddy ? friend(p.buddy)?.e : null, buddyLv: p.buddy ? budLv(p, p.buddy) : 1, grow: GROW[growOf(p)] };
   try {
     const qVid = new URLSearchParams(location.search).get('video');
