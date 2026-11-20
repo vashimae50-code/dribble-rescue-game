@@ -92,8 +92,27 @@ export function runStage(opts) {
     }
     return c;
   }
+  // 通常ステージ（ワールド 1〜5 の 30こ）だけ：練習の 流れ「その場 → 移動 → 相手」「2-1-0」に あわせて 技の 出やすさを かえる
+  // （昇級テスト・トレーニングルーム・スペシャル〈習得・ハンドリング・2ボール〉は かえない）
+  const flowW = !dojo && !test && !!stage && !stage.sp && !mission.plan && !mission.pool;
+  const FLOW_K = 2; // 倍率（遊んでみて 調整する）
+  // ワールドごとの ねらい：W1 きほんの つき方／W2 その場の 持ちかえ／W3 横へ 動く／W4 速さ・高さを かえる／W5 かたよりなし
+  const WORLD_FOCUS = [
+    (k) => ['right', 'left', 'low', 'pound', 'fast'].includes(k),
+    (k, sk) => sk.hand === 'combo' || sk.hand === 'alt' || !!(sk.vmove || sk.semi || sk.pocket || sk.inout),
+    (k, sk) => !!sk.lane,
+    (k) => ['low', 'pound', 'fast', 'hesi', 'back', 'freeze', 'jstop'].includes(k),
+    () => false,
+  ];
+  // 2-1-0：区間1＝2ドリ → 技、区間2＝1ドリ → 技、区間3＝その技（3つとも 選べる はんいに ある ときだけ。ボス区間は かえない）
+  const DRILL_210 = [['c2cross', 'c1cross', 'cross'], ['c2legs', 'c1legs', 'legs'], ['c2behind', 'c1behind', 'behind']];
+  let secNo = 0; // いまの 区間（1〜3。ボス区間は 0）
   function weightOf(k) {
     let w = mission.w[k] ?? 1; const sk = SKILLS[k];
+    if (flowW) {
+      const f = WORLD_FOCUS[wi]; if (f && f(k, sk)) w *= FLOW_K;
+      if (secNo >= 1 && secNo <= 3) for (const set of DRILL_210) if (set[secNo - 1] === k && set.every(has)) w *= FLOW_K;
+    }
     if (tierOf(pl.m[k] || 0) < 2) w *= 1.4;
     if (sk.r === RK && RK > 1) w *= tier === 0 ? 0.5 : tier === 2 ? 1.6 : 1;
     if (sk.handle && !test) w = 0;               // ハンドリングは ドリブルの あいだに はさむ
@@ -111,7 +130,7 @@ export function runStage(opts) {
     return list[list.length - 1];
   }
   function addSection(beats, boss = false) {
-    let left = beats; tiers.push(tier);
+    let left = beats; tiers.push(tier); secNo = boss ? 0 : tiers.length; // 区間の 番号は tier（できばえ）では なく 何こめの 区間か
     if (mission.plan) {
       const idx = boss ? 3 : Math.min(2, tiers.length - 1); const first = cues.length;
       // plan の 1こ：[技ID, 拍数, { guard など addCue に わたす 指定 }]
