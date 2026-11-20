@@ -192,6 +192,10 @@
   <div id="overlay"></div>
   <button id="pause" aria-label="ポーズ">⏸</button>
 </div>
+<script>
+  // 更新した ゲームが すぐ 出るように（sw.js）。つかえない ブラウザでは なにも しない
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>
