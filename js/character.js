@@ -148,6 +148,34 @@ function gradientMap3() {
   toonGrad = t; return t;
 }
 
+// ---------- バッシュ：くつの 色を ぬりかえる（opt.shoeL / opt.shoeR = { up, sole, line }） ----------
+// くつの 高さ（足うら 0 〜 くつの いちばん上 1）で どこを ぬるか
+const SHOE_SOLE_H = 0.2, SHOE_LINE_H = [0.42, 0.56];
+const shoeBoneSide = (name) => { const n = name.replace(/^mixamorig:?/, ''); const m = /^(Left|Right)(Foot|ToeBase|Toe_End|Toe)/.exec(n); return m ? (m[1] === 'Left' ? 1 : 2) : /^(Left|Right)Leg$/.test(n) ? (n[0] === 'L' ? 3 : 4) : 0; };
+// GLB（テクスチャの 色の キャラ）：くつの ところに 印（shoeSide 1=左・2=右）と 高さ（shoeH）を つけて、シェーダーで 色を かえる
+function paintShoesGLB(mesh, mat, L, R) {
+  const g = mesh.geometry, si = g.attributes.skinIndex, sw = g.attributes.skinWeight, pos = g.attributes.position; if (!si || !sw) return;
+  const bones = mesh.skeleton.bones, n = pos.count, side = new Float32Array(n), h = new Float32Array(n);
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < n; i++) { let best = 0, bw = -1; for (let k = 0; k < 4; k++) { const w = sw.getComponent(i, k); if (w > bw) { bw = w; best = si.getComponent(i, k); } }
+    const sd = shoeBoneSide(bones[best].name); side[i] = sd; h[i] = pos.getY(i); if (sd === 1 || sd === 2) { lo[sd] = Math.min(lo[sd], h[i]); hi[sd] = Math.max(hi[sd], h[i]); } }
+  let any = false;
+  for (let i = 0; i < n; i++) { let sd = side[i]; if (sd >= 3) sd = h[i] <= hi[sd - 2] ? sd - 2 : 0; // すねの 下（くつの はき口）も くつ
+    side[i] = sd; if (sd) { any = true; h[i] = (h[i] - lo[sd]) / Math.max(1e-6, hi[sd] - lo[sd]); } else h[i] = 0; }
+  if (!any) return;
+  g.setAttribute('shoeSide', new THREE.BufferAttribute(side, 1)); g.setAttribute('shoeH', new THREE.BufferAttribute(h, 1));
+  const C = (c) => new THREE.Color(c);
+  const U = { uShoeL: { value: [C(L.up), C(L.sole), C(L.line)] }, uShoeR: { value: [C(R.up), C(R.sole), C(R.line)] } };
+  mat.onBeforeCompile = (sh) => { Object.assign(sh.uniforms, U);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float shoeSide; attribute float shoeH; varying float vShoeSide; varying float vShoeH;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n vShoeSide = shoeSide; vShoeH = shoeH;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uShoeL[3]; uniform vec3 uShoeR[3]; varying float vShoeSide; varying float vShoeH;')
+      .replace('#include <map_fragment>', `#include <map_fragment>
+ if (vShoeSide > 0.5) { bool l = vShoeSide < 1.5; vec3 c = vShoeH < ${SHOE_SOLE_H.toFixed(3)} ? (l ? uShoeL[1] : uShoeR[1]) : (vShoeH > ${SHOE_LINE_H[0].toFixed(3)} && vShoeH < ${SHOE_LINE_H[1].toFixed(3)}) ? (l ? uShoeL[2] : uShoeR[2]) : (l ? uShoeL[0] : uShoeR[0]);
+   float lum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114)); diffuseColor.rgb = c * clamp(0.78 + 0.35 * lum, 0.0, 1.15); }`); };
+  mat.customProgramCacheKey = () => 'shoes';
+}
+
 export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   const model = cloneModel(template);
   const nativeLook = !!template.userData.no7Replacement;
@@ -157,10 +185,13 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   // 見た目：骨ごとに 色を ぬりわけて、ユニフォーム・はだ・くつ に見せる
   const suitC = new THREE.Color(suit); const SKIN = new THREE.Color(opt.skin || '#e8b48a'); const JERSEY = suitC.clone().lerp(new THREE.Color('#ffffff'), 0.06); const SHORTS = suitC.clone().multiplyScalar(0.82); const TRIM = new THREE.Color(opt.trim || '#ffffff'); const SHOE = new THREE.Color(opt.shoe || '#f6f8ff'); const SOCK = new THREE.Color('#ffffff'); const HAIR = new THREE.Color(opt.hair || '#2a1c14');
   // ユニフォーム：そでなしの ジャージ（わきに ライン）＋ ひざ上までの ゆったり パンツ（よこに ライン）＋ ハイカットの くつ
+  // バッシュ（旧モデル）：骨の 名前の Left / Right で 左右の 色を つかいわける。LEGACY_SOLE_Y より 下は ソール
+  const shoeCols = (q) => q && { up: new THREE.Color(q.up), sole: new THREE.Color(q.sole), line: new THREE.Color(q.line) }; const SHOE_L = shoeCols(opt.shoeL), SHOE_R = shoeCols(opt.shoeR); const LEGACY_SOLE_Y = 0.035;
   const regionOf = (name, x, y) => { const n = name.replace('mixamorig', ''); const ax = Math.abs(x);
-    if (/Foot|Toe/.test(n)) return y > 0.085 && y < 0.12 ? TRIM : SHOE;
+    const P = /^Left/.test(n) ? SHOE_L : /^Right/.test(n) ? SHOE_R : null;
+    if (/Foot|Toe/.test(n)) return P ? (y < LEGACY_SOLE_Y ? P.sole : y > 0.085 && y < 0.12 ? P.line : P.up) : y > 0.085 && y < 0.12 ? TRIM : SHOE;
     if (/UpLeg|Hips/.test(n)) return y > 1.075 ? TRIM : y < 0.555 ? TRIM : ax > 0.185 && y < 0.95 ? TRIM : SHORTS;
-    if (/^(Left|Right)Leg/.test(n)) return y < 0.2 ? SHOE : y < 0.33 ? SOCK : SKIN;
+    if (/^(Left|Right)Leg/.test(n)) return y < 0.2 ? (P ? P.up : SHOE) : y < 0.33 ? SOCK : SKIN;
     if (/Spine/.test(n)) return y > 1.47 && ax < 0.075 ? SKIN : ax > 0.15 && y < 1.36 ? TRIM : JERSEY;
     if (/Shoulder/.test(n)) return ax < 0.15 ? JERSEY : SKIN;
     if (/Neck/.test(n)) return SKIN; if (/Head/.test(n)) return y > 1.62 ? HAIR : SKIN; return SKIN; };
@@ -174,6 +205,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
       const src = o.material; const decal = /FaceDecal/.test(src.name || '');
       const m = new THREE.MeshToonMaterial({ color: src.color ? src.color.clone() : 0xffffff, map: src.map || null, gradientMap: gradientMap2(), side: src.side, emissive: 0x1a1410, emissiveIntensity: decal ? 0 : 0.12, alphaTest: decal ? 0.5 : src.alphaTest, transparent: false });
       m.name = src.name; o.material = m; meshes.push(o); mats.push(m);
+      if (opt.shoeL && opt.shoeR && !decal) paintShoesGLB(o, m, opt.shoeL, opt.shoeR);
       if (decal) return; // 顔の 目・まゆの 絵には ふちどりを 付けない
       // 頂点カラー R が ある メッシュ（体）は、R を ふちどりの 太さに 使う（顔の 前は 0 にして 目・口に 黒い みぞを 出さない）
       const vw = !!g.attributes.color; const om = new THREE.MeshBasicMaterial({ color: 0x120e0c, side: THREE.BackSide, vertexColors: vw });

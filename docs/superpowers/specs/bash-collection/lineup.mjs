@@ -1,0 +1,21 @@
+// ラインナップ案（ためし）。ゲーム中は up（本体）・sole（ソール）・line（ライン）の 3色だけ つかう
+export const SHOES = [
+  { id: 'std', n: 'スタンダード', cost: 0, cut: 'mid', up: '#1a3a8f', toe: '#14275e', heel: '#14275e', line: '#ffd21f', lace: '#ffffff', sole: '#ffffff', out: '#14275e', lining: '#ffd21f' },
+  { id: 'lime', n: 'ネオンライム', cost: 100, cut: 'low', pat: 'knit', up: '#c6f52a', toe: '#b9ec1c', heel: '#a8db12', line: '#e9ff8a', lace: '#b2e41a', sole: '#d2fa3a', out: '#93c40e', lining: '#e9ff9a', tab: '#ff8a2a', emb: '#e9ff8a' },
+  { id: 'sakura', n: 'さくらピンク', cost: 120, cut: 'low', up: '#f7c1cc', toe: '#ec97aa', heel: '#e2728c', line: '#fff1f4', lace: '#ec97aa', sole: '#f9d3db', out: '#e2728c', lining: '#fff1f4' },
+  { id: 'panda', n: 'パンダ', cost: 150, cut: 'high', up: '#ffffff', toe: '#17171c', heel: '#17171c', line: '#17171c', lace: '#17171c', sole: '#ffffff', out: '#17171c', lining: '#17171c', emb: '#ffffff' },
+  { id: 'redblk', n: 'レッド×ブラック', cost: 180, cut: 'low', pat: 'gloss', up: '#17171c', toe: '#d81e2a', heel: '#d81e2a', line: '#d81e2a', lace: '#17171c', sole: '#ffffff', out: '#d81e2a', lining: '#d81e2a', tab: '#d81e2a' },
+  { id: 'allred', n: 'オールレッド', cost: 180, cut: 'mid', pat: 'knit', up: '#ea3a2e', toe: '#e2322a', heel: '#cf2a22', line: '#ea3a2e', lace: '#ea3a2e', sole: '#ea3a2e', out: '#c42820', lining: '#ffb04a', emb: '#17171c', embLine: '#ffb04a', stripe: 'none' },
+  { id: 'classic', n: 'クラシックホワイト', cost: 200, cut: 'high', stripe: 'double', up: '#fbfbfb', toe: '#fbfbfb', heel: '#f2f2f2', line: '#17171c', lace: '#ffffff', sole: '#f2ead6', out: '#e6dbbf', lining: '#ffffff', emb: '#ffffff', tab: '#ffffff' },
+  { id: 'royal', n: 'ロイヤルブルー', cost: 220, cut: 'low', up: '#2d5fd0', toe: '#3d72e0', heel: '#1d3f99', line: '#9cc0ff', lace: '#2d5fd0', sole: '#2d5fd0', out: '#1d3f99', lining: '#9cc0ff', emb: '#dfe6f2', window: '#cfd8e8' },
+  { id: 'fire', n: 'ファイヤー', cost: 300, cut: 'mid', pat: 'fire', cols: ['#e8222b', '#ff7a1a', '#ffd21f'], up: '#17171c', toe: '#17171c', heel: '#17171c', line: '#17171c', lace: '#e8222b', sole: '#e8222b', out: '#b5121b', lining: '#e8222b', stripe: 'none', emb: '#ffd21f', tab: '#ffd21f' },
+  { id: 'confetti', n: 'コンフェッティ', cost: 320, cut: 'low', pat: 'dots', cols: ['#ff5fa8', '#ffd21f', '#3dc7ff', '#ffffff', '#c58cff'], up: '#6a2f80', toe: '#7c3a92', heel: '#3a1a48', line: '#3a1a48', lace: '#5a2670', sole: '#ffffff', out: '#17171c', lining: '#ff5fa8', emb: '#ffffff', window: '#17171c' },
+  { id: 'splash', n: 'ペイントスプラッシュ', cost: 380, cut: 'low', pat: 'splash', cols: ['#ff4d6d', '#ffb13d', '#ffe94d', '#4dd98a', '#3db8ff', '#9b5cff'], up: '#ffffff', toe: '#ffffff', heel: '#17171c', line: '#17171c', lace: '#dddddd', sole: '#ffffff', out: '#3d6fd6', lining: '#ffffff', stripe: 'none', emb: '#ffffff', window: '#17171c' },
+  { id: 'lrRB', n: 'ひだりみぎ レッド／ブルー', cost: 420, cut: 'low',
+    L: { up: '#d8242c', toe: '#c41e26', heel: '#a3141b', line: '#ff7a7a', lace: '#d8242c', sole: '#c41e26', out: '#8a1016', lining: '#ffffff', emb: '#ffffff' },
+    R: { up: '#3a6fd8', toe: '#4b80e6', heel: '#2a55b0', line: '#9cc8ff', lace: '#cfe3ff', sole: '#7fb6ff', out: '#2a55b0', lining: '#9cc8ff', emb: '#ffffff' } },
+  { id: 'lrLP', n: 'ひだりみぎ ライム／ピンク', cost: 450, cut: 'low', pat: 'knit', lace: '#3da5ff', sole: '#bfe3ff', solePat: 'ice', out: '#8cc8ff', lining: '#3da5ff', tab: '#3da5ff', stripe: 'wave',
+    L: { up: '#e9f53a', toe: '#dcee22', heel: '#c9dc14', line: '#3da5ff', emb: '#ffffff' },
+    R: { up: '#ff8fb8', toe: '#ff7aa8', heel: '#ff5f95', line: '#3da5ff', emb: '#ffffff' } },
+  { id: 'gold', n: 'ゴールド', cost: 0, secret: true, cut: 'mid', pat: 'metal', cols: ['#fff2a8', '#e0a91c', '#9a6a05'], up: '#e0a91c', toe: '#f3cc4a', heel: '#b98410', line: '#fff6c2', lace: '#ffffff', sole: '#ffffff', out: '#e0a91c', lining: '#fff2a8', emb: '#ffffff' },
+];

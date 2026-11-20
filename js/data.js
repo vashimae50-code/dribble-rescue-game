@@ -284,6 +284,52 @@ export const SUITS = [
   { id: 'cy', n: 'シアン', cost: 0, c: '#3df5ff' }, { id: 'mg', n: 'マゼンタ', cost: 100, c: '#ff3df0' }, { id: 'gr', n: 'グリーン', cost: 100, c: '#4dff88' },
   { id: 'or', n: 'オレンジ', cost: 150, c: '#ffb13d' }, { id: 'wh', n: 'ホワイト', cost: 200, c: '#ffffff' }, { id: 'rd', n: 'レッド', cost: 200, c: '#ff4d4d' },
 ];
+// ---------- バッシュ ----------
+// ショップの 絵は js/shoes.js が この データから かく。じっさいに ある いろの くみあわせを さんこうに した オリジナル（ロゴなし）
+// ゲーム中は 左右それぞれ up（ほんたい）・sole（ソール）・line（ライン）の 3色だけ つかう。L / R は 左足・右足の うわがき
+// native：その キャラの もとの くつの まま（色を かえない）。secret：ショップに ならばない（ぜんぶ あつめると もらえる）
+export const SHOES = [
+  { id: 'std', n: 'スタンダード', cost: 0, native: true, cut: 'mid', up: '#1a3a8f', toe: '#14275e', heel: '#14275e', line: '#ffd21f', lace: '#ffffff', sole: '#ffffff', out: '#14275e', lining: '#ffd21f' },
+  { id: 'lime', n: 'ネオンライム', cost: 100, cut: 'low', pat: 'knit', up: '#c6f52a', toe: '#b9ec1c', heel: '#a8db12', line: '#e9ff8a', lace: '#b2e41a', sole: '#d2fa3a', out: '#93c40e', lining: '#e9ff9a', tab: '#ff8a2a', emb: '#e9ff8a' },
+  { id: 'sakura', n: 'さくらピンク', cost: 120, cut: 'low', up: '#f7c1cc', toe: '#ec97aa', heel: '#e2728c', line: '#fff1f4', lace: '#ec97aa', sole: '#f9d3db', out: '#e2728c', lining: '#fff1f4' },
+  { id: 'panda', n: 'パンダ', cost: 150, cut: 'high', up: '#ffffff', toe: '#17171c', heel: '#17171c', line: '#17171c', lace: '#17171c', sole: '#ffffff', out: '#17171c', lining: '#17171c', emb: '#ffffff' },
+  { id: 'redblk', n: 'レッド×ブラック', cost: 180, cut: 'low', pat: 'gloss', up: '#17171c', toe: '#d81e2a', heel: '#d81e2a', line: '#d81e2a', lace: '#17171c', sole: '#ffffff', out: '#d81e2a', lining: '#d81e2a', tab: '#d81e2a' },
+  { id: 'allred', n: 'オールレッド', cost: 180, cut: 'mid', pat: 'knit', up: '#ea3a2e', toe: '#e2322a', heel: '#cf2a22', line: '#ea3a2e', lace: '#ea3a2e', sole: '#ea3a2e', out: '#c42820', lining: '#ffb04a', emb: '#17171c', embLine: '#ffb04a', stripe: 'none' },
+  { id: 'classic', n: 'クラシックホワイト', cost: 200, cut: 'high', stripe: 'double', up: '#fbfbfb', toe: '#fbfbfb', heel: '#f2f2f2', line: '#17171c', lace: '#ffffff', sole: '#f2ead6', out: '#e6dbbf', lining: '#ffffff', emb: '#ffffff', tab: '#ffffff' },
+  { id: 'royal', n: 'ロイヤルブルー', cost: 220, cut: 'low', up: '#2d5fd0', toe: '#3d72e0', heel: '#1d3f99', line: '#9cc0ff', lace: '#2d5fd0', sole: '#2d5fd0', out: '#1d3f99', lining: '#9cc0ff', emb: '#dfe6f2', window: '#cfd8e8' },
+  { id: 'fire', n: 'ファイヤー', cost: 300, cut: 'mid', pat: 'fire', cols: ['#e8222b', '#ff7a1a', '#ffd21f'], up: '#17171c', toe: '#17171c', heel: '#17171c', line: '#17171c', lace: '#e8222b', sole: '#e8222b', out: '#b5121b', lining: '#e8222b', stripe: 'none', emb: '#ffd21f', tab: '#ffd21f' },
+  { id: 'confetti', n: 'コンフェッティ', cost: 320, cut: 'low', pat: 'dots', cols: ['#ff5fa8', '#ffd21f', '#3dc7ff', '#ffffff', '#c58cff'], up: '#6a2f80', toe: '#7c3a92', heel: '#3a1a48', line: '#3a1a48', lace: '#5a2670', sole: '#ffffff', out: '#17171c', lining: '#ff5fa8', emb: '#ffffff', window: '#17171c' },
+  { id: 'splash', n: 'ペイントスプラッシュ', cost: 380, cut: 'low', pat: 'splash', cols: ['#ff4d6d', '#ffb13d', '#ffe94d', '#4dd98a', '#3db8ff', '#9b5cff'], up: '#ffffff', toe: '#ffffff', heel: '#17171c', line: '#17171c', lace: '#dddddd', sole: '#ffffff', out: '#3d6fd6', lining: '#ffffff', stripe: 'none', emb: '#ffffff', window: '#17171c' },
+  { id: 'lrRB', n: 'ひだりみぎ レッド／ブルー', cost: 420, cut: 'low',
+    L: { up: '#d8242c', toe: '#c41e26', heel: '#a3141b', line: '#ff7a7a', lace: '#d8242c', sole: '#c41e26', out: '#8a1016', lining: '#ffffff', emb: '#ffffff' },
+    R: { up: '#3a6fd8', toe: '#4b80e6', heel: '#2a55b0', line: '#9cc8ff', lace: '#cfe3ff', sole: '#7fb6ff', out: '#2a55b0', lining: '#9cc8ff', emb: '#ffffff' } },
+  { id: 'lrLP', n: 'ひだりみぎ ライム／ピンク', cost: 450, cut: 'low', pat: 'knit', lace: '#3da5ff', sole: '#bfe3ff', solePat: 'ice', out: '#8cc8ff', lining: '#3da5ff', tab: '#3da5ff', stripe: 'wave',
+    L: { up: '#e9f53a', toe: '#dcee22', heel: '#c9dc14', line: '#3da5ff', emb: '#ffffff' },
+    R: { up: '#ff8fb8', toe: '#ff7aa8', heel: '#ff5f95', line: '#3da5ff', emb: '#ffffff' } },
+  { id: 'gold', n: 'ゴールド', cost: 0, secret: true, cut: 'mid', pat: 'metal', cols: ['#fff2a8', '#e0a91c', '#9a6a05'], up: '#e0a91c', toe: '#f3cc4a', heel: '#b98410', line: '#fff6c2', lace: '#ffffff', sole: '#ffffff', out: '#e0a91c', lining: '#fff2a8', emb: '#ffffff' },
+];
+export const SHOP_SHOES = SHOES.filter((s) => !s.secret);
+// バッシュを ぜんぶ あつめたら ひみつの ゴールドを あげる（あげたら true）
+export function shoeComplete(p) { if (p.shoes.includes('gold')) return false; if (SHOP_SHOES.every((s) => p.shoes.includes(s.id))) { p.shoes.push('gold'); return true; } return false; }
+// ふるい セーブには バッシュが ないので たす
+export function ensureShoes(p) { if (!Array.isArray(p.shoes)) p.shoes = ['std']; if (!p.shoe) p.shoe = 'std'; }
+// ゲーム中の くつの 色（左右べつ）。null は もとの くつの まま
+export function shoePaint(s, side) { if (!s || s.native) return null; const c = { ...s, ...(s[side] || {}) }; return { up: c.up, sole: c.sole, line: c.line }; }
+// かう・つかう（ボール・オーラ・バッシュ きょうつう）。save() は よぶ がわで
+const SHOP_KINDS = { ball: { list: () => BALLS, own: 'balls', done: () => ballComplete }, suit: { list: () => SUITS, own: 'suits' }, shoe: { list: () => SHOES, own: 'shoes', done: () => shoeComplete } };
+export function buyItem(p, kind, id) {
+  const k = SHOP_KINDS[kind]; const it = k && k.list().find((x) => x.id === id); if (!it) return { ok: false, reason: 'none' };
+  if (kind === 'shoe') ensureShoes(p);
+  const own = p[k.own]; let bought = false, completed;
+  if (!own.includes(it.id)) {
+    if (it.secret) return { ok: false, reason: 'secret' };
+    if (p.coins < it.cost) return { ok: false, reason: 'coins' };
+    p.coins -= it.cost; own.push(it.id); bought = true;
+    if (k.done && k.done()(p)) completed = kind;
+  }
+  p[kind] = it.id; if (completed) checkTitles(p); // ほかの しょうごうは つぎの リザルトで おしらせ する
+  return completed ? { ok: true, bought, completed } : { ok: true, bought };
+}
 export const CAPSULE_COST = 60;
 // '@hero1'〜 は イラストの かお（img/avatar/）。それいがいは 絵文字
 export const avHTML = (a) => { if (a === '🦸') a = '@hero1'; return a && a[0] === '@' ? `<img class="avimg" src="img/avatar/${a.slice(1)}.jpg" alt="">` : a; };
@@ -322,13 +368,14 @@ export const today = () => { const d = new Date(); return `${d.getFullYear()}-${
 
 function newPlayer(name, avatar, rank = 1) {
   return { id: 'p' + Date.now().toString(36) + Math.floor(Math.random() * 1e4), name, avatar, rank, m: {}, coins: 0, friends: [], buddy: null,
-    balls: ['std'], ball: 'std', suits: ['cy'], suit: 'cy', stars: {}, best: {}, verified: {}, bossDone: {}, plays: 0, stamps: 0, tickets: 0, lastDay: '', day: null, tipIdx: {}, leftReps: 0, rightReps: 0, ls: {}, lv: rank };
+    balls: ['std'], ball: 'std', suits: ['cy'], suit: 'cy', shoes: ['std'], shoe: 'std', stars: {}, best: {}, verified: {}, bossDone: {}, plays: 0, stamps: 0, tickets: 0, lastDay: '', day: null, tipIdx: {}, leftReps: 0, rightReps: 0, ls: {}, lv: rank };
 }
 export function addPlayer(name, avatar, rank) { S.players = S.players.filter((x) => !(x.guest && x.plays === 0)); const p = newPlayer(name, avatar, rank); if (isGirlAvatar(avatar)) p.girl = true; S.players.push(p); S.current = p.id; save(); return p; }
 export function renamePlayer(p, name) { const n = (name || '').trim().slice(0, 10); if (!n) return false; p.name = n; delete p.guest; save(); return true; }
 export function player() {
   let p = S.players.find((x) => x.id === S.current) || S.players[0];
   if (!p) { p = newPlayer('プレイヤー', '@c1'); p.guest = true; S.players.push(p); }
+  ensureShoes(p);
   if (S.current !== p.id) { S.current = p.id; save(); }
   return p;
 }
@@ -408,6 +455,8 @@ export const TITLES = [
   { id: 'r3', i: '🥈', n: 'ちゅうきゅう ドリブラー', d: 'R3に とうたつ', ok: (p) => (p.rank || 1) >= 3 },
   { id: 'king', i: '👑', n: 'ドリブルキング', d: 'だいボスを たおす（エンディング）', ok: (p) => Object.keys(p.king || {}).length >= 1 },
   { id: 'king6', i: '🌟', n: 'しんの ドリブルキング', d: 'R1〜R6 ぜんぶの だいボスを たおす', ok: (p) => Object.keys(p.king || {}).length >= 6 },
+  { id: 'shoe5', i: '👟', n: 'スニーカーずき', d: 'バッシュを 5そく あつめる', ok: (p) => (p.shoes || []).length >= 5 },
+  { id: 'shoeall', i: '👑', n: 'バッシュマスター', d: 'バッシュを ぜんぶ あつめる', ok: (p) => (p.shoes || []).includes('gold') },
   { id: 'ballall', i: '💎', n: 'ボールマスター', d: 'ボールを ぜんぶ あつめる', ok: (p) => (p.balls || []).includes('diamond') },
   { id: 'rmax', i: '🏆', n: 'レジェンド', d: 'さいごの レベルに とうたつ', ok: (p) => (p.rank || 1) >= MAX_LV },
 ];
