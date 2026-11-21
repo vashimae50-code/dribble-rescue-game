@@ -215,7 +215,8 @@ export function createScene(canvas, o) {
       pPos[k * 3] = x; pPos[k * 3 + 1] = y; pPos[k * 3 + 2] = z; pVel[k * 3] = Math.cos(a) * q * s; pVel[k * 3 + 1] = u * s + 2; pVel[k * 3 + 2] = Math.sin(a) * q * s; pLife[k] = 0.6 + Math.random() * 0.6; pCol[k * 3] = tmpC.r; pCol[k * 3 + 1] = tmpC.g; pCol[k * 3 + 2] = tmpC.b; }
   }
 
-  let W = 1, H = 1; let laneX = 0; let fov = 60; let bossY = 9; let bossHit = 0; let camShake = 0;
+  // うしろの カメラの 高さ（1.5→1.9。低いと 足が 浮いて 見えた）。ためし用に ?camy=・?caml=（見る 高さ）で かえられる
+  const _cq = new URLSearchParams(location.search); const CAM_Y = +(_cq.get('camy') || 1.9), CAM_LOOK = +(_cq.get('caml') || 0); let W = 1, H = 1; let laneX = 0; let fov = 60; let bossY = 9; let bossHit = 0; let camShake = 0;
   const gcam = new THREE.PerspectiveCamera(30, 1, 0.1, 30); gcam.layers.set(1);
   const gfloor = new THREE.Mesh(new THREE.PlaneGeometry(40, 3), new THREE.MeshBasicMaterial({ color: 0x24347a, side: THREE.DoubleSide })); gfloor.rotation.x = -Math.PI / 2; gfloor.position.y = -0.005; gfloor.layers.set(1); scene.add(gfloor); disposables.push(gfloor.geometry, gfloor.material);
   const pipBall = new THREE.MeshBasicMaterial({ color: 0xff8a2a, side: THREE.DoubleSide }); disposables.push(pipBall);
@@ -320,8 +321,8 @@ export function createScene(canvas, o) {
     camShake = Math.max(st.shake || 0, camShake * 0.86);
     // カメラは 高さ 1.5m（1.2m から 少し 上げた）：プレイヤーの からだの うごきが 見えやすい ように（もとは 高さ 2.25m・うしろ 3.7m）。
     // 見おろす 角度は もとと 同じ（背景の 絵の 地平線 SCREEN_VP=0.42 と 3Dの 床が ずれない ように）
-    cam.position.set(laneX * 0.72 + (Math.random() - 0.5) * camShake * 0.2, 1.5 + Math.sin(beat * Math.PI) * 0.025 + (Math.random() - 0.5) * camShake * 0.2, portrait ? 4.67 : 3.2);
-    cam.lookAt(laneX * 0.85, portrait ? 0.46 : 0.45, -8);
+    cam.position.set(laneX * 0.72 + (Math.random() - 0.5) * camShake * 0.2, CAM_Y + Math.sin(beat * Math.PI) * 0.025 + (Math.random() - 0.5) * camShake * 0.2, portrait ? 4.67 : 3.2);
+    cam.lookAt(laneX * 0.85, (portrait ? 0.46 : 0.45) + CAM_LOOK, -8);
     if (composer) composer.render(); else renderer.render(scene, cam);
     // うごきガイド：同じ人を 正面から（かがみのように 左右そのまま）うつす。もとの モデルは かげ絵、色つきの モデルは 色の まま
     if (st.pip && human) {
