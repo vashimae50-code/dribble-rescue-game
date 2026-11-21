@@ -333,9 +333,11 @@ export function createScene(canvas, o) {
         // Both render the same skeleton pose, so posture differences are visible.
         // Keep both figures fully visible: side profile shifted left and front view given more room.
         const sideWidth = Math.floor(p.w * 0.44);
+        // 背の 高い キャラ（大ボスを 主人公に した とき など）は、その ぶん カメラを 引いて 頭まで 入れる（主人公 8人の 高さ 1.572 が 基準）
+        const gk = Math.max(1, (human.height || 1.572) / 1.572); if (gk > 1) gfloor.scale.y = Math.max(gfloor.scale.y, 4 * gk); // 引いた ぶん ゆかも ひろげる
         const views = [
-          { x: p.x, w: sideWidth, eye: [laneX + 5.1, 1.15, -0.38], target: [laneX, 0.95, -0.38] },
-          { x: p.x + sideWidth, w: p.w - sideWidth, eye: [laneX - 0.08, 1.15, -5.1], target: [laneX - 0.08, 0.95, 0] }
+          { x: p.x, w: sideWidth, eye: [laneX + 5.1 * gk, 1.15 * gk, -0.38], target: [laneX, 0.95 * gk, -0.38] },
+          { x: p.x + sideWidth, w: p.w - sideWidth, eye: [laneX - 0.08, 1.15 * gk, -5.1 * gk], target: [laneX - 0.08, 0.95 * gk, 0] }
         ];
         for (const view of views) {
           gcam.position.set(...view.eye); gcam.lookAt(...view.target);
