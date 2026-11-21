@@ -215,8 +215,8 @@ export function createScene(canvas, o) {
       pPos[k * 3] = x; pPos[k * 3 + 1] = y; pPos[k * 3 + 2] = z; pVel[k * 3] = Math.cos(a) * q * s; pVel[k * 3 + 1] = u * s + 2; pVel[k * 3 + 2] = Math.sin(a) * q * s; pLife[k] = 0.6 + Math.random() * 0.6; pCol[k * 3] = tmpC.r; pCol[k * 3 + 1] = tmpC.g; pCol[k * 3 + 2] = tmpC.b; }
   }
 
-  // うしろの カメラの 高さ（1.5→1.9。低いと 足が 浮いて 見えた）。ためし用に ?camy=・?caml=（見る 高さ）で かえられる
-  const _cq = new URLSearchParams(location.search); const CAM_Y = +(_cq.get('camy') || 1.9), CAM_LOOK = +(_cq.get('caml') || 0); let W = 1, H = 1; let laneX = 0; let fov = 60; let bossY = 9; let bossHit = 0; let camShake = 0;
+  // うしろの カメラの 高さ（1.5→2.1。低いと 足が 浮いて 見えた）。ためし用に ?camy=・?caml=（見る 高さ）で かえられる
+  const _cq = new URLSearchParams(location.search); const CAM_Y = +(_cq.get('camy') || 2.1), CAM_LOOK = +(_cq.get('caml') || 0); let W = 1, H = 1; let laneX = 0; let fov = 60; let bossY = 9; let bossHit = 0; let camShake = 0;
   const gcam = new THREE.PerspectiveCamera(30, 1, 0.1, 30); gcam.layers.set(1);
   const gfloor = new THREE.Mesh(new THREE.PlaneGeometry(40, 3), new THREE.MeshBasicMaterial({ color: 0x24347a, side: THREE.DoubleSide })); gfloor.rotation.x = -Math.PI / 2; gfloor.position.y = -0.005; gfloor.layers.set(1); scene.add(gfloor); disposables.push(gfloor.geometry, gfloor.material);
   const pipBall = new THREE.MeshBasicMaterial({ color: 0xff8a2a, side: THREE.DoubleSide }); disposables.push(pipBall);
