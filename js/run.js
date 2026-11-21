@@ -397,16 +397,17 @@ export function runStage(opts) {
       txt(`💡 ${sk.tips[(tipBase + dojoSets.indexOf(set || dojoSets[0])) % sk.tips.length]}`, cx, pad * 0.6 + fs * 2.3, Math.min(fs * 0.95, W / 22), '#fff');
     }
     if (c && phase !== 'count' && phase !== 'rescue') {
-      const r = clamp(Math.min(W, H) * (tall ? 0.17 : 0.21), 50 * DPR, 190 * DPR); const gx = W - pad - r, gy = H - pad - r - fs * 1.5;
-      pipRect = { x: (gx - r) / DPR, y: (gy - r) / DPR, w: (2 * r) / DPR, h: (2 * r) / DPR };
-      g.strokeStyle = SKILLS[c.skill].c; g.lineWidth = Math.max(3, r * 0.04); g.strokeRect(gx - r, gy - r, 2 * r, 2 * r);
+      // お手本の 小まどは 横長（よこ 2つの 絵：よこから・まえから）。うしろで ふる など よこに ひろがる 技も きれないように
+      const r = clamp(Math.min(W, H) * (tall ? 0.17 : 0.21), 50 * DPR, 190 * DPR); const rw = Math.min(r * 1.45, (W - 2 * pad) * 0.36); const gx = W - pad - rw, gy = H - pad - r - fs * 1.5;
+      pipRect = { x: (gx - rw) / DPR, y: (gy - r) / DPR, w: (2 * rw) / DPR, h: (2 * r) / DPR };
+      g.strokeStyle = SKILLS[c.skill].c; g.lineWidth = Math.max(3, r * 0.04); g.strokeRect(gx - rw, gy - r, 2 * rw, 2 * r);
       if (SKILLS[c.skill].lane || c.skill === 'back' || c.skill === 'fast' || c.skill === 'drive') drawArrows(c, gx, gy - r * 0.78, r, beat);
-      if (c.b1 - c.b0 >= 2) { const pr = clamp((beat - c.b0) / (c.b1 - c.b0), 0, 1); pill(gx - r, gy + r + 4 * DPR, 2 * r * pr, 5 * DPR, SKILLS[c.skill].c, 0.95); }
+      if (c.b1 - c.b0 >= 2) { const pr = clamp((beat - c.b0) / (c.b1 - c.b0), 0, 1); pill(gx - rw, gy + r + 4 * DPR, 2 * rw * pr, 5 * DPR, SKILLS[c.skill].c, 0.95); }
       // The current technique belongs above the two-view demonstration, like the 'つぎ' label.
       const s = cueLabel(c);
-      const labelSize = Math.min(fs * 0.95, (2 * r) / Math.max(5, s.length) * 1.55);
+      const labelSize = Math.min(fs * 0.95, (2 * rw) / Math.max(5, s.length) * 1.55);
       txt(s, gx, gy - r - fs * 0.55, labelSize, SKILLS[c.skill].c);
-      if (next && next.skill !== 'rest') { const rem = next.b0 - beat; if (rem <= 4 && rem > 0) { const r2 = r * 0.56; const nx = gx - r - r2 - 10 * DPR, ny = gy + r - r2; g.globalAlpha = 0.9; drawGlyph(next, nx, ny, r2, next.b0 + frac(beat) + Math.floor(beat) % 2, 0.9); g.globalAlpha = 1; txt(`つぎ ${Math.ceil(rem)}`, nx, ny - r2 - fs * 0.5, fs * 0.7, SKILLS[next.skill].c); } }
+      if (next && next.skill !== 'rest') { const rem = next.b0 - beat; if (rem <= 4 && rem > 0) { const r2 = r * 0.56; const nx = gx - rw - r2 - 10 * DPR, ny = gy + r - r2; g.globalAlpha = 0.9; drawGlyph(next, nx, ny, r2, next.b0 + frac(beat) + Math.floor(beat) % 2, 0.9); g.globalAlpha = 1; txt(`つぎ ${Math.ceil(rem)}`, nx, ny - r2 - fs * 0.5, fs * 0.7, SKILLS[next.skill].c); } }
     }
     if (cam) { const ok = allF ? trackedF / allF : 0; txt(ok > 0.5 ? '📷 OK' : '📷 からだを うつしてね', W - pad, H - pad - fs * 0.5, fs * 0.6, ok > 0.5 ? '#7dffb0' : '#ffe03d', 'right'); }
     // ボスへの ショットとビーム
