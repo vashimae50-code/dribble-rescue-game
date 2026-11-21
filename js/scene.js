@@ -334,7 +334,7 @@ export function createScene(canvas, o) {
         // Diagnostic guide: left panel = side profile, right panel = front profile.
         // Both render the same skeleton pose, so posture differences are visible.
         // Keep both figures fully visible: side profile shifted left and front view given more room.
-        const sideWidth = Math.floor(p.w * 0.44);
+        const sideWidth = Math.floor(p.w * 0.5); // よこから の 絵も 半分 つかう（小まどを 横長に した）
         // 背の 高い キャラ（大ボスを 主人公に した とき など）は、その ぶん カメラを 引いて 頭まで 入れる（主人公 8人の 高さ 1.572 が 基準）
         const gk = Math.max(1, (human.height || 1.572) / 1.572); if (gk > 1) gfloor.scale.y = Math.max(gfloor.scale.y, 4 * gk); // 引いた ぶん ゆかも ひろげる
         const views = [
