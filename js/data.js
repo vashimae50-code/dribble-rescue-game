@@ -345,7 +345,7 @@ export const MAX_LV = 6;
 // R1〜R6 の だいボスに 1人ずつ。W1〜W5 の ボスは R1〜R5 と 同じ キャラ（ワールドごとに きまった ボス）。R6 は だいボスだけ
 // ファイル：models/foes/boss-rN.glb（3D）、img/avatar/boss-rN.jpg（ずかんの 絵）。届いたら ready を true に する
 // 名前は かり（W1〜W5 の ボスの 名前。R6 は だいボス）
-export const BOSS_CHARS = [1, 2, 3, 4, 5, 6].map((L) => ({ id: `boss-r${L}`, L, n: L <= 5 ? WORLDS[L - 1].boss : 'だいボス', world: L <= 5 ? L - 1 : null, ready: false }));
+export const BOSS_CHARS = [1, 2, 3, 4, 5, 6].map((L) => ({ id: `boss-r${L}`, L, n: L <= 5 ? WORLDS[L - 1].boss : 'だいボス', world: L <= 5 ? L - 1 : null, ready: true }));
 export const bossForWorld = (wi) => BOSS_CHARS.find((b) => b.world === wi) || null;
 export const bossForLevel = (L) => BOSS_CHARS.find((b) => b.L === L) || null;
 // つかえる：レベル L の だいボスを たおした、かつ いまの レベルが L+1 いじょう（R6 の ボスは たおしたら すぐ）
