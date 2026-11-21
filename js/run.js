@@ -318,7 +318,7 @@ export function runStage(opts) {
       if (sk.two === 'v') { const v = Math.cos(Math.PI * b); return { x: -0.6 - 0.4 * Math.abs(v), h: a, x2: 0.6 + 0.4 * Math.abs(v), h2: a, both: true }; }
       return { x: -1, h: a, x2: 1, h2: a, both: true };
     }
-    if (sk.semi) { const a = Math.PI / 2 * (1 - Math.cos(Math.PI * cb / 2)); return { x: hs * (0.45 + 0.5 * Math.sin(a)), h: Math.abs(Math.sin(Math.PI * cb)) * 0.7, same: hs }; }
+    if (sk.semi) { const up = Math.abs(Math.sin(Math.PI * cb)); return { x: hs * (0.75 - 0.2 * up), h: up * 0.7, same: hs }; } // あしの そと・まえで つき、上で すこし うちがわ
     if (sk.vmove) { const c2 = Math.cos(Math.PI * cb); return sk.vmove === 'side' ? { x: hs, h: Math.abs(c2) * 0.75 } : { x: hs * (0.05 + 0.95 * (c2 + 1) / 2), h: Math.abs(c2) * 0.75, same: hs }; } // かたて：まんなかまで
     if (c.hand === 'alt' || c.hand === 'alt1') { const k = c.hand === 'alt1' ? Math.min(1, Math.max(0, cb)) : cb * (sk.quick || 1); const s0 = c.hand0 === 'L' ? -1 : 1; if (c.hand === 'alt1' && cb >= 1) return { x: -s0, h: Math.abs(Math.sin(Math.PI * bph)) }; return { x: Math.cos(Math.PI * k) * s0, h: Math.abs(Math.cos(Math.PI * k)) * 0.75 }; }
     if (sk.inout) return { x: hs * (1 - 0.75 * Math.sin(Math.PI * ph)), h: Math.abs(Math.sin(Math.PI * bph)) };

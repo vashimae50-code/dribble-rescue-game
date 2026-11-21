@@ -514,7 +514,8 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
       if (sk.combo === 'behind') { bz = -0.32 + 0.68 * w; twist = cs.x * 0.3 * w; }
       if (sk.combo === 'roll') { spinExtra = cs.n ? smooth(cs.chg) * Math.PI * 2 * cs.start : 0; bx = cs.x * 0.3; bz = -0.28; by = 0.13 + Math.abs(Math.sin(Math.PI * cb)) * (cs.n ? 0.3 : 0.6); }
     }
-    if (sk.semi) { const a = Math.PI / 2 * (1 - Math.cos(Math.PI * cb / 2)); crouch = 0.75; Wd = 0.3; stride = 0; guard = true; bx = hs * (0.16 + 0.32 * Math.sin(a)); bz = -0.06 - 0.36 * Math.cos(a); by = 0.13 + Math.abs(Math.sin(Math.PI * cb)) * 0.4; twist = hs * 0.3 * Math.max(0, -Math.cos(a)); }
+    // セミサークル：ボールを つく ところは あしの そと・まえ。手と ボールの とおりみちは 上に いくほど すこし うちがわ（はんえん）。うしろには いかない
+    if (sk.semi) { const up = Math.abs(Math.sin(Math.PI * cb)); crouch = 0.75; Wd = 0.3; stride = 0; guard = true; bx = hs * (0.46 - 0.12 * up); bz = -0.34 - 0.04 * up; by = 0.13 + up * 0.4; }
     if (cue && cue.hand === 'two') { twoHands = true; stride = 0; Wd = 0.3; const m = sk.low ? 2 : 1; const amp2 = sk.high ? 0.95 : sk.low ? 0.24 : 0.55; crouch = sk.low ? 0.95 : sk.high ? 0.2 : 0.62;
       const p1 = Math.abs(Math.sin(Math.PI * cb * m)); let p2 = sk.two === 'alt' ? Math.abs(Math.cos(Math.PI * cb)) : p1; let x1 = 0.42, x2 = -0.42;
       if (sk.two === 'v') { const c = Math.cos(Math.PI * cb); x1 = 0.42 + 0.17 * c; x2 = -0.42 - 0.17 * c; p2 = Math.abs(c) * 0.8; bx = x1; by = 0.13 + Math.abs(c) * 0.8 * amp2; }
