@@ -12,10 +12,13 @@ export async function makeCode() {
   return 'j' + b64u(u8);
 }
 export async function readCode(code) {
-  code = String(code || '').trim().replace(/^.*#move=/, ''); const t = code[0]; let u8 = unb64u(code.slice(1));
+  code = String(code || '').trim().replace(/^.*[#?&]move=/, '').replace(/[&#].*$/, ''); const t = code[0]; let u8 = unb64u(code.slice(1));
   if (t === 'z') u8 = await pipe(u8, DecompressionStream); else if (t !== 'j') throw new Error('code');
   const o = JSON.parse(new TextDecoder().decode(u8)); const s = JSON.parse(o[KEYS[0]] || 'null');
   if (!s || !Array.isArray(s.players)) throw new Error('code'); return { o, s };
 }
 export function applyCode(o) { for (const k of KEYS) if (o[k]) localStorage.setItem(k, o[k]); }
-export async function moveUrl() { return PAGES + '?openExternalBrowser=1#move=' + (await makeCode()); }
+// データは # の うしろでは なく ?move= に 入れる（LINE から Safari へ わたす ときに # より うしろが おちる ことが ある ため）
+export async function moveUrl() { return PAGES + '?openExternalBrowser=1&move=' + (await makeCode()); }
+// ひらいた URL の ひっこしデータ（?move= と、むかしの #move= の どちらでも）
+export function codeFromUrl() { try { const q = new URLSearchParams(location.search).get('move'); if (q) return q; } catch (e) { /* noop */ } return location.hash.startsWith('#move=') ? location.hash.slice(6) : null; }
