@@ -460,5 +460,5 @@ async function moveIn(code) {
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden && game && !videoMode) game.pause(); });
 window.__game = () => game;
-if (location.hash.startsWith('#move=')) moveIn(location.hash.slice(6)); else who();
+{ const mv = MV.codeFromUrl(); if (mv) moveIn(mv); else who(); }
 preloadStage(null, null, !!player().girl); // プレイヤーの 絵は さいしょに 読みこんでおく
