@@ -1,6 +1,7 @@
 // ドリバト！（めざせ！ドリブルキング） 3Dの世界（three.js）
 import * as THREE from '../vendor/three.module.min.js';
-import { SKILLS, shoePaint } from './data.js';
+import { SKILLS, shoePaint, MID_FACES, DEF_FACES } from './data.js';
+const pickOf = (a) => a[Math.floor(Math.random() * a.length)];
 import { ballCanvas } from './balls.js';
 import { makeHuman } from './character.js';
 import { buildEnv } from './env.js';
@@ -70,7 +71,7 @@ export function createScene(canvas, o) {
   const defs = o.human ? [mkFoe('#d9263c', 23, '#ffe03d'), mkFoe('#d9263c', 11, '#ffe03d'), mkFoe('#2a3a7a', 15, '#ffe03d'), mkFoe('#2a3a7a', 8, '#ffe03d')] : [];
   const rival = o.human ? mkFoe('#d9263c', 4, '#ffe03d') : null;
   // ボス：ボスキャラの 3D（o.bossHuman）が あれば それ（ユニフォーム・顔は モデルの まま）。なければ 旧モデル（だいボスは 金と 黒）
-  const bossH = o.human ? (o.bossHuman ? (() => { const h = makeHuman(o.bossHuman, '#1c2450', { num: 99, guide: false }); h.root.visible = false; scene.add(h.root); return h; })() : mkFoe(o.king ? '#3a2600' : '#1c2450', 99, '#ffe03d')) : null;
+  const bossH = o.human ? (o.bossHuman ? (() => { const h = makeHuman(o.bossHuman, '#1c2450', { num: 99, guide: false }); h.root.visible = false; scene.add(h.root); return h; })() : mkFoe(o.bossChar ? o.bossChar.color : o.king ? '#3a2600' : '#1c2450', 99, o.bossChar ? o.bossChar.trim : '#ffe03d')) : null;
   const midH = o.human ? mkFoe('#d9263c', 5, '#ffe03d') : null; if (midH) midH.root.visible = false; // ちゅうボス（大きな ディフェンス）
   const P = human ? human.root : new THREE.Group(); scene.add(P);
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.55, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.5 })); shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.012; scene.add(shadow); disposables.push(shadow.geometry, shadow.material);
@@ -282,7 +283,7 @@ export function createScene(canvas, o) {
       if (c._robots) for (const slot of c._robots) { if (!slot.guard) continue; const r = slot.r; const pre = st.cues[st.cues.indexOf(c) - 1]; const fake = pre && pre.skill === 'jab' && beat >= pre.b0 ? -(c.dir || 1) : 0; r.rotation.z = lerp(r.rotation.z, -fake * 0.35, 0.1); r.position.x = lerp(r.position.x, c.lane0 * LW + fake * 0.7, 0.08); if (d < 0.5 && !human) { r.rotation.y += dt * 12; r.position.y += dt * 4; } }
     }
     if (defs.length) { const gs = []; for (const [c, gp] of gates) if (c._robots && gp.position.z < 1.5 && gp.position.z > -70) for (const slot of c._robots) gs.push([slot, gp]); gs.sort((a, b) => b[1].position.z - a[1].position.z);
-      defs.forEach((h, i) => { const it = gs[i]; h.root.visible = !!it; if (!it) return; const r = it[0].r; if (h._slot !== it[0]) { h._slot = it[0]; if (it[0].face == null) it[0].face = Math.floor(Math.random() * 50); h.setFace(faceAtlas, it[0].face); } h.root.position.set(r.position.x, 0, it[1].position.z + r.position.z); h.root.rotation.set(0, Math.PI, r.rotation.z * 0.6); h.animate({ dt, beat: beat + i * 0.5, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); }); }
+      defs.forEach((h, i) => { const it = gs[i]; h.root.visible = !!it; if (!it) return; const r = it[0].r; if (h._slot !== it[0]) { h._slot = it[0]; if (it[0].face == null) it[0].face = pickOf(DEF_FACES); /* ディフェンスは 大ボス・中ボス いがいの 顔 */ h.setFace(faceAtlas, it[0].face); } h.root.position.set(r.position.x, 0, it[1].position.z + r.position.z); h.root.rotation.set(0, Math.PI, r.rotation.z * 0.6); h.animate({ dt, beat: beat + i * 0.5, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); }); }
     for (const [c, gp] of gates) if (!live.has(c)) { scene.remove(gp); (gp.userData.mats || []).forEach((m) => m.dispose()); (gp.userData.drones || []).forEach((dr) => dr.userData.mat.dispose()); gates.delete(c); }
     // オーブ
     let n = 0;
@@ -293,7 +294,7 @@ export function createScene(canvas, o) {
     // ボス
     // ちゅうボス：プレイヤーの まえに 大きな ディフェンス。たおれたら ちぢんで きえる
     if (midH) { const m = st.mid; midH.root.visible = !!(m && m.on && !m.gone);
-      if (midH.root.visible) { if (!midH._face && faceAtlas) { midH._face = true; midH.setFace(faceAtlas, Math.floor(Math.random() * 50)); }
+      if (midH.root.visible) { if (!midH._face && faceAtlas) { midH._face = true; midH.setFace(faceAtlas, pickOf(MID_FACES)); /* 中ボスは えらんだ 14人 */ }
         const hit = m.hit || 0; const sc = m.dead ? Math.max(0.01, midH.root.scale.x * (1 - dt * 3)) : 1.75; midH.root.scale.setScalar(sc);
         midH.root.position.set(laneX + Math.sin(beat * 2.1) * 0.5 + (Math.random() - 0.5) * hit * 0.35, 0, -7.5); midH.root.rotation.set(m.dead ? -0.6 : 0, Math.PI, Math.sin(beat * 2.1) * 0.08);
         midH.animate({ dt, beat: beat * 1.2, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); } }
@@ -302,7 +303,7 @@ export function createScene(canvas, o) {
       boss.position.set(Math.sin(st.mbeat * 0.7) * 1.2 + (Math.random() - 0.5) * bossHit * 0.5, bossY + Math.sin(st.mbeat * 1.4) * 0.25, st.boss.finale ? -24 : -34);
       boss.userData.ring.rotation.x += dt * 1.2; boss.userData.ring.rotation.y += dt * 0.8; boss.rotation.y = Math.sin(st.mbeat * 0.5) * 0.3; boss.userData.eye.scale.setScalar(1 + bossHit * 0.5 + pulse * 0.15);
       boss.userData.eyeMat.color.set(bossHit > 0.3 ? 0xffffff : 0xff2d55); if (st.boss.dead) boss.scale.multiplyScalar(0.9); else boss.scale.setScalar(0.5);
-      if (bossH) { if (!bossH._face && faceAtlas && !o.bossHuman) { bossH._face = true; bossH.setFace(faceAtlas, Math.floor(Math.random() * 50)); } for (const ch of boss.children) if (!ch.isSprite) ch.visible = false; bossH.root.visible = boss.visible; if (st.boss.dead) bossH.root.scale.multiplyScalar(0.9); else bossH.root.scale.setScalar((st.boss.finale ? 4.6 : 6) * (o.king ? 1.3 : 1)); bossH.root.position.set(boss.position.x * 1.6, 0, boss.position.z); bossH.root.rotation.set(0, Math.PI, 0); bossH.animate({ dt, beat: beat * 0.5, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); }
+      if (bossH) { if (!bossH._face && faceAtlas && !o.bossHuman) { bossH._face = true; bossH.setFace(faceAtlas, o.bossChar ? o.bossChar.face : Math.floor(Math.random() * 50)); } /* 旧モデルの ボスは その ボスキャラの 顔 */ for (const ch of boss.children) if (!ch.isSprite) ch.visible = false; bossH.root.visible = boss.visible; if (st.boss.dead) bossH.root.scale.multiplyScalar(0.9); else bossH.root.scale.setScalar((st.boss.finale ? 4.6 : 6) * (o.king ? 1.3 : 1)); bossH.root.position.set(boss.position.x * 1.6, 0, boss.position.z); bossH.root.rotation.set(0, Math.PI, 0); bossH.animate({ dt, beat: beat * 0.5, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); }
     }
     // つぶ
     for (let i = 0; i < PN; i++) { if (pLife[i] <= 0) continue; pLife[i] -= dt; pVel[i * 3 + 1] -= 9 * dt; pPos[i * 3] += pVel[i * 3] * dt; pPos[i * 3 + 1] += pVel[i * 3 + 1] * dt; pPos[i * 3 + 2] += pVel[i * 3 + 2] * dt + (st.speed || 0) * dt * 6; if (pLife[i] <= 0) pPos[i * 3 + 1] = -50; }
@@ -313,7 +314,7 @@ export function createScene(canvas, o) {
     sGeo.attributes.position.needsUpdate = true;
     // 追っ手
     { const ch = st.chaser || 0; const hz = lerp(9, 2.6, Math.min(1, Math.max(0, (ch - 0.35) / 0.5))); hunter.position.set(laneX - 2.1 + Math.sin(st.mbeat * 1.7) * 0.25, 2.5 + Math.sin(st.mbeat * 2.3) * 0.15, lerp(hunter.position.z, hz, 0.05)); hunter.userData.ring.rotation.z += dt * 12; hunter.rotation.y = 0.5; hunterLight.position.copy(hunter.position); hunterLight.intensity = ch > 0.5 ? 20 + 20 * pulse : 0;
-      if (rival) { hunter.visible = false; const z = hunter.position.z; rival.root.visible = z < 5.2; rival.root.position.set(laneX - 1.35 + Math.sin(st.mbeat * 1.7) * 0.15, 0, z - 1.2); if (rival.root.visible) rival.animate({ dt, beat, cue: null, sk: SKILLS.rest, vx: 0, mode: 'chase' }); hunterLight.position.set(rival.root.position.x, 1.4, rival.root.position.z); } }
+      if (rival) { hunter.visible = false; if (!rival._face && faceAtlas) { rival._face = true; rival.setFace(faceAtlas, Math.floor(Math.random() * 50)); } /* おいかけて くる 相手は 50人から ランダム */ const z = hunter.position.z; rival.root.visible = z < 5.2; rival.root.position.set(laneX - 1.35 + Math.sin(st.mbeat * 1.7) * 0.15, 0, z - 1.2); if (rival.root.visible) rival.animate({ dt, beat, cue: null, sk: SKILLS.rest, vx: 0, mode: 'chase' }); hunterLight.position.set(rival.root.position.x, 1.4, rival.root.position.z); } }
     // カメラ
     fov = lerp(fov, spd > 1.2 ? 72 : spd < 0.3 ? 56 : 62, 1 - Math.exp(-dt * 4)); const portrait = cam.aspect < 1; cam.fov = fov + (portrait ? 22 : 0); cam.updateProjectionMatrix();
     camShake = Math.max(st.shake || 0, camShake * 0.86);
