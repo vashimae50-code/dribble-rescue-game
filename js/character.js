@@ -320,6 +320,8 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   root.updateMatrixWorld(true);
   const wp = (b) => b.getWorldPosition(V());
   const L = { up: wp(B.LeftUpLeg).distanceTo(wp(B.LeftLeg)), lo: wp(B.LeftLeg).distanceTo(wp(B.LeftFoot)), ua: wp(B.LeftArm).distanceTo(wp(B.LeftForeArm)), fa: wp(B.LeftForeArm).distanceTo(wp(B.LeftHand)) };
+  // あたまの 中心（首の つけね と あたまの てっぺんの あいだ）と、ボールまわし（あたま）の 半径（あたまの 大きさ＋ボール）
+  const headTopB = B.HeadTop_End || B['HeadTop_End']; const HEAD_UP = headTopB ? wp(B.Head).distanceTo(wp(headTopB)) : 0.3; const HEAD_R = Math.max(0.24, HEAD_UP * 0.55 + 0.12);
   const hipsBind = wp(B.Hips).y; const ankleH = wp(B.LeftFoot).y; const hipW = Math.abs(wp(B.LeftUpLeg).x);
   // 新モデル：床に ついている 足は 足うらを 床と 平行に たもつ（つま先が しずんだり 浮いたり しない）
   const flatQ = new Map(); if (nativeLook) { const rq0 = root.getWorldQuaternion(new THREE.Quaternion()).invert(); for (const f of [B.LeftFoot, B.RightFoot]) if (f) flatQ.set(f, rq0.clone().multiply(f.getWorldQuaternion(new THREE.Quaternion()))); }
@@ -452,7 +454,10 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   function preWorld(bone, qW) { bone.getWorldQuaternion(q2); q2.premultiply(qW); bone.parent.getWorldQuaternion(q3).invert(); bone.quaternion.copy(q3.multiply(q2)); bone.updateMatrixWorld(true); }
   function aim(bone, child, target) { bone.getWorldPosition(t1); child.getWorldPosition(t2); t2.sub(t1).normalize(); t3.copy(target).sub(t1).normalize(); q1.setFromUnitVectors(t2, t3); preWorld(bone, q1); }
   const ka = V(), kd = V(), kp = V(), kj = V();
+  const ks = V();
   function ik(b0, b1, b2, target, pole, l1, l2) {
+    // 骨の 長さ（l1・l2）は 大きさ 1 で はかった もの。ボス（root を 6倍などに する）でも 合うように、いまの 大きさを かける
+    const sc = root.getWorldScale(ks).y; l1 *= sc; l2 *= sc;
     b0.getWorldPosition(ka); kd.copy(target).sub(ka); let d = kd.length(); d = clamp(d, Math.abs(l1 - l2) + 0.01, l1 + l2 - 0.005); kd.normalize();
     const proj = (l1 * l1 + d * d - l2 * l2) / (2 * d); const h = Math.sqrt(Math.max(0, l1 * l1 - proj * proj));
     kp.copy(pole).addScaledVector(kd, -pole.dot(kd)).normalize(); kj.copy(ka).addScaledVector(kd, proj).addScaledVector(kp, h);
@@ -462,7 +467,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   const X = new THREE.Vector3(1, 0, 0), Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3(0, 0, 1);
 
   // なめらかに つなぐための 状態
-  const mkS = () => ({ fl: V().set(-0.2, 0, 0), fr: V().set(0.2, 0, 0), hl: V().set(-0.3, 0.9, -0.2), hr: V().set(0.3, 0.9, -0.2), hip: V().set(0, hipsBind, 0), pitch: 0.2, roll: 0, twist: 0, ball: V().set(0.4, 0.8, -0.3), ball2: V().set(-0.4, 0.8, -0.3), has2: false });
+  const mkS = () => ({ headC: V().set(0, wp(B.Head).y + HEAD_UP * 0.45, 0.02), fl: V().set(-0.2, 0, 0), fr: V().set(0.2, 0, 0), hl: V().set(-0.3, 0.9, -0.2), hr: V().set(0.3, 0.9, -0.2), hip: V().set(0, hipsBind, 0), pitch: 0.2, roll: 0, twist: 0, ball: V().set(0.4, 0.8, -0.3), ball2: V().set(-0.4, 0.8, -0.3), has2: false });
   const SM = mkS(), SG = mkS(); let S = SM;
   const T = { fl: V(), fr: V(), hl: V(), hr: V(), hip: V() };
   const w = V(), pole = V();
@@ -601,7 +606,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
       if (id === 'stance') { crouch = 0.75 + Math.sin(beat * Math.PI) * 0.05; }
       if (sk.handle) { handleMode = sk.handle; crouch = 0.45; pitch = 0.25; const hy = hipsBind - crouch * 0.24;
         if (sk.handle === 'wrap') { const th = cb * Math.PI; bx = Math.sin(th) * 0.33; bz = -Math.cos(th) * 0.27 + 0.02; by = hy + 0.02; both = false; handSide = bx >= 0 ? 1 : -1; if (Math.abs(bx) < 0.1) both = true; }
-        if (sk.handle === 'head') { const th = cb * Math.PI; crouch = 0.25; bx = Math.sin(th) * 0.24; bz = -Math.cos(th) * 0.24 + 0.02; by = hipsBind + 0.66; both = false; handSide = bx >= 0 ? 1 : -1; if (Math.abs(bx) < 0.08) both = true; }
+        if (sk.handle === 'head') { const th = cb * Math.PI; crouch = 0.25; const hc = S.headC; bx = hc.x + Math.sin(th) * HEAD_R; bz = hc.z - Math.cos(th) * HEAD_R; by = hc.y; /* あたまの まわり：いまの しせいの あたまの 中心（前の フレームで はかる）を まわる */ both = false; handSide = bx >= 0 ? 1 : -1; if (Math.abs(bx) < 0.08) both = true; }
         if (sk.handle === 'knees') { const th = cb * Math.PI; crouch = 1.0; pitch = 0.75; T.fl.x = -0.1; T.fr.x = 0.1; bx = Math.sin(th) * 0.3; bz = -Math.cos(th) * 0.28; by = 0.5; both = false; handSide = bx >= 0 ? 1 : -1; if (Math.abs(bx) < 0.1) both = true; }
         if (sk.handle === 'leg') { const side = Math.floor(cb / 4) % 2 ? -1 : 1; const th = cb * Math.PI * side; crouch = 1.0; pitch = 0.7; T.fl.x = -0.36; T.fr.x = 0.36; bx = side * 0.36 + Math.sin(th) * 0.22; bz = -Math.cos(th) * 0.24; by = 0.45; both = false; handSide = bx >= side * 0.36 ? 1 : -1; }
         if (sk.handle === 'eight') { const th = cb * Math.PI * 0.5; crouch = 1.0; pitch = 0.7; T.fl.x = -0.38; T.fr.x = 0.38; bx = Math.sin(th) * 0.5; bz = Math.sin(2 * th) * 0.24; by = 0.42; both = false; handSide = bx >= 0 ? 1 : -1; if (Math.abs(bx) < 0.08) both = true; }
@@ -681,6 +686,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     ik(B.LeftArm, B.LeftForeArm, B.LeftHand, toW(S.hl).clone(), dirW(-0.8, -0.3, behind ? -0.6 : 0.7), L.ua, L.fa);
     ik(B.RightArm, B.RightForeArm, B.RightHand, toW(S.hr).clone(), dirW(0.8, -0.3, behind ? -0.6 : 0.7), L.ua, L.fa);
     if (faceSp) { B.Head.getWorldPosition(t1); root.worldToLocal(t1); faceSp.position.copy(t1); }
+    { B.Head.getWorldPosition(t1); if (headTopB) t1.lerp(headTopB.getWorldPosition(t2), 0.45); else t1.y += HEAD_UP * 0.45 * root.getWorldScale(t2).y; root.worldToLocal(t1); S.headC.lerp(t1, 0.5); }
     if (clipSet) {
       const r = applyClip(S, st, id, hold, bph, bounce);
       // 片手で つく とき（両手・持つ・ハンドリング・2ボール・ディフェンスなどを のぞく）
