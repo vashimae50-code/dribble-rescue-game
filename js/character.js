@@ -28,7 +28,12 @@ export const PLAYER_MODELS = ['player-01', 'player-02', 'player-03', 'player-04'
 const MESHY_ANIMS = 'models/motions/dribble_r.glb';
 // ボスキャラ（R1〜R6 の だいボス。models/foes/。主人公 8人と 同じ 作りなので 同じ クリップ・IK を つかう）
 export const BOSS_MODELS = ['boss-r1', 'boss-r2', 'boss-r3', 'boss-r4', 'boss-r5', 'boss-r6'];
-const meshyFamily = (k) => k === 'meshy-v1' || PLAYER_MODELS.includes(k) || BOSS_MODELS.includes(k);
+// 相手（ディフェンス・中ボス・おいかけて くる 相手）の 3D：顔の 番号（img/faces2.png）と 同じ 番号の 人。models/foes/fNN.glb
+// 前橋さんの A ポーズの 絵から Meshy で 作った もの（No.1〜9 と 大ボスの 顔は なし）。ない 番号は いままでの 体＋顔
+export const FOE_FACES = [10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 47];
+const foeKey = (n) => 'foe-' + String(n).padStart(2, '0');
+const isFoeKey = (k) => /^foe-\d\d$/.test(k);
+const meshyFamily = (k) => k === 'meshy-v1' || PLAYER_MODELS.includes(k) || BOSS_MODELS.includes(k) || isFoeKey(k);
 // プレイヤーの かお（@c1〜@c8）から つかう モデル。?model= の 指定が あれば そちらが 先
 export function modelKeyFor(avatar) {
   if (new URLSearchParams(location.search).get('model')) return playerModelKey();
@@ -93,6 +98,7 @@ export async function loadHuman(key = playerModelKey(), opt = {}) {
   const files = { 'no7-v2': 'models/no7-v2.glb', 'no7-chibi': 'models/no7-chibi.glb', 'no7-meshy': 'models/no7-meshy.glb', 'meshy-v1': 'models/meshy-v1.glb' };
   for (const k of PLAYER_MODELS) files[k] = `models/players/${k}.glb`; // player-01＝meshy-v1 の テクスチャだけ 1024px に した かるい版（骨・アニメは 同じ）
   for (const k of BOSS_MODELS) files[k] = `models/foes/${k}.glb`;
+  for (const n of FOE_FACES) files[foeKey(n)] = `models/foes/f${String(n).padStart(2, '0')}.glb`;
   if (files[key]) {
     try {
       // Fixed same-origin path: no untrusted user-provided model URLs.
@@ -125,6 +131,8 @@ export async function loadHuman(key = playerModelKey(), opt = {}) {
 export function loadBossHuman(id) { return BOSS_MODELS.includes(id) ? loadHuman(id, { noFallback: true }) : Promise.resolve(null); }
 // 敵（ディフェンスなど）は いつも 旧モデル（ユニフォームの 色を かえて つかう）
 export function loadFoeHuman() { return loadLegacy(); }
+// 顔の 番号の 相手の 3D（なければ null）
+export function loadFoeModel(n) { return FOE_FACES.includes(n) ? loadHuman(foeKey(n), { noFallback: true }).catch(() => null) : Promise.resolve(null); }
 
 // ひな型から 1体ぶんを 作る（骨と メッシュを 新しく つなぎなおす）
 function cloneModel(src) {
@@ -592,7 +600,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     }
     // 敵（ディフェンス／おいかける）の うごき
     // ディフェンスの しせい：ひざを 深く おとし、足を 広く、うでを 大きく 広げる（本物の ディフェンスの かまえを イメージ）
-    if (st.mode === 'defend') { const sh = Math.sin(beat * Math.PI); crouch = 0.98; pitch = 0.38; T.fl.set(-0.46 + sh * 0.07, Math.max(0, sh) * 0.05, 0); T.fr.set(0.46 + sh * 0.07, Math.max(0, -sh) * 0.05, 0); hipX = sh * 0.06; rootY = 0; }
+    if (st.mode === 'defend') { const sh = Math.sin(beat * Math.PI); crouch = 0.66; pitch = 0.1; T.fl.set(-0.37 + sh * 0.05, Math.max(0, sh) * 0.04, 0.04); T.fr.set(0.37 + sh * 0.05, Math.max(0, -sh) * 0.04, -0.04); hipX = sh * 0.05; rootY = 0; } // ディフェンスの かまえ：足を ひろく、こしを おとして 上体は おこす
     if (st.mode === 'chase') { const phi = beat * Math.PI * 2; crouch = 0.5; pitch = 0.5; T.fl.set(-0.14, Math.max(0, Math.sin(phi)) * 0.2, 0.42 * Math.cos(phi)); T.fr.set(0.14, Math.max(0, -Math.sin(phi)) * 0.2, -0.42 * Math.cos(phi)); }
     // よこへの うごき（ステップ）
     const lat = Math.min(1, Math.abs(st.vx) / 2.2);
@@ -654,7 +662,8 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
       ? (S.hip.y + 0.03) * (1 - releasePhase) + (by + 0.14) * releasePhase
       : Math.max(by + 0.16, S.hip.y - (opt.practicePose ? 0.25 : 0.36));
     for (const [h, s] of [[T.hl, -1], [T.hr, 1]]) {
-      if (st.mode === 'defend') h.set(s * 0.76, S.hip.y + 0.44 + Math.sin(beat * Math.PI * 2 + s) * 0.16, -0.3);
+      if (st.mode === 'defend') { const up = s === (opt.defUp || 1), w = Math.sin(beat * Math.PI * 2 + s) * 0.04; // かたほうの 手は 上に（手のひらを 見せて）、もう かたほうは よこに ひろげる
+        if (up) h.set(s * 0.3, S.hip.y + 1.12 + w, -0.16); else h.set(s * 0.66, S.hip.y + 0.06 + w, -0.2); }
       else if (st.mode === 'chase') { const sw = Math.sin(beat * Math.PI * 2 + (s > 0 ? 0 : Math.PI)); h.set(s * 0.3, S.hip.y + 0.25 + Math.max(0, sw) * 0.15, -0.3 - sw * 0.25); }
       else if (twoHands) h.set(s > 0 ? two1x : S.ball2.x, Math.max((s > 0 ? by : S.ball2.y) + 0.13, S.hip.y - 0.36), -0.28);
       else if (both) h.set(bx + s * 0.13, by + 0.02, bz);

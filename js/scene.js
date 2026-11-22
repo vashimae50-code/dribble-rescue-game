@@ -3,7 +3,7 @@ import * as THREE from '../vendor/three.module.min.js';
 import { SKILLS, shoePaint, MID_FACES, DEF_FACES } from './data.js';
 const pickOf = (a) => a[Math.floor(Math.random() * a.length)];
 import { ballCanvas } from './balls.js';
-import { makeHuman } from './character.js';
+import { makeHuman, loadFoeModel, FOE_FACES } from './character.js';
 import { buildEnv } from './env.js';
 import { spritePose, SHEETS } from './sprite.js';
 import { spritePose7, SHEETS7 } from './sprite7.js';
@@ -73,6 +73,14 @@ export function createScene(canvas, o) {
   // ボス：ボスキャラの 3D（o.bossHuman）が あれば それ（ユニフォーム・顔は モデルの まま）。なければ 旧モデル（だいボスは 金と 黒）
   const bossH = o.human ? (o.bossHuman ? (() => { const h = makeHuman(o.bossHuman, '#1c2450', { num: 99, guide: false }); h.root.visible = false; scene.add(h.root); return h; })() : mkFoe(o.bossChar ? o.bossChar.color : o.king ? '#3a2600' : '#1c2450', 99, o.bossChar ? o.bossChar.trim : '#ffe03d')) : null;
   const midH = o.human ? mkFoe('#d9263c', 5, '#ffe03d') : null; if (midH) midH.root.visible = false; // ちゅうボス（大きな ディフェンス）
+  // 相手の 3D（顔の 番号の 人の 全身）。ステージごとに ディフェンス 6人・中ボス 1人・おいかけて くる 相手 1人を きめて 先に 読む（読めるまで・ない 番号は いままでの 体＋顔）
+  const has3D = (n) => FOE_FACES.includes(n); const shuffle = (a) => a.map((v) => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map((v) => v[1]);
+  const stageDef = shuffle(DEF_FACES.filter(has3D)).slice(0, 6), stageMid = pickOf(MID_FACES), stageRival = pickOf(stageDef.length ? stageDef : DEF_FACES);
+  const foeTpl = new Map(), foeInst = new Map();
+  if (o.human) for (const n of new Set([...stageDef, stageMid, stageRival])) if (has3D(n)) loadFoeModel(n).then((t) => { if (t) foeTpl.set(n, t); });
+  // 顔 n の 3Dの 人（slot ごとに 1人）。まだ 読めて いなければ null
+  const foe3D = (n, slot, opt) => { const t = foeTpl.get(n); if (!t) return null; const k = n + ':' + slot; let h = foeInst.get(k); if (!h) { h = makeHuman(t, '#d9263c', { guide: false, ...opt }); h.root.visible = false; scene.add(h.root); foeInst.set(k, h); } return h; };
+  const hideFoe3D = (slot, keep) => { for (const [k, h] of foeInst) if (k.endsWith(':' + slot) && h !== keep) h.root.visible = false; };
   const P = human ? human.root : new THREE.Group(); scene.add(P);
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.55, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.5 })); shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.012; scene.add(shadow); disposables.push(shadow.geometry, shadow.material);
   // 足元の オーラ：ショップで えらんだ いろ。そだつほど 大きく あかるく（ゆっくり みゃくうつ）
@@ -284,7 +292,10 @@ export function createScene(canvas, o) {
       if (c._robots) for (const slot of c._robots) { if (!slot.guard) continue; const r = slot.r; const pre = st.cues[st.cues.indexOf(c) - 1]; const fake = pre && pre.skill === 'jab' && beat >= pre.b0 ? -(c.dir || 1) : 0; r.rotation.z = lerp(r.rotation.z, -fake * 0.35, 0.1); r.position.x = lerp(r.position.x, c.lane0 * LW + fake * 0.7, 0.08); if (d < 0.5 && !human) { r.rotation.y += dt * 12; r.position.y += dt * 4; } }
     }
     if (defs.length) { const gs = []; for (const [c, gp] of gates) if (c._robots && gp.position.z < 1.5 && gp.position.z > -70) for (const slot of c._robots) gs.push([slot, gp]); gs.sort((a, b) => b[1].position.z - a[1].position.z);
-      defs.forEach((h, i) => { const it = gs[i]; h.root.visible = !!it; if (!it) return; const r = it[0].r; if (h._slot !== it[0]) { h._slot = it[0]; if (it[0].face == null) it[0].face = pickOf(DEF_FACES); /* ディフェンスは 大ボス・中ボス いがいの 顔 */ h.setFace(faceAtlas, it[0].face); } h.root.position.set(r.position.x, 0, it[1].position.z + r.position.z); h.root.rotation.set(0, Math.PI, r.rotation.z * 0.6); h.animate({ dt, beat: beat + i * 0.5, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); }); }
+      defs.forEach((h0, i) => { const it = gs[i]; const slot = 'd' + i; if (!it) { h0.root.visible = false; hideFoe3D(slot); return; } const r = it[0].r; if (it[0].face == null) it[0].face = pickOf(stageDef.length ? stageDef : DEF_FACES); /* ディフェンスは 大ボス・中ボス いがいの 顔（3Dの 人から） */
+        const h3 = foe3D(it[0].face, slot, { defUp: i % 2 ? -1 : 1 }); const h = h3 || h0; hideFoe3D(slot, h3); h0.root.visible = !h3; h.root.visible = true;
+        if (!h3 && h0._slot !== it[0]) { h0._slot = it[0]; h0.setFace(faceAtlas, it[0].face); }
+        h.root.position.set(r.position.x, 0, it[1].position.z + r.position.z); h.root.rotation.set(0, Math.PI, r.rotation.z * 0.6); h.animate({ dt, beat: beat + i * 0.5, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); }); }
     for (const [c, gp] of gates) if (!live.has(c)) { scene.remove(gp); (gp.userData.mats || []).forEach((m) => m.dispose()); (gp.userData.drones || []).forEach((dr) => dr.userData.mat.dispose()); gates.delete(c); }
     // オーブ
     let n = 0;
@@ -294,11 +305,11 @@ export function createScene(canvas, o) {
     orbs.count = halo.count = n; orbs.instanceMatrix.needsUpdate = halo.instanceMatrix.needsUpdate = true; if (orbs.instanceColor) orbs.instanceColor.needsUpdate = true; if (halo.instanceColor) halo.instanceColor.needsUpdate = true;
     // ボス
     // ちゅうボス：プレイヤーの まえに 大きな ディフェンス。たおれたら ちぢんで きえる
-    if (midH) { const m = st.mid; midH.root.visible = !!(m && m.on && !m.gone);
-      if (midH.root.visible) { if (!midH._face && faceAtlas) { midH._face = true; midH.setFace(faceAtlas, pickOf(MID_FACES)); /* 中ボスは えらんだ 14人 */ }
-        const hit = m.hit || 0; const sc = m.dead ? Math.max(0.01, midH.root.scale.x * (1 - dt * 3)) : 1.75; midH.root.scale.setScalar(sc);
-        midH.root.position.set(laneX + Math.sin(beat * 2.1) * 0.5 + (Math.random() - 0.5) * hit * 0.35, 0, -7.5); midH.root.rotation.set(m.dead ? -0.6 : 0, Math.PI, Math.sin(beat * 2.1) * 0.08);
-        midH.animate({ dt, beat: beat * 1.2, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); } }
+    if (midH) { const m = st.mid; const on = !!(m && m.on && !m.gone); const m3 = on ? foe3D(stageMid, 'mid') : null; const mh = m3 || midH; hideFoe3D('mid', m3); midH.root.visible = on && !m3; mh.root.visible = on; // 中ボスは えらんだ 14人（3Dの 人は 全身）
+      if (on) { if (!m3 && !midH._face && faceAtlas) { midH._face = true; midH.setFace(faceAtlas, stageMid); }
+        const hit = m.hit || 0; const sc = m.dead ? Math.max(0.01, mh.root.scale.x * (1 - dt * 3)) : 1.75; mh.root.scale.setScalar(sc);
+        mh.root.position.set(laneX + Math.sin(beat * 2.1) * 0.5 + (Math.random() - 0.5) * hit * 0.35, 0, -7.5); mh.root.rotation.set(m.dead ? -0.6 : 0, Math.PI, Math.sin(beat * 2.1) * 0.08);
+        mh.animate({ dt, beat: beat * 1.2, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); } }
     if (st.boss && st.boss.on) {
       boss.visible = !st.boss.gone; bossY = lerp(bossY, 2.3, 0.04); bossHit = Math.max(st.boss.hit || 0, bossHit - dt * 3);
       boss.position.set(Math.sin(st.mbeat * 0.7) * 1.2 + (Math.random() - 0.5) * bossHit * 0.5, bossY + Math.sin(st.mbeat * 1.4) * 0.25, st.boss.finale ? -24 : -34);
@@ -315,7 +326,7 @@ export function createScene(canvas, o) {
     sGeo.attributes.position.needsUpdate = true;
     // 追っ手
     { const ch = st.chaser || 0; const hz = lerp(9, 2.6, Math.min(1, Math.max(0, (ch - 0.35) / 0.5))); hunter.position.set(laneX - 2.1 + Math.sin(st.mbeat * 1.7) * 0.25, 2.5 + Math.sin(st.mbeat * 2.3) * 0.15, lerp(hunter.position.z, hz, 0.05)); hunter.userData.ring.rotation.z += dt * 12; hunter.rotation.y = 0.5; hunterLight.position.copy(hunter.position); hunterLight.intensity = ch > 0.5 ? 20 + 20 * pulse : 0;
-      if (rival) { hunter.visible = false; if (!rival._face && faceAtlas) { rival._face = true; rival.setFace(faceAtlas, Math.floor(Math.random() * 50)); } /* おいかけて くる 相手は 50人から ランダム */ const z = hunter.position.z; rival.root.visible = z < 5.2; rival.root.position.set(laneX - 1.35 + Math.sin(st.mbeat * 1.7) * 0.15, 0, z - 1.2); if (rival.root.visible) rival.animate({ dt, beat, cue: null, sk: SKILLS.rest, vx: 0, mode: 'chase' }); hunterLight.position.set(rival.root.position.x, 1.4, rival.root.position.z); } }
+      if (rival) { hunter.visible = false; const z = hunter.position.z; const r3 = foe3D(stageRival, 'rival'); const rv = r3 || rival; hideFoe3D('rival', r3); if (!r3 && !rival._face && faceAtlas) { rival._face = true; rival.setFace(faceAtlas, stageRival); } /* おいかけて くる 相手（3Dの 人は 全身） */ rival.root.visible = !r3 && z < 5.2; rv.root.visible = z < 5.2; rv.root.position.set(laneX - 1.35 + Math.sin(st.mbeat * 1.7) * 0.15, 0, z - 1.2); if (rv.root.visible) rv.animate({ dt, beat, cue: null, sk: SKILLS.rest, vx: 0, mode: 'chase' }); hunterLight.position.set(rv.root.position.x, 1.4, rv.root.position.z); } }
     // カメラ
     fov = lerp(fov, spd > 1.2 ? 72 : spd < 0.3 ? 56 : 62, 1 - Math.exp(-dt * 4)); const portrait = cam.aspect < 1; cam.fov = fov + (portrait ? 22 : 0); cam.updateProjectionMatrix();
     camShake = Math.max(st.shake || 0, camShake * 0.86);
@@ -357,7 +368,7 @@ export function createScene(canvas, o) {
   }
   const v = new THREE.Vector3();
   function project(x, y, z) { v.set(x, y, z).project(cam); return [(v.x * 0.5 + 0.5) * W, (-v.y * 0.5 + 0.5) * H]; }
-  function dispose() { if (human) { scene.remove(human.root); human.dispose(); } for (const h of [...defs, rival, bossH, midH]) if (h) { scene.remove(h.root); h.dispose(); } env.dispose(); for (const [, gp] of gates) (gp.userData.mats || []).forEach((m) => m.dispose()); disposables.forEach((d) => { try { d.dispose(); } catch (e) { /* noop */ } }); }
+  function dispose() { if (human) { scene.remove(human.root); human.dispose(); } for (const h of [...defs, rival, bossH, midH, ...foeInst.values()]) if (h) { scene.remove(h.root); h.dispose(); } env.dispose(); for (const [, gp] of gates) (gp.userData.mats || []).forEach((m) => m.dispose()); disposables.forEach((d) => { try { d.dispose(); } catch (e) { /* noop */ } }); }
   const ready = () => (!env.ready || env.ready()) && (!human || o.sprite === false || !!pspr);
-  return { render, resize, burst, project, dispose, ready, get laneX() { return laneX; }, bossPos: () => boss.position, midPos: () => midH ? midH.root.position : boss.position };
+  return { render, resize, burst, project, dispose, ready, get laneX() { return laneX; }, bossPos: () => boss.position, midPos: () => { const m3 = foeInst.get(stageMid + ':mid'); return m3 && m3.root.visible ? m3.root.position : midH ? midH.root.position : boss.position; } };
 }
