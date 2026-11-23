@@ -190,6 +190,17 @@ function paintShoesGLB(mesh, mat, L, R) {
   mat.customProgramCacheKey = () => 'shoes';
 }
 
+// ディフェンスの かまえ（えらべる 形）。c=こしの おとし ぐあい p=上体の まえがたむき w=足の はば（かたほう） st=前に 出す 足の ぶん
+// up / lo = 上の 手 / もう かたほうの 手 の [よこ, こしからの 高さ, まえ（マイナスが まえ）]。?defpose=0〜5 で ためせる
+export const DEF_POSES = [
+  { n: 'いまの かまえ（かた手 上・かた手 よこ）', c: 0.66, p: 0.10, w: 0.37, st: 0, up: [0.30, 1.12, -0.16], lo: [0.66, 0.06, -0.20] },
+  { n: 'A 両手 よこ（ワイド）', c: 0.55, p: 0.25, w: 0.30, st: 0, up: [0.55, 0.02, -0.32], lo: [0.55, 0.02, -0.32] },
+  { n: 'B かた手 上・かた手 まえ下（シュートと ドリブルを ねらう）', c: 0.58, p: 0.35, w: 0.30, st: 0.18, up: [0.16, 1.02, -0.30], lo: [0.24, -0.18, -0.58] },
+  { n: 'C 両手 まえ（ボールを とりに いく）', c: 0.62, p: 0.45, w: 0.31, st: 0, up: [0.20, -0.02, -0.62], lo: [0.20, -0.02, -0.62] },
+  { n: 'D 両手 上（かべ・シュート ブロック）', c: 0.35, p: 0.05, w: 0.24, st: 0, up: [0.24, 1.18, -0.10], lo: [0.24, 1.18, -0.10] },
+  { n: 'E 足を まえ後ろ（ドライブを とめる）', c: 0.55, p: 0.30, w: 0.26, st: 0.36, up: [0.20, 0.50, -0.55], lo: [0.60, 0.05, -0.10] },
+];
+const DEF_POSE_Q = (() => { try { return +(new URLSearchParams(location.search).get('defpose') || 0); } catch (e) { return 0; } })();
 export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   const model = cloneModel(template);
   const nativeLook = !!template.userData.no7Replacement;
@@ -600,7 +611,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     }
     // 敵（ディフェンス／おいかける）の うごき
     // ディフェンスの しせい：ひざを 深く おとし、足を 広く、うでを 大きく 広げる（本物の ディフェンスの かまえを イメージ）
-    if (st.mode === 'defend') { const sh = Math.sin(beat * Math.PI); crouch = 0.66; pitch = 0.1; T.fl.set(-0.37 + sh * 0.05, Math.max(0, sh) * 0.04, 0.04); T.fr.set(0.37 + sh * 0.05, Math.max(0, -sh) * 0.04, -0.04); hipX = sh * 0.05; rootY = 0; } // ディフェンスの かまえ：足を ひろく、こしを おとして 上体は おこす
+    if (st.mode === 'defend') { const P = DEF_POSES[opt.defPose ?? DEF_POSE_Q] || DEF_POSES[0], sh = Math.sin(beat * Math.PI), fs = opt.defUp || 1; crouch = P.c; pitch = P.p; T.fl.set(-P.w + sh * 0.04, Math.max(0, sh) * 0.04, (fs < 0 ? -P.st : P.st * 0.3) + 0.03); T.fr.set(P.w + sh * 0.04, Math.max(0, -sh) * 0.04, (fs > 0 ? -P.st : P.st * 0.3) - 0.03); hipX = sh * 0.04; rootY = 0; } // ディフェンスの かまえ：足を ひろく、こしを おとして 上体は おこす
     if (st.mode === 'chase') { const phi = beat * Math.PI * 2; crouch = 0.5; pitch = 0.5; T.fl.set(-0.14, Math.max(0, Math.sin(phi)) * 0.2, 0.42 * Math.cos(phi)); T.fr.set(0.14, Math.max(0, -Math.sin(phi)) * 0.2, -0.42 * Math.cos(phi)); }
     // よこへの うごき（ステップ）
     const lat = Math.min(1, Math.abs(st.vx) / 2.2);
@@ -663,7 +674,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
       : Math.max(by + 0.16, S.hip.y - (opt.practicePose ? 0.25 : 0.36));
     for (const [h, s] of [[T.hl, -1], [T.hr, 1]]) {
       if (st.mode === 'defend') { const up = s === (opt.defUp || 1), w = Math.sin(beat * Math.PI * 2 + s) * 0.04; // かたほうの 手は 上に（手のひらを 見せて）、もう かたほうは よこに ひろげる
-        if (up) h.set(s * 0.3, S.hip.y + 1.12 + w, -0.16); else h.set(s * 0.66, S.hip.y + 0.06 + w, -0.2); }
+        const P = DEF_POSES[opt.defPose ?? DEF_POSE_Q] || DEF_POSES[0], q = up ? P.up : P.lo; h.set(s * q[0], S.hip.y + q[1] + w, q[2]); }
       else if (st.mode === 'chase') { const sw = Math.sin(beat * Math.PI * 2 + (s > 0 ? 0 : Math.PI)); h.set(s * 0.3, S.hip.y + 0.25 + Math.max(0, sw) * 0.15, -0.3 - sw * 0.25); }
       else if (twoHands) h.set(s > 0 ? two1x : S.ball2.x, Math.max((s > 0 ? by : S.ball2.y) + 0.13, S.hip.y - 0.36), -0.28);
       else if (both) h.set(bx + s * 0.13, by + 0.02, bz);

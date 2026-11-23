@@ -94,6 +94,7 @@ export function createScene(canvas, o) {
   const ball = new THREE.Mesh(new THREE.SphereGeometry(0.17, 32, 22), new THREE.MeshStandardMaterial({ map: ballTex, roughness: 0.62, metalness: b.pat === 'metal' ? 0.35 : 0, emissive: b.pat === 'neon' ? 0xffffff : 0x000000, emissiveMap: b.pat === 'neon' ? ballTex : null, emissiveIntensity: b.pat === 'neon' ? 0.55 : 0 })); scene.add(ball);
   const ballGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: shared.glow, color: 0xffffff, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.3 })); ballGlow.scale.set(0.7, 0.7, 1); scene.add(ballGlow); ball.layers.enable(1);
   const ball2 = ball.clone(); ball2.visible = false; ball2.layers.enable(1); scene.add(ball2);
+  const bossShadow = shadow.clone(); bossShadow.material = shadow.material.clone(); bossShadow.material.opacity = 0.42; bossShadow.visible = false; scene.add(bossShadow); disposables.push(bossShadow.material); // ボスの 足もとの かげ（うかないように）
   const ballShadow = shadow.clone(); ballShadow.scale.setScalar(0.4); scene.add(ballShadow);
   disposables.push(ballTex, ball.geometry, ball.material, ballGlow.material);
   const TR = 26; const trPos = new Float32Array(TR * 3); const trCol = new Float32Array(TR * 3); const trGeo = new THREE.BufferGeometry(); trGeo.setAttribute('position', new THREE.BufferAttribute(trPos, 3)); trGeo.setAttribute('color', new THREE.BufferAttribute(trCol, 3));
@@ -224,7 +225,7 @@ export function createScene(canvas, o) {
   }
 
   // うしろの カメラの 高さ（1.5→2.1。低いと 足が 浮いて 見えた）。ためし用に ?camy=・?caml=（見る 高さ）で かえられる
-  const _cq = new URLSearchParams(location.search); const CAM_Y = +(_cq.get('camy') || 2.1), CAM_LOOK = +(_cq.get('caml') || 0); let W = 1, H = 1; let laneX = 0; let fov = 60; let bossY = 9; let bossHit = 0; let camShake = 0;
+  const _cq = new URLSearchParams(location.search); const CAM_Y = +(_cq.get('camy') || 2.1), CAM_LOOK = +(_cq.get('caml') || 0); let W = 1, H = 1; let laneX = 0; let fov = 60; let bossY = 9; const BZ = +(_cq.get('bossz') || 14), BS = +(_cq.get('bosss') || 3.2); const BK = BZ / 34; /* ボスの きょり・大きさ（足が コートに つく ように 近く・小さく。?bossz= ?bosss= で ためせる） */ let bossHit = 0; let camShake = 0;
   const gcam = new THREE.PerspectiveCamera(30, 1, 0.1, 30); gcam.layers.set(1);
   const gfloor = new THREE.Mesh(new THREE.PlaneGeometry(40, 3), new THREE.MeshBasicMaterial({ color: 0x24347a, side: THREE.DoubleSide })); gfloor.rotation.x = -Math.PI / 2; gfloor.position.y = -0.005; gfloor.layers.set(1); scene.add(gfloor); disposables.push(gfloor.geometry, gfloor.material);
   const pipBall = new THREE.MeshBasicMaterial({ color: 0xff8a2a, side: THREE.DoubleSide }); disposables.push(pipBall);
@@ -312,10 +313,10 @@ export function createScene(canvas, o) {
         mh.animate({ dt, beat: beat * 1.2, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); } }
     if (st.boss && st.boss.on) {
       boss.visible = !st.boss.gone; bossY = lerp(bossY, 2.3, 0.04); bossHit = Math.max(st.boss.hit || 0, bossHit - dt * 3);
-      boss.position.set(Math.sin(st.mbeat * 0.7) * 1.2 + (Math.random() - 0.5) * bossHit * 0.5, bossY + Math.sin(st.mbeat * 1.4) * 0.25, st.boss.finale ? -24 : -34);
+      boss.position.set(Math.sin(st.mbeat * 0.7) * 1.2 + (Math.random() - 0.5) * bossHit * 0.5, (bossY + Math.sin(st.mbeat * 1.4) * 0.25) * BK, st.boss.finale ? -BZ * 24 / 34 : -BZ);
       boss.userData.ring.rotation.x += dt * 1.2; boss.userData.ring.rotation.y += dt * 0.8; boss.rotation.y = Math.sin(st.mbeat * 0.5) * 0.3; boss.userData.eye.scale.setScalar(1 + bossHit * 0.5 + pulse * 0.15);
-      boss.userData.eyeMat.color.set(bossHit > 0.3 ? 0xffffff : 0xff2d55); if (st.boss.dead) boss.scale.multiplyScalar(0.9); else boss.scale.setScalar(0.5);
-      if (bossH) { if (!bossH._face && faceAtlas && !o.bossHuman) { bossH._face = true; bossH.setFace(faceAtlas, o.bossChar ? o.bossChar.face : Math.floor(Math.random() * 50)); } /* 旧モデルの ボスは その ボスキャラの 顔 */ for (const ch of boss.children) if (!ch.isSprite) ch.visible = false; bossH.root.visible = boss.visible; if (st.boss.dead) bossH.root.scale.multiplyScalar(0.9); else bossH.root.scale.setScalar((st.boss.finale ? 4.6 : 6) * (o.king ? 1.3 : 1)); bossH.root.position.set(boss.position.x * 1.6, 0, boss.position.z); bossH.root.rotation.set(0, Math.PI, 0); bossH.animate({ dt, beat: beat * 0.5, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); }
+      boss.userData.eyeMat.color.set(bossHit > 0.3 ? 0xffffff : 0xff2d55); if (st.boss.dead) boss.scale.multiplyScalar(0.9); else boss.scale.setScalar(0.5 * BK);
+      if (bossH) { if (!bossH._face && faceAtlas && !o.bossHuman) { bossH._face = true; bossH.setFace(faceAtlas, o.bossChar ? o.bossChar.face : Math.floor(Math.random() * 50)); } /* 旧モデルの ボスは その ボスキャラの 顔 */ for (const ch of boss.children) if (!ch.isSprite) ch.visible = false; bossH.root.visible = boss.visible; if (st.boss.dead) bossH.root.scale.multiplyScalar(0.9); else bossH.root.scale.setScalar((st.boss.finale ? BS * 4.6 / 6 : BS) * (o.king ? 1.3 : 1)); bossH.root.position.set(boss.position.x * (BK < 0.7 ? 0.8 : 1.6), 0, boss.position.z); bossShadow.visible = bossH.root.visible; bossShadow.position.set(bossH.root.position.x, 0.02, bossH.root.position.z); bossShadow.scale.setScalar(bossH.root.scale.x * 0.95); bossH.root.rotation.set(0, Math.PI, 0); bossH.animate({ dt, beat: beat * 0.5, cue: null, sk: SKILLS.rest, vx: 0, mode: 'defend' }); }
     }
     // つぶ
     for (let i = 0; i < PN; i++) { if (pLife[i] <= 0) continue; pLife[i] -= dt; pVel[i * 3 + 1] -= 9 * dt; pPos[i * 3] += pVel[i * 3] * dt; pPos[i * 3 + 1] += pVel[i * 3 + 1] * dt; pPos[i * 3 + 2] += pVel[i * 3 + 2] * dt + (st.speed || 0) * dt * 6; if (pLife[i] <= 0) pPos[i * 3 + 1] = -50; }

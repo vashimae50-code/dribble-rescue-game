@@ -57,13 +57,15 @@ export function runStage(opts) {
 
   // 1つの 技は しばらく つづける（小学校 低学年が「みて → やってみて」できる ように）。
   // パワーポジション・ジャンプストップと、レーンを うつる 技（サイドステップ・スライド・ジャブ・ドライブ）は もとの 長さ
-  const MIN_SEC = 12, HANDLE_SEC = 15;
-  const holdLen = (id, len, bpm) => { const sk = SKILLS[id]; if (dojo || id === 'rest' || id === 'stance' || id === 'jstop' || sk.lane) return len;
+  // R1 と、かんたんな みぎて・ひだりて ドリブルは 9びょう（10びょう いじょう おなじ 技だと あきやすい）。中ボス・ボスは もとの まま
+  const SHORT = RK <= 1; const MIN_SEC = SHORT ? 9 : 12, HANDLE_SEC = SHORT ? 9 : 15, EASY_SEC = 9; const EASY = { right: 1, left: 1 };
+  const holdLen = (id, len, bpm, long) => { const sk = SKILLS[id]; if (dojo || id === 'rest' || id === 'stance' || id === 'jstop' || sk.lane) return len;
     // ピタッ！は 2秒（12秒に のばさない）
     if (id === 'freeze') return Math.max(1, Math.round(2 * (bpm ? bpm / 60 : bps)));
-    return Math.max(len, Math.ceil((sk.handle ? HANDLE_SEC : MIN_SEC) * (bpm ? bpm / 60 : bps))); };
+    if (long) return Math.max(len, Math.ceil((sk.handle ? 15 : 12) * (bpm ? bpm / 60 : bps))); // 中ボス・ボスの れんだは ながい まま
+    return Math.max(len, Math.ceil((EASY[id] ? EASY_SEC : sk.handle ? HANDLE_SEC : MIN_SEC) * (bpm ? bpm / 60 : bps))); };
   function addCue(id, o = {}) {
-    const sk = SKILLS[id]; const len = o.keepLen ? (o.len || sk.len) : holdLen(id, o.len || sk.len, o.bpm); const sp = o.sp ?? sk.sp ?? 1;
+    const sk = SKILLS[id]; const len = o.keepLen ? (o.len || sk.len) : holdLen(id, o.len || sk.len, o.bpm, o.long); const sp = o.sp ?? sk.sp ?? 1;
     const c = { skill: id, b0: endBeat, b1: endBeat + len, z0: zEnd, z1: zEnd + len * V * Math.max(sp, 0.05), sp, lane0: lane, lane1: lane, boss: !!o.boss, ballMode: o.ballMode, noGate: o.noGate, bpm: o.bpm, tier,
       st: { n: 0, R: 0, L: 0, sw: 0, last: null, late: 0, lowF: 0, f: 0, tr: 0, hx0: null, move: 0, rise: 0, hy0: null } };
     if (sk.lane) { const dir = o.dir || (lane === 0 ? (Math.random() < 0.5 ? -1 : 1) : -lane); c.dir = dir; c.lane1 = clamp(lane + dir, -1, 1); lane = c.lane1; c.guard = !!o.guard; }
@@ -264,10 +266,10 @@ export function runStage(opts) {
     if (t === 2) tier = Math.min(2, tier + 1); else if (t === 0) { tier = Math.max(0, tier - 1); chaser = Math.max(0.1, chaser - 0.15); }
     if (test) tier = 1;
     sectionIdx++; secStarts[sectionIdx - 1] = endBeat;
-    if (sectionIdx === 2 && !dojo && !test && !mission.plan && SECTIONS >= 3) { addCue('rest', { len: 2, noGate: true }).midIntro = true; const m = addCue(rushSkill(cues), { len: 8, hand: curHand }); m.mid = true; m.rush = true; }
+    if (sectionIdx === 2 && !dojo && !test && !mission.plan && SECTIONS >= 3) { addCue('rest', { len: 2, noGate: true }).midIntro = true; const m = addCue(rushSkill(cues), { len: 8, hand: curHand, long: true }); m.mid = true; m.rush = true; }
     addSection(sectionIdx === 2 ? 44 : 36); if (sectionIdx < SECTIONS) safes.push(endBeat);
     if (sectionIdx === SECTIONS) {
-      if (hasBoss) { bossStart = endBeat; addCue('rest', { len: 4, noGate: true }).bossIntro = true; addSection(40, true); finaleBeat = endBeat; { const f = addCue(rushSkill(cues.filter((c) => c.boss)), { len: 16, boss: true, hand: curHand }); f.finale = true; f.rush = true; } }
+      if (hasBoss) { bossStart = endBeat; addCue('rest', { len: 4, noGate: true }).bossIntro = true; addSection(40, true); finaleBeat = endBeat; { const f = addCue(rushSkill(cues.filter((c) => c.boss)), { len: 16, boss: true, hand: curHand, long: true }); f.finale = true; f.rush = true; } }
       else addCue('rest', { len: 6, noGate: true }).goal = true;
     }
     if (t === 0) { const k = hardest(); if (k) addText(`コツ：${tipFor(k)}`, '#ffe9a8', 0.75, 0.26, 2.6); }
