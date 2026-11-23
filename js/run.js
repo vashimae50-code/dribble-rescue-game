@@ -201,7 +201,7 @@ export function runStage(opts) {
   function rushHit() { // カメラで ドリブルを 見つけたとき：はやいほど 大ダメージ
     const tgt = phase === 'finale' ? boss : curCue && curCue.mid && mid.on && !mid.dead ? mid : null; if (!tgt) return;
     rushT.push(beat); while (rushT.length && beat - rushT[0] > 2) rushT.shift(); const rate = rushT.length / (2 / bps);
-    const pow = clamp(rate / 2.4, 0.35, 1.6); tgt.hp = Math.max(0, tgt.hp - (tgt === boss ? 0.02 : 0.08) * pow); tgt.hit = 1; shake = Math.max(shake, 0.2 + 0.25 * pow);
+    const pow = clamp(rate / 2.4, 0.35, 1.6); tgt.hp = Math.max(0, tgt.hp - (tgt === boss ? 0.02 : 0.08) * pow); tgt.hit = 1; shake = Math.max(shake, 0.2 + 0.25 * pow); shots.push({ t: 0, fx: true, mid: tgt === mid }); // ドリブル 1かいごとに ボールが とんでいく
     if (pow > 1.1 && Math.random() < 0.35) addText(['つよい！', 'はやい！', 'いいぞ！'][Math.floor(Math.random() * 3)], '#ffe03d', 0.8, 0.42, 0.6);
     if (tgt === mid && mid.hp <= 0) killMid(true); }
   function killMid(byHit) { mid.dead = true; mid.hp = 0; audio.sfx('boom'); shake = 1.2; const mp = scene.midPos(); scene.burst(mp.x, 2, mp.z, '#ffe03d', 70, 2); addText(byHit ? 'ディフェンスを ぬいた！' : 'ぬいた！', '#7dffb0', 1.2); sayBoth('ぬいた！', 'Beat him!'); setTimeout(() => { mid.gone = true; }, 800); }
@@ -414,14 +414,12 @@ export function runStage(opts) {
     if (cam) { const ok = allF ? trackedF / allF : 0; txt(ok > 0.5 ? '📷 OK' : '📷 からだを うつしてね', W - pad, H - pad - fs * 0.5, fs * 0.6, ok > 0.5 ? '#7dffb0' : '#ffe03d', 'right'); }
     // ボスへの ショットとビーム
     const bp = scene.bossPos(); const bs = scene.project(bp.x, bp.y, bp.z).map((v) => v * DPR); const ps = ballScreen().map((v) => v * DPR);
-    for (let i = shots.length - 1; i >= 0; i--) { const s = shots[i]; s.t += 0.06; const t = Math.min(1, s.t); const x = ps[0] + (bs[0] - ps[0]) * t, y = ps[1] + (bs[1] - ps[1]) * t - Math.sin(t * Math.PI) * H * 0.08; const r = (1 - t * 0.6) * H * 0.022;
+    const mp0 = mid.on && !mid.dead ? scene.midPos() : null; const ms0 = mp0 ? scene.project(mp0.x, 1.4, mp0.z).map((v) => v * DPR) : bs;
+    for (let i = shots.length - 1; i >= 0; i--) { const s = shots[i]; s.t += s.fx ? 0.08 : 0.06; const t = Math.min(1, s.t); const to = s.mid ? ms0 : bs; const x = ps[0] + (to[0] - ps[0]) * t, y = ps[1] + (to[1] - ps[1]) * t - Math.sin(t * Math.PI) * H * 0.08; const r = (1 - t * 0.6) * H * 0.022;
       g.globalAlpha = 0.4; g.fillStyle = pal.a; g.beginPath(); g.arc(x, y, r * 2.2, 0, TAU); g.fill(); g.globalAlpha = 1; g.fillStyle = '#fff'; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+      if (s.t >= 1 && s.fx) { shots.splice(i, 1); const p3 = s.mid && mp0 ? mp0 : bp; scene.burst(p3.x, s.mid ? 1.4 : bp.y, p3.z + 0.6, Math.random() < 0.5 ? '#3df5ff' : '#ffe03d', 10, 1.0); continue; } // れんだの ボール（あたった ところで はじける）
       if (s.t >= 1) { shots.splice(i, 1); boss.hit = 1; audio.sfx('hit'); scene.burst(bp.x, bp.y, bp.z + 2, '#ffe03d', 30, 1.6); shake = Math.max(shake, 0.5); } }
-    const beam = (to, t) => { g.globalAlpha = 0.6 + 0.3 * Math.sin(mbeat * 40); g.strokeStyle = '#3df5ff'; g.lineWidth = (8 + t * 26) * DPR; g.lineCap = 'round'; g.beginPath(); g.moveTo(ps[0], ps[1]); g.lineTo(to[0], to[1]); g.stroke(); g.strokeStyle = '#fff'; g.lineWidth = (3 + t * 8) * DPR; g.stroke(); g.globalAlpha = 1; };
-    if (phase === 'finale') beam(bs, clamp((beat - finaleBeat) / 8, 0, 1));
-    // ちゅうボスにも おなじ ビーム（ドリブルで こうげき）
-    if (curCue && curCue.mid && mid.on && !mid.dead && phase === 'run') { const mp = scene.midPos(); const ms = scene.project(mp.x, 2.0, mp.z).map((v) => v * DPR); beam(ms, clamp(1 - mid.hp, 0, 1));
-      if (Math.random() < 0.25) scene.burst(mp.x, 2.0, mp.z + 0.6, Math.random() < 0.5 ? '#3df5ff' : '#ffe03d', 4, 0.8); }
+    // れんだの とき：レーザーの かわりに ボールが とんでいく（上の shots）
     // けいこく・フラッシュ
     const danger = Math.max(redFlash, clamp((chaserShow - 0.6) * 2, 0, 0.6) * (0.6 + 0.4 * Math.sin(mbeat * TAU * 2)));
     if (danger > 0.02) { const v = g.createRadialGradient(cx, H / 2, H * 0.3, cx, H / 2, Math.max(W, H) * 0.7); v.addColorStop(0, 'rgba(255,0,60,0)'); v.addColorStop(1, `rgba(255,0,60,${danger})`); g.fillStyle = v; g.fillRect(0, 0, W, H); }
