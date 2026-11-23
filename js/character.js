@@ -200,7 +200,7 @@ export const DEF_POSES = [
   { n: 'D 両手 上（かべ・シュート ブロック）', c: 0.35, p: 0.05, w: 0.24, st: 0, up: [0.24, 1.18, -0.10], lo: [0.24, 1.18, -0.10] },
   { n: 'E 足を まえ後ろ（ドライブを とめる）', c: 0.55, p: 0.30, w: 0.26, st: 0.36, up: [0.20, 0.50, -0.55], lo: [0.60, 0.05, -0.10] },
 ];
-const DEF_POSE_Q = (() => { try { return +(new URLSearchParams(location.search).get('defpose') || 0); } catch (e) { return 0; } })();
+const DEF_POSE_Q = (() => { try { return +(new URLSearchParams(location.search).get('defpose') || 1); } catch (e) { return 1; } })(); // いつもは A（両手 よこ）
 export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   const model = cloneModel(template);
   const nativeLook = !!template.userData.no7Replacement;
@@ -387,6 +387,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   const clipBall = V(), outBall = V();
   // ひざの 高さの ドリブル：こしを 落として 上体を 前に たおし（足は 床に つけたまま）、右うでを 下げる
   const KNEE_DROP = 0.26, KNEE_CROUCH = 0.13, KNEE_LEAN = 0.38; const HEIGHT_K = { waist: 0, knee: 1 };
+  const _pF = V(), _pN = V(), _pX = V(), _pM = new THREE.Matrix4(), _pQ = Q(), q2w = Q();
   const setWorldQ = (bone, qW) => { bone.parent.getWorldQuaternion(q3).invert(); bone.quaternion.copy(q3.multiply(qW)); bone.updateMatrixWorld(true); };
   const lp = { hand: V(), handQ: Q(), pole: V(), feet: [0, 1].map(() => ({ p: V(), q: Q(), pole: V() })) };
   function lowPose(d, k) {
@@ -705,6 +706,9 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     const behind = lbz > 0.2;
     ik(B.LeftArm, B.LeftForeArm, B.LeftHand, toW(S.hl).clone(), dirW(-0.8, -0.3, behind ? -0.6 : 0.7), L.ua, L.fa);
     ik(B.RightArm, B.RightForeArm, B.RightHand, toW(S.hr).clone(), dirW(0.8, -0.3, behind ? -0.6 : 0.7), L.ua, L.fa);
+    if (st.mode === 'defend') for (const [hb, s] of [[B.LeftHand, -1], [B.RightHand, 1]]) { // ディフェンス：手のひらを まえ（あいて の ほう）に むけ、ゆびは 外がわ・上へ ひらく
+      _pF.set(s * 0.55, 0.8, -0.15).normalize(); _pN.set(0, 0, -1).addScaledVector(_pF, -_pF.z).normalize(); _pX.crossVectors(_pF, _pN);
+      _pM.makeBasis(_pX, _pF, _pN); _pQ.setFromRotationMatrix(_pM); root.getWorldQuaternion(q2w); setWorldQ(hb, q2w.multiply(_pQ)); }
     if (faceSp) { B.Head.getWorldPosition(t1); root.worldToLocal(t1); faceSp.position.copy(t1); }
     { B.Head.getWorldPosition(t1); if (headTopB) t1.lerp(headTopB.getWorldPosition(t2), 0.45); else t1.y += HEAD_UP * 0.45 * root.getWorldScale(t2).y; root.worldToLocal(t1); S.headC.lerp(t1, 0.5); }
     if (clipSet) {
