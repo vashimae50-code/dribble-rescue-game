@@ -355,29 +355,43 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   const clipCh = new Map(); // clip → [{ obj, prop, interp }]
   if (clipSet) {
     model.traverse((o) => { if (o.isBone) { byName[o.name] = o; allBones.push(o); ikP.push(V()); ikQ.push(Q()); ikS.push(V()); o.userData.p0 = o.position.clone(); o.userData.q0 = o.quaternion.clone(); o.userData.s0 = o.scale.clone(); } });
+    // 左手の ドリブル：右手の クリップを 左右 反転して つかう（後ろから 見た しせいを 右と そろえる）
+    for (const k of Object.keys(clipSet)) { const d = clipSet[k]; if (d.cueHand === 'R' && !d.mirror && !d.once && !clipSet[k + ':L']) clipSet[k + ':L'] = { ...d, hand: 'Left', cueHand: 'L', mirror: true, src: d, yawQ: undefined, lift: undefined, top: undefined }; }
+    if (clipSet['_layerR:L'] && !clipSet._layerL0) { clipSet._layerL0 = clipSet._layerL; clipSet._layerL = clipSet['_layerR:L']; } // 左手の 手の形も 右手の かがみうつし（LH の クリップは 形が ちがって 見える）
+    { root.updateMatrixWorld(true); const rq = root.getWorldQuaternion(Q()).invert(); for (const o of allBones) { o.userData.rq = rq.clone().multiply(o.getWorldQuaternion(Q())); const pn = o.name.includes('Left') ? o.name.replace('Left', 'Right') : o.name.includes('Right') ? o.name.replace('Right', 'Left') : o.name; o.userData.mate = byName[pn] || o; } }
     for (const d of Object.values(clipSet)) { d.hb = B[d.hand + 'Hand']; d.hi = B[d.hand + 'HandIndex1'];
       if (!clipCh.has(d.clip)) clipCh.set(d.clip, d.clip.tracks.map((tr) => { const pn = THREE.PropertyBinding.parseTrackName(tr.name); const obj = byName[pn.nodeName]; // 回転と 腰の 位置だけ つかう（ほかの 骨の 位置・大きさは その キャラの ものの まま。キャラごとに 骨の 長さが ちがうので、
         // クリップの 値で 上書きすると 体の 形が ゆがみ、足の 高さも ずれる）
         return obj && (pn.propertyName === 'quaternion' || (pn.propertyName === 'position' && obj === B.Hips)) ? { obj, prop: pn.propertyName, interp: tr.createInterpolant() } : null; }).filter(Boolean)); }
   }
+  // しせいを 左右 反転（体の 中心の たての 面で かがみうつし）。左右の 骨を 入れかえ、レスト姿勢の ちがいを なおす：T(b) = M(W(相手)) · M(R(相手))⁻¹ · R(b)
+  const mirW = allBones.map(() => Q()); const mq = (q) => q.set(q.x, -q.y, -q.z, q.w); const mq1 = Q(), mq2 = Q(), mrq = Q(), mrqi = Q();
+  const mirrorPose = () => { root.getWorldQuaternion(mrq); mrqi.copy(mrq).invert(); const ix = new Map();
+    allBones.forEach((b, i) => { ix.set(b, i); mirW[i].copy(mrqi).multiply(b.getWorldQuaternion(mq1)); });
+    const hp = root.worldToLocal(B.Hips.getWorldPosition(V())); hp.x = -hp.x;
+    allBones.forEach((b) => { const m = b.userData.mate; mq1.copy(mirW[ix.get(m)]); mq(mq1); mq2.copy(m.userData.rq); mq(mq2).invert(); mq1.multiply(mq2).multiply(b.userData.rq); // root 基準の 向き
+      b.parent.getWorldQuaternion(mq2); mq2.premultiply(mrqi).invert(); b.quaternion.copy(mq2.multiply(mq1)); b.updateMatrixWorld(true); });
+    B.Hips.parent.worldToLocal(root.localToWorld(hp)); B.Hips.position.copy(hp); root.updateMatrixWorld(true); };
   const clipPose = (d, t) => { for (const c of clipCh.get(d.clip)) c.obj[c.prop].fromArray(c.interp.evaluate(t)); root.updateMatrixWorld(true);
     if (d.yawQ) { // 正面へ まわす（縦の 軸の まわり。中心は クリップ さいしょの 腰）
       B.Hips.getWorldQuaternion(q1).premultiply(d.yawQ); B.Hips.parent.getWorldQuaternion(q3).invert(); B.Hips.quaternion.copy(q3.multiply(q1));
       const pv = B.Hips.parent.localToWorld(t3.copy(d.pivotL)); B.Hips.getWorldPosition(t2).sub(pv).applyQuaternion(d.yawQ).add(pv); B.Hips.parent.worldToLocal(t2); B.Hips.position.copy(t2); root.updateMatrixWorld(true); }
+    if (d.mirror) mirrorPose();
     // 足を 床に のせる：レスト姿勢の 持ちあげ（restLift）を はずし、その キャラ×クリップで はかった 高さ（d.lift）を たす
     const s = root.getWorldScale(t1).y; B.Hips.getWorldPosition(t2); t2.y += ((d.lift ?? CLIP_LIFT) - restLift) * s; B.Hips.parent.worldToLocal(t2); B.Hips.position.copy(t2); root.updateMatrixWorld(true); };
   // 手のひらの 下に ボール：手首と 人差し指の つけねの まんなかから、手首の +Z（手のひら がわ）へ ボールの 半径ぶん
   const palmBall = (d, out) => { d.hb.getWorldPosition(t1); if (d.hi) t1.lerp(d.hi.getWorldPosition(t2), 0.5); d.hb.getWorldQuaternion(q1); t3.set(0, 0, 1).applyQuaternion(q1).multiplyScalar(BALL_R * root.getWorldScale(t2).y); return root.worldToLocal(out.copy(t1).add(t3)); };
   if (clipSet) { // 体の 向きを はかって 正面へ まわす 量（straighten の クリップだけ。1回だけ 計算）
     const mw = (b) => model.worldToLocal(b.getWorldPosition(V()));
-    for (const d of Object.values(clipSet)) { if (!d.straighten || d.yawQ !== undefined) continue; let sx = 0, sy = 0;
+    for (const d of Object.values(clipSet)) { if (!d.straighten || d.yawQ !== undefined || d.mirror) continue; let sx = 0, sy = 0;
       for (let i = 0; i <= 24; i++) { clipPose(d, d.t0 + (d.t1 - d.t0) * i / 24); const side = mw(B.LeftUpLeg).sub(mw(B.RightUpLeg)).add(mw(B.LeftArm).sub(mw(B.RightArm))); const a = Math.atan2(-side.z, side.x); sx += Math.cos(a); sy += Math.sin(a); }
       clipPose(d, d.t0); const pv = B.Hips.getWorldPosition(V()); d.pivotL = B.Hips.parent.worldToLocal(pv); d.yawDeg = Math.atan2(sy, sx) * 180 / Math.PI;
       d.yawQ = Math.abs(d.yawDeg) > 0.5 ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.atan2(sy, sx)) : null; }
+    for (const d of Object.values(clipSet)) if (d.mirror && d.yawQ === undefined) { d.yawQ = d.src.yawQ ?? null; d.pivotL = d.src.pivotL; }
     // 足うらの 高さ：クリップを 通して いちばん 低い 足うらが y=0 に なる 持ちあげ量を キャラ×クリップごとに はかる（同じ クリップは 1回）
     const skinMeshes = meshes.filter((m) => m.isSkinnedMesh); const soleMin = () => { let m = Infinity; for (const o of skinMeshes) { o.computeBoundingBox(); m = Math.min(m, o.boundingBox.clone().applyMatrix4(o.matrixWorld).min.y); } return m; };
     const liftOf = new Map(); const sc0 = root.getWorldScale(V()).y;
-    for (const d of Object.values(clipSet)) { if (d.lift !== undefined) continue; const k = d.clip.uuid + ':' + d.t0 + ':' + d.t1;
+    for (const d of Object.values(clipSet)) { if (d.lift !== undefined) continue; const k = d.clip.uuid + ':' + d.t0 + ':' + d.t1 + (d.mirror ? ':m' : '');
       if (!liftOf.has(k)) { d.lift = 0; let mn = Infinity; for (let i = 0; i <= 24; i++) { clipPose(d, d.t0 + (d.t1 - d.t0) * i / 24); mn = Math.min(mn, soleMin()); } liftOf.set(k, Number.isFinite(mn) ? -mn / sc0 : CLIP_LIFT); }
       d.lift = liftOf.get(k); }
     // ボールが いちばん 上に くる 高さ（拍の まんなかで 手と 出会う 高さ）を 先に はかっておく
@@ -403,9 +417,10 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
   }
   const footY = () => Math.min(...[B.LeftFoot, B.RightFoot, B.LeftToeBase, B.RightToeBase].filter(Boolean).map((b) => b.getWorldPosition(t3).y));
   function applyClip(S, st, id, hold, bph, bounce) {
-    const c0 = clipSet[id]; const want = (!hold || (c0 && c0.hold)) && !st.mode && c0 && (!c0.cueHand || (st.cue ? st.cue.hand || 'R' : 'R') === c0.cueHand) ? c0 : null;
+    const cueH = st.cue ? st.cue.hand || 'R' : 'R'; const cid = id === 'left' ? 'right' : id; // ひだりて は みぎての クリップを 反転
+    const c0 = cueH === 'L' && clipSet[cid + ':L'] ? clipSet[cid + ':L'] : clipSet[id]; const want = (!hold || (c0 && c0.hold)) && !st.mode && c0 && (!c0.cueHand || cueH === c0.cueHand) ? c0 : null;
     // クリップ どうしの きりかえ（例：じゆう→ジャンプストップ）：きりかえた しゅんかんの しせいと ボールを とっておき、0.15秒で 新しい クリップへ うつす
-    if (want && S.cdef && want.clip !== S.cdef.clip && (S.cw || 0) > 0 && S.lastPose) { S.snapP = S.lastPose.p.map((x) => x.clone()); S.snapQ = S.lastPose.q.map((x) => x.clone()); S.snapS = S.lastPose.s.map((x) => x.clone()); S.snapBall = S.lastPose.ball.clone(); S.sw = 1; }
+    if (want && S.cdef && (want.clip !== S.cdef.clip || !!want.mirror !== !!S.cdef.mirror) && (S.cw || 0) > 0 && S.lastPose) { S.snapP = S.lastPose.p.map((x) => x.clone()); S.snapQ = S.lastPose.q.map((x) => x.clone()); S.snapS = S.lastPose.s.map((x) => x.clone()); S.snapBall = S.lastPose.ball.clone(); S.sw = 1; }
     if (want) S.cdef = want;
     S.cw = clamp((S.cw || 0) + (want ? 1 : -1) * st.dt / CLIP_FADE, 0, 1);
     if (S.cw <= 0 || !S.cdef) return S.ball;
@@ -623,7 +638,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
       if (sk.jump) { if (cb < 1) { rootY = Math.sin(Math.PI * cb) * 0.32; crouch = 0.15; T.fl.x = -0.13; T.fr.x = 0.13; T.fl.y = T.fr.y = 0.08 * Math.sin(Math.PI * cb); } else { crouch = 0.95 - Math.min(0.3, (cb - 1) * 0.4); Wd = 0.34; T.fl.x = -Wd; T.fr.x = Wd; } }
       if (sk.turn) { const psi = Math.sin(cb * Math.PI * 0.5) * 1.25; twist = psi * 0.75; T.fl.set(-0.2, 0, 0); T.fr.set(-0.2 + 0.5 * Math.cos(psi), Math.abs(Math.sin(cb * Math.PI)) * 0.07, -0.5 * Math.sin(psi)); bx = Math.sin(psi) * -0.1 + 0.15; }
       if (sk.jab) { const j = Math.sin(Math.min(1, (cb % 1) * 1.7) * Math.PI); const f = dir > 0 ? T.fr : T.fl; f.x += dir * 0.34 * j; f.z -= 0.28 * j; f.y += Math.sin(Math.min(1, (cb % 1) * 1.7) * Math.PI * 2) > 0 ? 0.06 * j : 0; hipX = dir * 0.1 * j; roll = -dir * 0.08 * j; bx = -dir * 0.24; crouch = 0.7; }
-      if (id === 'stance') { crouch = 0.75 + Math.sin(beat * Math.PI) * 0.05; }
+      if (id === 'stance') { crouch = 0.75 + Math.sin(beat * Math.PI) * 0.05; bx = hs * 0.06; bz = -0.34; by = -2; } // パワーポジション：ボールは 両手で おなかの 前に くっつける（床には おかない）
       if (sk.handle) { handleMode = sk.handle; crouch = 0.45; pitch = 0.25; const hy = hipsBind - crouch * 0.24;
         if (sk.handle === 'wrap') { const th = cb * Math.PI; bx = Math.sin(th) * 0.33; bz = -Math.cos(th) * 0.27 + 0.02; by = hy + 0.02; both = false; handSide = bx >= 0 ? 1 : -1; if (Math.abs(bx) < 0.1) both = true; }
         if (sk.handle === 'head') { const th = cb * Math.PI; crouch = 0.25; const hc = S.headC; bx = hc.x + Math.sin(th) * HEAD_R; bz = hc.z - Math.cos(th) * HEAD_R; by = hc.y; /* あたまの まわり：いまの しせいの あたまの 中心（前の フレームで はかる）を まわる */ both = false; handSide = bx >= 0 ? 1 : -1; if (Math.abs(bx) < 0.08) both = true; }
@@ -654,7 +669,7 @@ export function makeHuman(template, suit = '#3df5ff', opt = {}) {
     // パワーポジション：どの 技でも 前傾を くずさない（基準は AA アセットの かまえ：上体 約35°、腰は 足うらから 約0.70m、足はば 約0.49m）
     if (!st.mode) { crouch = Math.max(crouch, PP_CROUCH); pitch = Math.max(pitch, PP_PITCH); Wd = Math.max(Wd, PP_WD); if (rootY < 0.05) { T.fl.x = Math.min(T.fl.x, -PP_WD); T.fr.x = Math.max(T.fr.x, PP_WD); } }
     const hipY = hipsBind - crouch * 0.24 + rootY;
-    if (by < 0) by = hipY - 0.06;
+    if (by < -1.5) by = hipY + 0.12; else if (by < 0) by = hipY - 0.06;
     T.hip.set(hipX, hipY, hipZ - (pitch - 0.2) * 0.12);
     // --- なめらかに ---
     const kf = 1 - Math.exp(-dt * 16), kh = 1 - Math.exp(-dt * 22), kb = 1 - Math.exp(-dt * 12);
