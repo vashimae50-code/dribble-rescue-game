@@ -225,6 +225,7 @@ export function createScene(canvas, o) {
   }
 
   // うしろの カメラの 高さ（1.5→2.1。低いと 足が 浮いて 見えた）。ためし用に ?camy=・?caml=（見る 高さ）で かえられる
+  const bnc = { y: 1, vy: 0, n: 0 };
   const _cq = new URLSearchParams(location.search); const CAM_Y = +(_cq.get('camy') || 2.1), CAM_LOOK = +(_cq.get('caml') || 0); let W = 1, H = 1; let laneX = 0; let fov = 60; let bossY = 9; const BZ = +(_cq.get('bossz') || 8), BS = +(_cq.get('bosss') || 2.2); const BK = BZ / 34; /* ボスの きょり・大きさ（足が コートに つく ように 近く・小さく。?bossz= ?bosss= で ためせる） */ let bossHit = 0; let camShake = 0;
   const gcam = new THREE.PerspectiveCamera(30, 1, 0.1, 30); gcam.layers.set(1);
   const gfloor = new THREE.Mesh(new THREE.PlaneGeometry(40, 3), new THREE.MeshBasicMaterial({ color: 0x24347a, side: THREE.DoubleSide })); gfloor.rotation.x = -Math.PI / 2; gfloor.position.y = -0.005; gfloor.layers.set(1); scene.add(gfloor); disposables.push(gfloor.geometry, gfloor.material);
@@ -274,6 +275,7 @@ export function createScene(canvas, o) {
       const rk = (tA * 0.7) % 1; auraRing.position.set(laneX, 0.05, 0.12); auraRing.scale.set((1.2 + rk * 2.4) * auraK, (0.5 + rk * 0.95) * auraK, 1); auraRing.material.opacity = 0.55 * (1 - rk); // ひろがる わ
       auraUp.position.set(laneX, 0.95 * auraK, -0.05); auraUp.material.opacity = (0.14 + aura * 0.3) * (0.7 + 0.3 * pu); }
     ball.visible = ballGlow.visible = ballShadow.visible = !noBall || (!!pspr && NEW7); // 足だけの れんしゅうでも ボールは もったまま 見せる（絵の ときだけ）
+    { const vy = by - bnc.y; if (bnc.vy < -1e-4 && vy >= -1e-5 && bnc.y < 0.3 && ball.visible) bnc.n++; if (Math.abs(vy) > 1e-5) bnc.vy = vy; bnc.y = by; } // ボールが 床で はねた 回数（音を 見た目に あわせる）
     ball.position.set(bx, by, bz); ball.rotation.x -= dt * 8; ballGlow.position.copy(ball.position); ballGlow.material.color.set(sk.c); ballLight.position.copy(ball.position); ballLight.color.set(sk.c);
     { const b2 = human && human.ball2(); ball2.visible = !!b2 && !noBall; if (b2) { if (pose && pose.ball2) ball2.position.set(laneX + pose.ball2.x * GK, 0.17 + (pose.ball2.y - 0.17) * GK, pose.ball2.z); else ball2.position.set(laneX + b2.x, b2.y, b2.z); ball2.rotation.x -= dt * 8; } }
     ballShadow.position.set(bx, 0.014, bz); ballShadow.scale.setScalar(0.25 + (1 - Math.min(1, by / 1.2)) * 0.2);
@@ -371,5 +373,7 @@ export function createScene(canvas, o) {
   function project(x, y, z) { v.set(x, y, z).project(cam); return [(v.x * 0.5 + 0.5) * W, (-v.y * 0.5 + 0.5) * H]; }
   function dispose() { if (human) { scene.remove(human.root); human.dispose(); } for (const h of [...defs, rival, bossH, midH, ...foeInst.values()]) if (h) { scene.remove(h.root); h.dispose(); } env.dispose(); for (const [, gp] of gates) (gp.userData.mats || []).forEach((m) => m.dispose()); disposables.forEach((d) => { try { d.dispose(); } catch (e) { /* noop */ } }); }
   const ready = () => (!env.ready || env.ready()) && (!human || o.sprite === false || !!pspr);
-  return { render, resize, burst, project, dispose, ready, get laneX() { return laneX; }, bossPos: () => boss.position, midPos: () => { const m3 = foeInst.get(stageMid + ':mid'); return m3 && m3.root.visible ? m3.root.position : midH ? midH.root.position : boss.position; } };
+  return { render, resize, burst, project, dispose, ready, get laneX() { return laneX; }, bossPos: () => boss.position, bounces: () => bnc.n, ballWorld: () => ball.position,
+    bossAim: () => bossH && bossH.root.visible ? bossH.root.position.clone().setY(bossH.root.scale.y * (bossH.height || 1.7) * 0.62) : boss.position.clone(), // ボスの むね
+    midAim: () => { const m3 = foeInst.get(stageMid + ':mid'); const h = m3 && m3.root.visible ? m3 : midH; return h ? h.root.position.clone().setY(h.root.scale.y * (h.height || 1.7) * 0.62) : boss.position.clone(); }, midPos: () => { const m3 = foeInst.get(stageMid + ':mid'); return m3 && m3.root.visible ? m3.root.position : midH ? midH.root.position : boss.position; } };
 }
