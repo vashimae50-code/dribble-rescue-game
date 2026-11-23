@@ -30,7 +30,7 @@ const MESHY_ANIMS = 'models/motions/dribble_r.glb';
 export const BOSS_MODELS = ['boss-r1', 'boss-r2', 'boss-r3', 'boss-r4', 'boss-r5', 'boss-r6'];
 // 相手（ディフェンス・中ボス・おいかけて くる 相手）の 3D：顔の 番号（img/faces2.png）と 同じ 番号の 人。models/foes/fNN.glb
 // 前橋さんの A ポーズの 絵から Meshy で 作った もの（No.1〜9 と 大ボスの 顔は なし）。ない 番号は いままでの 体＋顔
-export const FOE_FACES = [10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 47];
+export const FOE_FACES = [1, 6, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 47];
 const foeKey = (n) => 'foe-' + String(n).padStart(2, '0');
 const isFoeKey = (k) => /^foe-\d\d$/.test(k);
 const meshyFamily = (k) => k === 'meshy-v1' || PLAYER_MODELS.includes(k) || BOSS_MODELS.includes(k) || isFoeKey(k);
