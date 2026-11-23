@@ -205,7 +205,7 @@ export function runStage(opts) {
     if (pow > 1.1 && Math.random() < 0.35) addText(['つよい！', 'はやい！', 'いいぞ！'][Math.floor(Math.random() * 3)], '#ffe03d', 0.8, 0.42, 0.6);
     if (tgt === mid && mid.hp <= 0) killMid(true); }
   function killMid(byHit) { mid.dead = true; mid.hp = 0; audio.sfx('boom'); shake = 1.2; const mp = scene.midPos(); scene.burst(mp.x, 2, mp.z, '#ffe03d', 70, 2); addText(byHit ? 'ディフェンスを ぬいた！' : 'ぬいた！', '#7dffb0', 1.2); sayBoth('ぬいた！', 'Beat him!'); setTimeout(() => { mid.gone = true; }, 800); }
-  const SIM_DRIB = (() => { try { return new URLSearchParams(location.search).get('simdrib') === '1'; } catch (e) { return false; } })(); let simK = -1; let hudDt = 1 / 60;
+  const SIM_DRIB = (() => { try { return +(new URLSearchParams(location.search).get('simdrib') || 0) > 0; } catch (e) { return false; } })(); let simK = -1; const SIM_R = (() => { try { return +(new URLSearchParams(location.search).get('simdrib') || 2) || 2; } catch (e) { return 2; } })(); let hudDt = 1 / 60;
   const texts = []; const shots = []; let bounceKey = -1; let pipRect = null;
   let trackedF = 0, allF = 0, lowNow = false, rescueT = 0, safeTimer = null, hxNow = 0, hyNow = 0;
   const tipIdx = { ...(pl.tipIdx || {}) };
@@ -214,7 +214,7 @@ export function runStage(opts) {
   const sayBoth = (ja, en) => { if (settings.voice === 'en') audio.say(en); else if (settings.voice) { if (!audio.say(ja)) speak(ja, 'ja'); } };
   if (settings.voice === 'en' || settings.voice === 'ja') audio.loadVoice(settings.voice);
   const addText = (t, col = '#fff', size = 1, y = 0.34, life = 1) => texts.push({ t, col, size, y, life });
-  const ballScreen = () => scene.project(scene.laneX + 0.4, 0.9, -0.3);
+  const ballScreen = () => { const b = scene.ballWorld && scene.ballWorld(); return b ? scene.project(b.x, Math.max(0.5, b.y), b.z) : scene.project(scene.laneX + 0.4, 0.9, -0.3); }; // 手もとの ボールの 画面の いち
 
   // ---------- 判定（カメラ） ----------
   function onPose(res) {
@@ -223,7 +223,7 @@ export function runStage(opts) {
     s.f++; if (res.tracked) s.tr++; if (res.low || !res.legsVisible) s.lowF++;
     if (res.hx != null) { if (s.hx0 == null) { s.hx0 = res.hx; s.hy0 = res.hy; } s.move = Math.max(s.move, (res.hx - s.hx0) * (c.dir || 1)); s.rise = Math.max(s.rise, s.hy0 - res.hy); }
     for (const ev of res.events) {
-      if (phase === 'finale' || (c.mid && mid.on)) rushHit();
+      if (phase === 'finale' || (c.mid && mid.on)) rushHit(); else if (boss.on && !boss.dead && beat >= bossStart) shots.push({ t: 0, fx: true }); // ボスせんの あいだも ドリブルで 光の玉
       dribbles++; s.n++; if (ev.hand === 'right') { s.R++; rightReps++; } else { s.L++; leftReps++; }
       if (s.last && s.last !== ev.hand) s.sw++; s.last = ev.hand; if (beat - c.b0 > 1) s.late++;
       const want = c.hand === 'R' ? 'right' : c.hand === 'L' ? 'left' : null;
@@ -415,15 +415,20 @@ export function runStage(opts) {
     if (cam) { const ok = allF ? trackedF / allF : 0; txt(ok > 0.5 ? '📷 OK' : '📷 からだを うつしてね', W - pad, H - pad - fs * 0.5, fs * 0.6, ok > 0.5 ? '#7dffb0' : '#ffe03d', 'right'); }
     // ボスへの ショットとビーム
     const bp = scene.bossPos(); const bs = scene.project(bp.x, bp.y, bp.z).map((v) => v * DPR); const ps = ballScreen().map((v) => v * DPR);
-    const mp0 = mid.on && !mid.dead ? scene.midPos() : null; const ms0 = mp0 ? scene.project(mp0.x, 1.4, mp0.z).map((v) => v * DPR) : bs;
-    for (let i = shots.length - 1; i >= 0; i--) { const s = shots[i]; s.t += s.fx ? Math.min(0.12, hudDt * 3.3) : 0.06; const t = Math.min(1, s.t); if (s.fx && s.mid && !mp0) { shots.splice(i, 1); continue; } const to = s.mid ? ms0 : bs; const x = ps[0] + (to[0] - ps[0]) * t, y = ps[1] + (to[1] - ps[1]) * t - Math.sin(t * Math.PI) * H * 0.08; const r = (1 - t * 0.6) * H * 0.022;
-      if (true) { // ボスへの ショットも れんだも：バスケットボールが とぶ：バスケットボールが まわりながら とぶ（うしろに ひかりの すじ）
-        const rr = (1 - t * 0.45) * H * 0.034; for (let k = 1; k <= 4; k++) { const tt = Math.max(0, t - k * 0.06); const xx = ps[0] + (to[0] - ps[0]) * tt, yy = ps[1] + (to[1] - ps[1]) * tt - Math.sin(tt * Math.PI) * H * 0.1; g.globalAlpha = 0.35 - k * 0.07; g.fillStyle = '#ffb13d'; g.beginPath(); g.arc(xx, yy, rr * (1 - k * 0.12), 0, TAU); g.fill(); }
-        g.globalAlpha = 1; const yb = ps[1] + (to[1] - ps[1]) * t - Math.sin(t * Math.PI) * H * 0.1; g.save(); g.translate(x, yb); g.rotate(t * 9); g.fillStyle = '#ff7a1a'; g.beginPath(); g.arc(0, 0, rr, 0, TAU); g.fill(); g.strokeStyle = '#3a1a05'; g.lineWidth = Math.max(1, rr * 0.12); g.stroke();
-        g.beginPath(); g.moveTo(-rr, 0); g.lineTo(rr, 0); g.moveTo(0, -rr); g.lineTo(0, rr); g.stroke(); g.beginPath(); g.arc(-rr * 1.3, 0, rr * 0.9, -0.7, 0.7); g.stroke(); g.beginPath(); g.arc(rr * 1.3, 0, rr * 0.9, Math.PI - 0.7, Math.PI + 0.7); g.stroke(); g.restore(); }
-      else { g.globalAlpha = 0.4; g.fillStyle = pal.a; g.beginPath(); g.arc(x, y, r * 2.2, 0, TAU); g.fill(); g.globalAlpha = 1; g.fillStyle = '#fff'; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
-      if (s.t >= 1 && s.fx) { shots.splice(i, 1); const p3 = s.mid && mp0 ? mp0 : bp; scene.burst(p3.x, s.mid ? 1.4 : bp.y, p3.z + 0.6, Math.random() < 0.5 ? '#3df5ff' : '#ffe03d', 10, 1.0); continue; } // れんだの ボール（あたった ところで はじける）
-      if (s.t >= 1) { shots.splice(i, 1); boss.hit = 1; audio.sfx('hit'); scene.burst(bp.x, bp.y, bp.z + 2, '#ffe03d', 30, 1.6); shake = Math.max(shake, 0.5); } }
+    // こうげきの 光の玉：手もとの ボールから 相手の むねへ（ドリブル 1かいごとに 1こ）
+    const midOn = mid.on && !mid.dead; const bA = scene.bossAim ? scene.bossAim() : bp; const mA = midOn && scene.midAim ? scene.midAim() : null;
+    const bsA = scene.project(bA.x, bA.y, bA.z).map((v) => v * DPR); const msA = mA ? scene.project(mA.x, mA.y, mA.z).map((v) => v * DPR) : null;
+    for (let i = shots.length - 1; i >= 0; i--) { const s = shots[i]; if (s.mid && !msA) { shots.splice(i, 1); continue; }
+      s.t += Math.min(0.12, hudDt * (s.fx ? 3.6 : 2.6)); const t = Math.min(1, s.t); const to = s.mid ? msA : bsA; const fr = s.from || (s.from = ps.slice());
+      const P = (u) => [fr[0] + (to[0] - fr[0]) * u, fr[1] + (to[1] - fr[1]) * u - Math.sin(u * Math.PI) * H * 0.05];
+      const R = H * (s.fx ? 0.014 : 0.022) * (1 - t * 0.3);
+      g.globalCompositeOperation = 'lighter';
+      for (let k = 6; k >= 1; k--) { const [xx, yy] = P(Math.max(0, t - k * 0.035)); g.globalAlpha = 0.18 * (1 - k / 7); g.fillStyle = pal.a; g.beginPath(); g.arc(xx, yy, R * (1 - k * 0.09), 0, TAU); g.fill(); } // ひかりの すじ
+      const [x, y] = P(t); const gr = g.createRadialGradient(x, y, 0, x, y, R * 2.4); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.25, 'rgba(255,255,255,0.95)'); gr.addColorStop(0.45, pal.a); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.globalAlpha = 1; g.fillStyle = gr; g.beginPath(); g.arc(x, y, R * 2.4, 0, TAU); g.fill(); g.globalCompositeOperation = 'source-over';
+      if (t < 1) continue; shots.splice(i, 1); const p3 = s.mid ? mA : bA;
+      if (s.fx) { scene.burst(p3.x, p3.y, p3.z + 0.4, Math.random() < 0.5 ? '#ffffff' : pal.a, 12, 1.0); if (s.mid) mid.hit = 1; else boss.hit = Math.max(boss.hit, 0.6); continue; } // むねに あたって はじける
+      boss.hit = 1; audio.sfx('hit'); scene.burst(p3.x, p3.y, p3.z + 0.5, '#ffe03d', 30, 1.6); shake = Math.max(shake, 0.5); }
     // れんだの とき：レーザーの かわりに ボールが とんでいく（上の shots）
     // けいこく・フラッシュ
     const danger = Math.max(redFlash, clamp((chaserShow - 0.6) * 2, 0, 0.6) * (0.6 + 0.4 * Math.sin(mbeat * TAU * 2)));
@@ -454,7 +459,7 @@ export function runStage(opts) {
     if (q !== lastQ) { lastQ = q; audio.tick(q, phase === 'safe' || phase === 'rescue' || dojo ? 'safe' : phase === 'count' ? 'intro' : beat >= bossStart ? 'boss' : 'run'); if (dojo && q % 4 === 0) audio.sfx('count'); }
     if (phase === 'count') { const n = Math.ceil(-beat); if (n !== countShown && n >= 0) { countShown = n; if (n > 0 && n <= 3) { audio.sfx('count'); sayBoth(String(n), ['', 'one', 'two', 'three'][n]); } } if (beat >= 0) { phase = 'run'; audio.sfx('go'); addText(dojo ? 'スタート！' : 'GO!', pal.a, 2); } }
     if (pose) { const r = pose.poll(); if (r) onPose(r); }
-    if (SIM_DRIB && (phase === 'run' || phase === 'finale') && Math.floor(beat * 2) !== simK) { simK = Math.floor(beat * 2); onPose({ tracked: true, events: [{ hand: simK % 2 ? 'left' : 'right' }] }); } // テスト用：?simdrib=1 で 1拍に 2回 ドリブルした ことにする
+    if (SIM_DRIB && (phase === 'run' || phase === 'finale') && Math.floor(beat * SIM_R) !== simK) { simK = Math.floor(beat * SIM_R); onPose({ tracked: true, events: [{ hand: simK % 2 ? 'left' : 'right' }] }); } // テスト用：?simdrib=1 で 1拍に 2回 ドリブルした ことにする
     const camZ = zAt(Math.max(0, beat)) + Math.min(0, beat) * V;
 
     if (phase === 'run' || phase === 'finale') {
@@ -477,13 +482,13 @@ export function runStage(opts) {
         const next = cues[cues.indexOf(curCue) + 1];
         if (next && next.skill !== 'rest' && spokenFor !== next && next.b0 - beat <= 2) { spokenFor = next; const sk = SKILLS[next.skill]; sayBoth(((sk.lane || sk.jab) && next.dir ? (next.dir > 0 ? 'みぎへ ' : 'ひだりへ ') : '') + sk.say, enLabel(next) + '!'); audio.sfx('warn'); }
         // ボールが ゆかに つく音
-        if (curCue.hand !== 'hold' && curCue.ballMode !== 'none') { const skc = SKILLS[curCue.skill]; const dbl = (skc.dbl ? 2 : 1) * (curCue.rush ? 2 : 1) * (skc.quick || 1) * (skc.fig8 ? 2 : 1) * (skc.two === 'alt' ? 2 : 1); const alt = skc.vmove || curCue.hand === 'alt' || (curCue.hand === 'alt1' && beat - curCue.b0 < 1); const key = Math.floor(beat * dbl + (alt ? 0.5 : 0)); if (key !== bounceKey) { bounceKey = key; const k = curCue.skill; audio.sfx('bounce', k === 'pound' || k === 'drive' ? 1.25 : SKILLS[k].low ? 0.7 : k === 'fast' ? 0.85 : 1); } }
+        if (curCue.hand !== 'hold' && curCue.ballMode !== 'none') { const skc = SKILLS[curCue.skill]; const dbl = (skc.dbl ? 2 : 1) * (curCue.rush ? 2 : 1) * (skc.quick || 1) * (skc.fig8 ? 2 : 1) * (skc.two === 'alt' ? 2 : 1); const alt = skc.vmove || curCue.hand === 'alt' || (curCue.hand === 'alt1' && beat - curCue.b0 < 1); const useB = scene.bounces && !skc.two && curCue.hand !== 'two'; const key = useB ? scene.bounces() : Math.floor(beat * dbl + (alt ? 0.5 : 0)); /* 音は 画面の ボールが 床で はねた ときに（見た目と ずれない） */ if (key !== bounceKey) { bounceKey = key; if (!cam && useB && ((phase === 'finale' || beat >= bossStart) && boss.on && !boss.dead || (curCue.mid && mid.on && !mid.dead))) shots.push({ t: 0, fx: true, mid: !!(curCue.mid && mid.on) }); /* カメラなし：画面の ドリブルに あわせて */ const k = curCue.skill; audio.sfx('bounce', k === 'pound' || k === 'drive' ? 1.25 : SKILLS[k].low ? 0.7 : k === 'fast' ? 0.85 : 1); } }
         for (const o of orbs) { if (o.got || o.missed) continue; if (o.z <= camZ + 0.4) { if (cam && o.cue.hand !== 'hold') { o.missed = true; combo = 0; } else collect(o); } }
         if (phase === 'finale' && boss.hp <= 0.001 && endBeat > beat) endBeat = beat; // たおしたら すぐ おわり
         if (beat >= endBeat && (dojo || sectionIdx >= SECTIONS) && phase === 'finale' && cam && boss.hp > 0.03 && rushExt < 2) { rushExt++; const f = addCue(curCue.skill, { len: 8, boss: true, hand: curHand }); f.rush = true; f.rushMore = true; }
         if (beat >= endBeat && (dojo || sectionIdx >= SECTIONS)) {
           judge(curCue); phase = 'rescue'; rescueT = 0; flash = 1; flashCol = '#fff'; rescueTO = setTimeout(() => { if (!dead) { logErr('rescue-timeout', 'goal 5s'); finish(); } }, 5000); // フレームが 止まっても かならず けっかへ
-          if (hasBoss) { boss.dead = true; boss.hp = 0; audio.sfx('boom'); shake = 2; const bp = scene.bossPos(); scene.burst(bp.x, bp.y, bp.z + 2, '#ffe03d', 120, 3); scene.burst(bp.x, bp.y, bp.z + 2, '#ff4d6d', 90, 2.2); slow = 0.3; sayBoth('やったー！', 'You did it!'); setTimeout(() => { boss.gone = true; }, 700); }
+          if (hasBoss) { boss.dead = true; boss.hp = 0; audio.sfx('boom'); shake = 2; const bp = scene.bossAim ? scene.bossAim() : scene.bossPos(); scene.burst(bp.x, bp.y, bp.z + 1, '#ffe03d', 120, 3); scene.burst(bp.x, bp.y, bp.z + 1, '#ff4d6d', 90, 2.2); slow = 0.3; sayBoth('やったー！', 'You did it!'); setTimeout(() => { boss.gone = true; }, 700); }
           else { audio.sfx('fanfare'); scene.burst(0, 2, -3, pal.a, 80, 2); scene.burst(0, 2, -3, '#ffe03d', 60, 1.6); }
         }
         if (dojo) chaser = 0;
