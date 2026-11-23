@@ -205,6 +205,7 @@ export function runStage(opts) {
     if (pow > 1.1 && Math.random() < 0.35) addText(['つよい！', 'はやい！', 'いいぞ！'][Math.floor(Math.random() * 3)], '#ffe03d', 0.8, 0.42, 0.6);
     if (tgt === mid && mid.hp <= 0) killMid(true); }
   function killMid(byHit) { mid.dead = true; mid.hp = 0; audio.sfx('boom'); shake = 1.2; const mp = scene.midPos(); scene.burst(mp.x, 2, mp.z, '#ffe03d', 70, 2); addText(byHit ? 'ディフェンスを ぬいた！' : 'ぬいた！', '#7dffb0', 1.2); sayBoth('ぬいた！', 'Beat him!'); setTimeout(() => { mid.gone = true; }, 800); }
+  const SIM_DRIB = (() => { try { return new URLSearchParams(location.search).get('simdrib') === '1'; } catch (e) { return false; } })(); let simK = -1; let hudDt = 1 / 60;
   const texts = []; const shots = []; let bounceKey = -1; let pipRect = null;
   let trackedF = 0, allF = 0, lowNow = false, rescueT = 0, safeTimer = null, hxNow = 0, hyNow = 0;
   const tipIdx = { ...(pl.tipIdx || {}) };
@@ -415,8 +416,12 @@ export function runStage(opts) {
     // ボスへの ショットとビーム
     const bp = scene.bossPos(); const bs = scene.project(bp.x, bp.y, bp.z).map((v) => v * DPR); const ps = ballScreen().map((v) => v * DPR);
     const mp0 = mid.on && !mid.dead ? scene.midPos() : null; const ms0 = mp0 ? scene.project(mp0.x, 1.4, mp0.z).map((v) => v * DPR) : bs;
-    for (let i = shots.length - 1; i >= 0; i--) { const s = shots[i]; s.t += s.fx ? 0.08 : 0.06; const t = Math.min(1, s.t); const to = s.mid ? ms0 : bs; const x = ps[0] + (to[0] - ps[0]) * t, y = ps[1] + (to[1] - ps[1]) * t - Math.sin(t * Math.PI) * H * 0.08; const r = (1 - t * 0.6) * H * 0.022;
-      g.globalAlpha = 0.4; g.fillStyle = pal.a; g.beginPath(); g.arc(x, y, r * 2.2, 0, TAU); g.fill(); g.globalAlpha = 1; g.fillStyle = '#fff'; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+    for (let i = shots.length - 1; i >= 0; i--) { const s = shots[i]; s.t += s.fx ? Math.min(0.12, hudDt * 3.3) : 0.06; const t = Math.min(1, s.t); if (s.fx && s.mid && !mp0) { shots.splice(i, 1); continue; } const to = s.mid ? ms0 : bs; const x = ps[0] + (to[0] - ps[0]) * t, y = ps[1] + (to[1] - ps[1]) * t - Math.sin(t * Math.PI) * H * 0.08; const r = (1 - t * 0.6) * H * 0.022;
+      if (true) { // ボスへの ショットも れんだも：バスケットボールが とぶ：バスケットボールが まわりながら とぶ（うしろに ひかりの すじ）
+        const rr = (1 - t * 0.45) * H * 0.034; for (let k = 1; k <= 4; k++) { const tt = Math.max(0, t - k * 0.06); const xx = ps[0] + (to[0] - ps[0]) * tt, yy = ps[1] + (to[1] - ps[1]) * tt - Math.sin(tt * Math.PI) * H * 0.1; g.globalAlpha = 0.35 - k * 0.07; g.fillStyle = '#ffb13d'; g.beginPath(); g.arc(xx, yy, rr * (1 - k * 0.12), 0, TAU); g.fill(); }
+        g.globalAlpha = 1; const yb = ps[1] + (to[1] - ps[1]) * t - Math.sin(t * Math.PI) * H * 0.1; g.save(); g.translate(x, yb); g.rotate(t * 9); g.fillStyle = '#ff7a1a'; g.beginPath(); g.arc(0, 0, rr, 0, TAU); g.fill(); g.strokeStyle = '#3a1a05'; g.lineWidth = Math.max(1, rr * 0.12); g.stroke();
+        g.beginPath(); g.moveTo(-rr, 0); g.lineTo(rr, 0); g.moveTo(0, -rr); g.lineTo(0, rr); g.stroke(); g.beginPath(); g.arc(-rr * 1.3, 0, rr * 0.9, -0.7, 0.7); g.stroke(); g.beginPath(); g.arc(rr * 1.3, 0, rr * 0.9, Math.PI - 0.7, Math.PI + 0.7); g.stroke(); g.restore(); }
+      else { g.globalAlpha = 0.4; g.fillStyle = pal.a; g.beginPath(); g.arc(x, y, r * 2.2, 0, TAU); g.fill(); g.globalAlpha = 1; g.fillStyle = '#fff'; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
       if (s.t >= 1 && s.fx) { shots.splice(i, 1); const p3 = s.mid && mp0 ? mp0 : bp; scene.burst(p3.x, s.mid ? 1.4 : bp.y, p3.z + 0.6, Math.random() < 0.5 ? '#3df5ff' : '#ffe03d', 10, 1.0); continue; } // れんだの ボール（あたった ところで はじける）
       if (s.t >= 1) { shots.splice(i, 1); boss.hit = 1; audio.sfx('hit'); scene.burst(bp.x, bp.y, bp.z + 2, '#ffe03d', 30, 1.6); shake = Math.max(shake, 0.5); } }
     // れんだの とき：レーザーの かわりに ボールが とんでいく（上の shots）
@@ -437,7 +442,7 @@ export function runStage(opts) {
     try { frameBody(now); } catch (e) { console.error(e); if (frameErrN++ < 3) logErr('frame', e); if (phase === 'rescue') { rescueT += 0.05; if (rescueT > 2.4) finish(); } }
   }
   function frameBody(now) {
-    const rdt = Math.min(video ? 0.5 : (window.__dtcap || 0.05), (now - last) / 1000); const rawDt = Math.min(1, Math.max(0, (now - last) / 1000)); // ゴールの よいんは ほんとうの じかんで（おもい たんまつでも のびない）
+    const rdt = Math.min(video ? 0.5 : (window.__dtcap || 0.05), (now - last) / 1000); hudDt = rdt; const rawDt = Math.min(1, Math.max(0, (now - last) / 1000)); // ゴールの よいんは ほんとうの じかんで（おもい たんまつでも のびない）
     if (video) { (window.__ft || (window.__ft = [])).push(now - last); if (window.__ft.length > 2000) window.__ft.shift(); }
     last = now; if (paused) return;
     slow += (1 - slow) * 0.06; let dt = rdt * slow;
@@ -449,6 +454,7 @@ export function runStage(opts) {
     if (q !== lastQ) { lastQ = q; audio.tick(q, phase === 'safe' || phase === 'rescue' || dojo ? 'safe' : phase === 'count' ? 'intro' : beat >= bossStart ? 'boss' : 'run'); if (dojo && q % 4 === 0) audio.sfx('count'); }
     if (phase === 'count') { const n = Math.ceil(-beat); if (n !== countShown && n >= 0) { countShown = n; if (n > 0 && n <= 3) { audio.sfx('count'); sayBoth(String(n), ['', 'one', 'two', 'three'][n]); } } if (beat >= 0) { phase = 'run'; audio.sfx('go'); addText(dojo ? 'スタート！' : 'GO!', pal.a, 2); } }
     if (pose) { const r = pose.poll(); if (r) onPose(r); }
+    if (SIM_DRIB && (phase === 'run' || phase === 'finale') && Math.floor(beat * 2) !== simK) { simK = Math.floor(beat * 2); onPose({ tracked: true, events: [{ hand: simK % 2 ? 'left' : 'right' }] }); } // テスト用：?simdrib=1 で 1拍に 2回 ドリブルした ことにする
     const camZ = zAt(Math.max(0, beat)) + Math.min(0, beat) * V;
 
     if (phase === 'run' || phase === 'finale') {
